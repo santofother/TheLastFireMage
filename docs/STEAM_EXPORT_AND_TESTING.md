@@ -250,7 +250,7 @@ It prints `NET TEST PASSED` or tells you which check failed.
 | Invite accepted but Spacewar opened | The game wasn't running on the joiner. Start our game first, then accept, or use the lobby list |
 | Connected, but no voice | On Mac: check the microphone permission (section 4). In Steam mode, check **Steam → Settings → Voice** uses the right mic (Steam voice ignores the in-game Mic picker). Make sure you're holding **V** with the game window focused. F3: does `sent` go up on the speaker's machine and `received` go up on the listener's? |
 | Voice works close up but never gets quiet | Check F3 says `Falloff: full <= 3 m, silent >= 25 m`. Distance is measured between players, not cameras |
-| Mic meter doesn't move | Pick another device in **Mic**. On Mac, check the microphone permission. The meter uses Godot's mic, while Steam voice uses Steam's mic setting |
+| Mic meter doesn't move | Pick another device in **Mic** (Esc menu). On Mac, check **Privacy & Security → Microphone** lists the game and it's on. On Windows, check **Settings → Privacy & security → Microphone**: "Microphone access" and **"Let desktop apps access your microphone"** must be on. The meter uses the in-game Mic choice, while Steam voice uses Steam's mic setting |
 | LAN join times out | Wrong IP, different networks, or firewall. Allow the game on **Private networks** in Windows Firewall. Try the host's IP from `ipconfig` |
 | Mac says the app "is damaged and can't be opened" | It was quarantined in transit. Run `xattr -dr com.apple.quarantine TheLastFireMage.app` |
 | Export fails with "No export template found" | Do section 1 |

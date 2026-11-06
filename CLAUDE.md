@@ -39,6 +39,9 @@ Godot binary: `/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot` 
 - `core/` must not depend on `game/`. Games hook in via signals (`player_registered`, `peer_left`,
   `session_ended`) and `VoiceManager.register_speaker()` / `VoiceManager.listener`.
 - Voice RPC: `VoiceManager._voice_packet`, unreliable_ordered, channel 2.
+- Mic capture uses Godot 4.5+ direct API (`AudioServer.set_input_device_active` / `get_input_frames`).
+  Don't go back to AudioStreamMicrophone + capture bus: routed into a muted bus, it captured nothing.
+  Real-mic check: run non-headless with `--autotest=6` and read `mic_peak` in the `[TEST] VOICE` line.
 - Use physical-key checks for input (no InputMap entries yet). UI is built in code.
 - Log with prefixes `[Net]`, `[Steam]`, `[Game]`, `[TEST]`. Tests grep these.
 

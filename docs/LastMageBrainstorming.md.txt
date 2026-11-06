@@ -1,0 +1,188 @@
+## Last Mage — Brainstorming (Updated)
+
+_A compact multiplayer party/hide-and-seek game set in a Roman-inspired fantasy world._
+
+## Design Pillars
+- **Chaotic:** Physics and player interactions create unpredictable moments.
+- **Social:** Proximity chat and player interaction are central to the experience.
+- **Risky:** Parkour rewards skill but creates opportunities for spectacular failure.
+- **Escalating:** The mage grows stronger as the world becomes more dangerous.
+- **Compact:** Small map, short rounds, high replayability.
+- **Distinctive:** Rune-fire magic, a coastal fantasy setting, and dead-player interference create a unique identity.
+
+## Core Concept
+A fire mage hunts a group of small villagers through a dense seaside neighborhood. The mage grows stronger through sacrifice while a magical firestorm progressively consumes the map. Villagers must survive the timer or force the mage to fail before the firestorm overwhelms them.
+
+## Player Count
+- Target maximum: **6 players**.
+- One player is the Mage.
+- Remaining players are Villagers.
+- Long-term mode: every player gets a turn playing the Mage, and total points determine the overall winner.
+
+## Match Flow
+1. Match begins.
+2. Villagers receive a **30-second head start**.
+3. The Mage does **not** know where Villagers spawned.
+4. Villagers search for hiding spots, routes, chickens, and resources.
+5. The Mage hunts chickens and villagers to gain power.
+6. Firestorm zones begin advancing.
+7. The required fire-control power increases as the match progresses.
+8. The final stage becomes a chaotic last stand.
+
+### Round Length
+- Initial target: **8 minutes**.
+- Subject to playtesting.
+
+## Win Conditions
+### Villagers Win
+- Survive until the match timer expires.
+- OR the Mage dies to the Firestorm.
+
+### Mage Wins
+- Kill every Villager before the timer expires.
+
+## Character Scale
+- Villagers: approximately 1 meter tall.
+- Mage: approximately 1.4 meters tall.
+- Sizes are intentionally small to create a funny visual style and make the map feel larger.
+
+## The Mage
+
+### Core Weapons and Abilities
+- Small knife with low base damage.
+- Short-cooldown ability that ignites the knife and increases damage.
+- Longer-cooldown Fire Wave attack.
+
+### Power System
+Power only upgrades the Mage's fire magic.
+
+Power increases:
+- Fire damage.
+- Fire range.
+- Fire spread.
+
+Power does **not** automatically improve all aspects of the character.
+
+### Gaining Power
+- Killing a chicken grants power.
+- Killing a villager grants power.
+- No ritual or sacrifice animation is required.
+- A kill is considered the sacrifice.
+
+### Power Decay
+- Power effectiveness gradually decreases over time.
+- The Mage does not lose unlocked power tiers.
+- The Mage must continue hunting to maintain effectiveness.
+
+## Chickens
+- Chickens roam the map using basic pathfinding.
+- Chickens create noise.
+- Villagers can pick up and hide chickens.
+- Hiding chickens denies the Mage an easy source of power.
+- Chickens become an additional objective for both teams.
+
+## Firestorm System
+- The safe zone continuously shrinks.
+- The Mage must maintain a minimum power threshold to control the magical firestorm.
+- If the Mage falls below the required threshold, the firestorm overwhelms and kills them.
+- Firestorm warnings should be clearly communicated.
+- Firestorm progression should create decisions, not simply delete parts of the map.
+
+## Movement and Parkour
+### Design Goals
+| Feature | Goal |
+|----------|----------|
+| Jumping | Responsive and simple |
+| Climbing | Easy to understand but exposes players |
+| Rooftops | Rewarding but risky |
+| Falling | Funny and potentially costly |
+| Collision | Creates slapstick moments |
+| Mage Movement | Powerful but not automatically better |
+
+### Parkour Philosophy
+- Better hiding places are difficult to reach, not inherently safer.
+- Skilled players gain access to stronger routes and hiding locations.
+- Momentum should be a key part of movement.
+- Physics should create funny accidents.
+
+## Villager Counterplay
+- Villagers cannot damage the Mage.
+- Villagers can temporarily stun or disrupt the Mage.
+- Movement, hiding, teamwork, and environmental interactions are their primary tools.
+
+## Dead Player System
+Dead players become agents of chaos rather than spectators.
+
+### Camera
+- Top-down view.
+- Dead players cannot see highlighted players.
+- They can identify players manually if they observe carefully.
+- Limited vision radius rather than full-map visibility.
+- Fog-of-war style information is preferred.
+
+### Item Gameplay
+- Dead players move around a separate overhead layer.
+- Random items spawn.
+- Dead players must collect items before throwing them.
+- Thrown items that hit a player break.
+- Missed items remain available to living villagers.
+
+### Effects
+- Primarily disruption and brief stuns.
+- Dead players can help or sabotage either side.
+- Multiple dead players can coordinate.
+- Cooldowns are required to prevent excessive influence.
+
+### Communication
+- Dead players retain proximity voice chat.
+- Possible future feature: megaphone communication system.
+
+## Proximity Voice Chat
+- Living players use proximity chat.
+- Dead players also participate in voice chat.
+- The Mage's voice is distorted.
+- Distortion can intensify as power increases.
+
+## Scoring System
+### Mage Score
+- Points for Villagers killed.
+- Bonus points for a Mage victory.
+
+### Villager Score
+If Villagers lose:
+- Points based on survival time.
+
+If Villagers win:
+- Win bonus.
+- Additional survival-time score.
+
+### Multi-Round Format
+- Every player gets a turn as the Mage.
+- Total points determine the overall winner.
+- Point values are intentionally left open for balancing.
+
+## Networking Goals
+- Private online games with friends.
+- Up to 6 players.
+- No public matchmaking required initially.
+- Networking implementation will be finalized later during Unreal development.
+
+## Map Design Rules
+- Every district must have multiple escape routes.
+- Rooftop and street routes should connect.
+- No hiding spot should remain safe permanently.
+- The Mage should be able to reach most areas.
+- Firestorm progression should create meaningful choices.
+- The environment should encourage movement.
+
+## Visual Identity
+The game should balance charm and danger.
+
+### Tone
+- Small goofy characters.
+- Dense colorful seaside architecture.
+- Rune-emitting fire magic.
+- Distorted supernatural Mage voice.
+- Increasingly dangerous magical atmosphere.
+
+The Mage should feel ominous without being physically gigantic.
