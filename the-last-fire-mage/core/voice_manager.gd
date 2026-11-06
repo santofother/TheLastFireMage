@@ -261,7 +261,7 @@ func _play_pcm(sp: Dictionary, pcm: PackedByteArray, rate: int) -> void:
 
 func _update_speakers(now: float) -> void:
 	var from: Vector3
-	if is_instance_valid(listener):
+	if is_instance_valid(listener) and listener.is_inside_tree():
 		from = listener.global_position
 	else:
 		var cam := get_viewport().get_camera_3d()
@@ -271,7 +271,7 @@ func _update_speakers(now: float) -> void:
 	for id in _speakers:
 		var sp: Dictionary = _speakers[id]
 		var node: Node3D = sp["node"]
-		if not is_instance_valid(node):
+		if not is_instance_valid(node) or not node.is_inside_tree():
 			continue
 		var d := node.global_position.distance_to(from)
 		var vol := clampf(1.0 - (d - full_volume_distance) / (silent_distance - full_volume_distance), 0.0, 1.0)

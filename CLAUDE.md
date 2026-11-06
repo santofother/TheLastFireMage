@@ -26,6 +26,9 @@ Godot binary: `/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot` 
 - Re-import after adding files: `$GODOT --headless --path the-last-fire-mage --import`
 - Export: `$GODOT --headless --path the-last-fire-mage --export-debug "Windows Desktop" ../build/windows/TheLastFireMage.exe`
   (and `"macOS" ../build/macos/TheLastFireMage.app`). Needs 4.7.2 export templates installed.
+  macOS preset must keep `codesign/codesign=3` (Apple codesign, identity `-`): Godot's built-in ad-hoc signer
+  produced an app macOS SIGKILLs at launch (exit 137). Running exported binaries from the Claude sandbox
+  also needs the sandbox disabled.
 - CLI args (after `--`): `--host`, `--join=IP`, `--port=N`, `--name=X`, `--no-steam`, `--autotest=SEC`,
   `--quit-after=SEC`, `--test-target=x,z`, `--test-voice`
 

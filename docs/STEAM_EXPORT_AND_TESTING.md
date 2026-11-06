@@ -62,7 +62,8 @@ cd ~/PersonalProjects/LastMage/the-last-fire-mage
 | `steam_api64.dll` | Valve's Steam library |
 | `steam_appid.txt` | contains `480`. Tells Steam which app this is. Copied automatically by our export plugin |
 
-**Mac** (`build/macos/TheLastFireMage.app`): everything is inside the `.app`. The Steam libraries are in
+**Mac** (`build/macos/TheLastFireMage.app`): everything is inside the `.app`. Debug exports also create
+`TheLastFireMage.command`; double-click it to run the game with a Terminal window showing the logs. The Steam libraries are in
 `Contents/Frameworks/`. The Mac build doesn't need `steam_appid.txt` because the game sets
 app ID 480 in code. A copy is still placed next to the `.app`, and it does no harm.
 
@@ -87,7 +88,9 @@ Re-export and re-copy the whole folder each time you change the game.
 
 ## 4. Getting past the Mac "unidentified developer" warning
 
-The Mac build is only "ad-hoc" signed, without a paid Apple Developer ID.
+The Mac build is only "ad-hoc" signed, without a paid Apple Developer ID. The preset signs with Apple's own `codesign`
+tool (setting "Xcode codesign", identity `-`). Godot's built-in signer produced a Mac app that macOS
+killed instantly on launch, so don't switch it back.
 
 - **A build you made on this Mac** normally opens with a double-click.
 - **A build that was downloaded or AirDropped** (for example, to a friend's Mac) gets blocked the first time:
@@ -193,6 +196,7 @@ It prints `NET TEST PASSED` or tells you which check failed.
 | LAN join times out | Wrong IP, different networks, or firewall. Allow the game on **Private networks** in Windows Firewall. Try the host's IP from `ipconfig` |
 | Mac says the app "is damaged and can't be opened" | It was quarantined in transit. Run `xattr -dr com.apple.quarantine TheLastFireMage.app` |
 | Export fails with "No export template found" | Do section 1 |
+| Mac app quits instantly with no window (Terminal shows exit 137 / "Killed") | Its code signature was rejected. Check the macOS preset still has **Codesign → Xcode codesign** with identity `-`, then re-export |
 | Windows "Windows protected your PC" | More info → Run anyway (unsigned build) |
 
 Logs: on Windows run `TheLastFireMage.console.exe`. On Mac run
