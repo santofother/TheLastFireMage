@@ -108,25 +108,81 @@ killed instantly on launch, so don't switch it back.
 
 ## 5. Running a two-machine Steam test
 
-**Each machine must be logged into a different Steam account.** Steam won't connect an account to
-itself. Make a free second account if you need one, and make the two accounts Steam friends so invites work.
+### How this works (read once)
+- You **don't install, buy, or launch "Spacewar"**. Spacewar is Valve's free test app, ID **480**.
+  Every developer without their own app ID borrows that ID. Our game tells Steam "I am app 480" (that's what
+  `steam_appid.txt` and the code do), and Steam lets it use lobbies, networking and voice.
+- You start **our game** by double-clicking it, **not** through your Steam library. The Steam app just has to be
+  open and logged in in the background. While our game runs, your Steam profile shows **"Playing Spacewar"**.
+  That's expected.
+- **Each machine needs its own Steam account.** Two copies of the game on the same account can't connect.
 
-We use Valve's public test app **480 ("Spacewar")** until you have your own app ID. Steam will show you as
-"Playing Spacewar". That's expected.
+### Part A: one-time setup
 
-1. Start Steam on both machines and log in. Steam must be running *before* you start the game.
-2. Start the game on both machines. The menu should say **"Steam: Logged in as <name>"**.
-   If it says "Steam not available", see Common failures (section 8).
-3. **Machine A (host):** type a name → **Host Steam lobby**. You spawn on the map.
-4. **Machine B (join)**, using either of these:
-   - **Lobby list (most reliable):** click **Refresh lobby list**, select "<A's name>'s game", then click
-     **Join selected lobby**. Only lobbies from *our* game show up. They're filtered out of all the
-     other Spacewar lobbies.
-   - **Invite:** on A, press **Esc → Invite Steam friends**, pick B. On B, accept the invite in Steam chat.
-     **The game must already be running on B.** With app 480, accepting an invite while the game is closed would
-     launch Valve's Spacewar instead of our game. The Steam overlay (needed for the invite dialog) sometimes doesn't
-     appear for games not launched through Steam. If that happens, use the lobby list.
-5. Up to 6 players can join the same lobby.
+**A1. Install Steam on both machines** (skip on any machine that already has it):
+- Windows: download from <https://store.steampowered.com/about/>, run `SteamSetup.exe`, and follow the installer.
+- Mac: download from the same page. Open the `.dmg`, drag **Steam** into **Applications**, then open it.
+  On first launch it downloads updates for a minute or two.
+
+**A2. Get a second Steam account** (if you only have one):
+1. On either machine, open <https://store.steampowered.com/join> in a browser.
+2. Use a different email address from your main account, confirm the email, and pick an account name and password.
+3. A brand-new account is a "limited" account (no money spent). That's fine for this test: lobbies, voice and
+   networking all work. The only restriction is that a limited account **can't send** friend requests, so friend
+   requests have to come from your main account (A3).
+
+**A3. Optional: make the two accounts friends.** You only need this for the *invite* method. The *lobby list*
+method works without it.
+1. On the machine logged into the **second** account: Steam → **Friends** (top menu) → **Add a Friend**. Copy the
+   **Friend Code** shown there.
+2. On the machine logged into your **main** account: **Friends → Add a Friend**, paste the code, then click **Send Invite**.
+3. Back on the second account, accept the request in the Steam friends list (the bell/notifications icon).
+
+**A4. Log each machine into a different account:**
+- Mac: open Steam and log in with account 1 (for example, your main account).
+- Windows: open Steam and log in with account 2. If Steam is already logged into account 1 there:
+  **Steam** menu (top-left) → **Change Account…** → log in with account 2.
+- One account can only be logged in on one computer at a time. If Steam on one machine says you logged in
+  elsewhere, that's the problem.
+
+**A5. Pick the microphone Steam should use** (Steam voice ignores the in-game Mic dropdown):
+- Windows and Mac: in Steam, **Steam** menu (Mac: **Steam** in the top menu bar) → **Settings** → **Voice** →
+  choose your mic under **Voice Input Device**. On that page you can click **Test microphone** to check it works.
+- Mac only: if macOS asks whether Steam may use the microphone, click **Allow**.
+
+### Part B: every test session
+
+1. **Open Steam on both machines** and wait until it finishes logging in. You should see your friends list or
+   library, not a login screen.
+2. **Start the game:**
+   - Windows: open the folder you extracted (the one with `TheLastFireMage.exe`, `steam_api64.dll`,
+     `steam_appid.txt` …). Double-click **`TheLastFireMage.console.exe`**. A black log window opens next to the
+     game, which helps if something goes wrong. If Windows shows "Windows protected your PC", click
+     **More info → Run anyway**.
+   - Mac: double-click `build/macos/TheLastFireMage.app`, or `TheLastFireMage.command` for a log window.
+     Allow microphone access if asked.
+3. **Check the menu** on both machines. Under the name field it should say
+   **"Steam: Logged in as <your Steam name>"**, and the Steam buttons should be clickable.
+   If it says "Steam not available …", close the game, make sure Steam is fully logged in, and start the game
+   again. Then see section 8.
+4. **Machine A (host):** type a player name and click **Host Steam lobby**. After a second or two the menu closes
+   and you're standing on the map.
+5. **Machine B (joiner):** type a player name, then:
+   - **Lobby list (recommended):** click **Refresh lobby list**. Wait a couple of seconds; "<A's Steam name>'s
+     game (1/6)" appears in the box. Select it and click **Join selected lobby** (or double-click it). If the list
+     is empty, wait 5 seconds and refresh again. Only lobbies from *our* game are listed, never other
+     people's Spacewar lobbies.
+   - **Invite (needs A3):** on A, press **Esc → Invite Steam friends**. The Steam overlay should open with your
+     friends list. Click **Invite** next to B. On B, accept the invite in the Steam chat window.
+     Two caveats: **B must already have our game running**, otherwise Steam launches the real Spacewar instead;
+     and the overlay often doesn't appear for games started by double-clicking. If nothing opens, use the lobby list.
+6. **You're connected** when both of you see the other capsule with a name above it. Press **F3**: it shows
+   `Mode: Steam`, `Peers: 1` and a ping.
+7. **Talk:** walk close to each other, **hold V** and speak. The other machine should hear you, and "SPEAKING"
+   appears above your head. Then run the checklist in section 6.
+8. **Swap roles:** both press **Esc → Leave game**. Now B clicks **Host Steam lobby** and A joins. Doing this
+   tests Windows-hosts and Mac-hosts.
+9. Up to 6 players (6 machines, 6 accounts) can join the same lobby.
 
 ### LAN / direct-IP test (no Steam needed)
 1. Host machine: **Host LAN** (port 24680).
@@ -188,6 +244,8 @@ It prints `NET TEST PASSED` or tells you which check failed.
 | Menu says **"Steam not available"** | Start and log into Steam **before** the game. Check `steam_appid.txt` is next to the exe (Windows). If it still fails, open `steam://install/480` in a browser to add Spacewar to the account, then retry |
 | Steam buttons greyed out on Windows, console says it can't load GodotSteam | The `.dll` files aren't next to the `.exe`. Re-copy the whole export folder |
 | Both machines on the **same Steam account** | Won't work. Use two different accounts |
+| Steam says the account logged in somewhere else | One account can only be logged in on one computer at a time. Use account 1 on the Mac and account 2 on the PC |
+| Steam overlay / invite dialog doesn't open | Normal for games started by double-clicking with app 480. Use **Refresh lobby list** instead |
 | Lobby list is empty | The host must be in a lobby first (Host Steam lobby). Click Refresh again after a few seconds. Both machines must run the same build |
 | Invite accepted but Spacewar opened | The game wasn't running on the joiner. Start our game first, then accept, or use the lobby list |
 | Connected, but no voice | On Mac: check the microphone permission (section 4). In Steam mode, check **Steam → Settings → Voice** uses the right mic (Steam voice ignores the in-game Mic picker). Make sure you're holding **V** with the game window focused. F3: does `sent` go up on the speaker's machine and `received` go up on the listener's? |
