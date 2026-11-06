@@ -151,7 +151,8 @@ func _load_settings() -> void:
 	for i in _mic_option.item_count:
 		if _mic_option.get_item_text(i) == dev:
 			_mic_option.select(i)
-			VoiceManager.set_input_device(dev)
+			if dev != AudioServer.input_device:
+				VoiceManager.set_input_device(dev)
 
 
 func _save_settings() -> void:

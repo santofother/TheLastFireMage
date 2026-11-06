@@ -32,6 +32,8 @@ var listener: Node3D ## local player; distances are measured from here
 var _speakers := {} ## peer_id -> {player, node, rate, last}
 var _headless := false
 var _mic_active := false
+var _mic_restart_id := 0
+var _mic_started := false
 var _steam_recording := false
 var _last_local_voice := -10.0
 var _gate_timer := 0.0
@@ -43,12 +45,14 @@ var _pending := PackedFloat32Array()
 
 func _ready() -> void:
 	_headless = DisplayServer.get_name() == "headless"
-	_setup_mic()
+	# Deferred so the menu can apply the saved mic device first (no restart at startup).
+	_setup_mic.call_deferred()
 
 
 func _setup_mic() -> void:
 	# Godot 4.5+ direct mic API: no AudioStreamMicrophone / capture bus needed.
 	# (The old bus approach captured nothing when routed into a muted bus.)
+	_mic_started = true
 	if _headless:
 		return
 	var err := AudioServer.set_input_device_active(true)
@@ -61,9 +65,19 @@ func get_input_devices() -> PackedStringArray:
 
 
 func set_input_device(device: String) -> void:
+	if device == AudioServer.input_device:
+		return # restarting the same device crashed Godot's WASAPI driver on Windows
+	if _headless or not _mic_started:
+		AudioServer.input_device = device # mic not started yet: just pick the device
+		return
+	# Stop -> switch -> start a moment later; switching while active / restarting instantly crashed on Windows.
+	_mic_active = false
+	AudioServer.set_input_device_active(false)
 	AudioServer.input_device = device
-	if not _headless:
-		AudioServer.set_input_device_active(false)
+	_mic_restart_id += 1
+	var my_id := _mic_restart_id
+	await get_tree().create_timer(0.5).timeout
+	if my_id == _mic_restart_id: # ignore if another switch happened meanwhile
 		_setup_mic()
 
 
