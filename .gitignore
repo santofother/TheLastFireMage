@@ -1,0 +1,7 @@
+build/
+.DS_Store
+# GodotSteam binaries for platforms we do not ship (keeps the repo small; re-download if ever needed)
+the-last-fire-mage/addons/godotsteam/androidarm64/
+the-last-fire-mage/addons/godotsteam/linux32/
+the-last-fire-mage/addons/godotsteam/linuxarm64/
+the-last-fire-mage/addons/godotsteam/win32/

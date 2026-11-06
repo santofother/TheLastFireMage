@@ -1,0 +1,46 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="TheLastFireMage"
+config/features=PackedStringArray("4.7", "Forward Plus")
+config/icon="res://icon.svg"
+run/main_scene="res://game/main.tscn"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"
+
+[audio]
+
+driver/enable_input=true
+
+[autoload]
+
+NetworkManager="*res://core/network_manager.gd"
+SteamManager="*res://core/steam_manager.gd"
+VoiceManager="*res://core/voice_manager.gd"
+DebugOverlay="*res://core/debug_overlay.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/lastmage_export/plugin.cfg")
