@@ -54,5 +54,6 @@ func _on_session_ended(_reason: String) -> void:
 
 func _autotest_report() -> void:
 	print("[TEST] PEERS %d" % (multiplayer.get_peers().size() if NetworkManager.is_in_session() else 0))
+	print("[TEST] VOICE sent=%d recv=%d played=%d" % [VoiceManager.packets_sent, VoiceManager.packets_received, VoiceManager.frames_played])
 	for p in players.get_children():
 		print("[TEST] POS %s %.2f %.2f" % [p.display_name, p.global_position.x, p.global_position.z])

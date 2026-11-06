@@ -25,6 +25,7 @@ var mic_level := 0.0 ## 0..1, Godot mic (for the meter)
 var local_speaking := false
 var packets_sent := 0
 var packets_received := 0
+var frames_played := 0 ## decoded samples pushed to speakers (diagnostics/tests)
 var listener: Node3D ## local player; distances are measured from here
 
 var _speakers := {} ## peer_id -> {player, node, rate, last}
@@ -118,6 +119,9 @@ func _process(delta: float) -> void:
 		_steam_tick(ptt_down if push_to_talk else true, now)
 		local_speaking = now - _last_local_voice < SPEAKING_TIMEOUT
 	elif in_session and NetworkManager.mode == NetworkManager.Mode.ENET and enable_raw_voice:
+		if NetworkManager.args.has("test-voice"): # headless test: synthetic 440 Hz tone instead of the mic
+			buf = _test_tone(n if n > 0 else int(AudioServer.get_mix_rate() * delta))
+			ptt_down = true
 		var want := ptt_down
 		if not push_to_talk:
 			_gate_timer = GATE_HOLD if peak > OPEN_MIC_GATE else _gate_timer - delta
@@ -133,6 +137,18 @@ func _process(delta: float) -> void:
 		local_speaking = false
 
 	_update_speakers(now)
+
+
+var _tone_phase := 0.0
+func _test_tone(frames: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(frames)
+	var step := TAU * 440.0 / AudioServer.get_mix_rate()
+	for i in frames:
+		var v := sin(_tone_phase) * 0.3
+		out[i] = Vector2(v, v)
+		_tone_phase = fmod(_tone_phase + step, TAU)
+	return out
 
 
 func _text_has_focus() -> bool:
@@ -239,6 +255,7 @@ func _play_pcm(sp: Dictionary, pcm: PackedByteArray, rate: int) -> void:
 		var s := pcm.decode_s16(i * 2) / 32768.0
 		frames[i] = Vector2(s, s)
 	pb.push_buffer(frames)
+	frames_played += count
 	sp["last"] = Time.get_ticks_msec() / 1000.0
 
 
