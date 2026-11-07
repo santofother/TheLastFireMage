@@ -51,3 +51,16 @@ Godot binary: `/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot` 
 - Don't spawn many subagents. Keep tool calls batched.
 - Voice/Steam can't be tested headless. Ask the user to run the manual plan in the docs.
 - Commit at working milestones on a feature branch. Ask before pushing or opening PRs.
+
+## Current status (2026-11-06)
+Branch `feat/net-voice-spike` (not pushed). Tested by the user on Mac + Windows PC:
+- Works: launch, movement/jump, map, LAN host/join, Steam lobby join (Mac↔Windows), position sync.
+- Fixed: mic capture (direct mic API), Windows startup crash (mic restart; see `set_input_device`).
+- **OPEN: proximity voice still not heard between players.** Unknown yet: which mode (Steam/LAN),
+  whether the mic bar moves on each machine, whether F3 `Voice packets sent` rises on the speaker and
+  `received` rises on the listener. Get these numbers from the user first — they split the problem into
+  capture vs network vs playback. Suspects: Steam mode `getVoice`/`decompressVoice` dictionary keys or result
+  codes unverified (GodotSteam 4.23.2); AudioStreamGenerator playback on AudioStreamPlayer3D with
+  ATTENUATION_DISABLED + manual volume; PTT key V needs game window focus.
+- Exported Windows builds can't be run here; the user copies `build/windows` to their PC and reports
+  `TheLastFireMage.console.exe` output.
