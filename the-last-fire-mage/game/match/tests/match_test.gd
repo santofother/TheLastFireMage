@@ -107,13 +107,15 @@ func _check_phase(next: int) -> void:
 		_match.end_round(Enums.Winner.MAGE, "unauthorized")
 		_check(_match.phase == before, "client cannot decide outcomes")
 	if next == Enums.Phase.HEAD_START:
+		# WHY: owner transforms replicate at 20 Hz; allow in-flight pre-teleport packets to settle.
+		await get_tree().create_timer(0.15).timeout
 		for p in Players.all():
 			var group := &"mage_spawn" if p.role == Enums.Role.MAGE else &"villager_spawn"
 			var found := false
 			for marker in get_tree().get_nodes_in_group(group):
 				if Vector2(p.global_position.x, p.global_position.z).distance_to(Vector2(marker.global_position.x, marker.global_position.z)) < 0.2:
 					found = true
-			_check(found, "participant teleported to role spawn")
+			_check(found, "participant %s teleported to role spawn at %s" % [p.display_name, p.global_position])
 	var local := Players.local_player()
 	if local != null:
 		_check(_match.get_node("UI/Blind").visible == (local.role == Enums.Role.MAGE and next == Enums.Phase.HEAD_START), "mage blinded only before hunt")
