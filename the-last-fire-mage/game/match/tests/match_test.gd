@@ -153,7 +153,9 @@ func _check_lobby() -> void:
 	if not _late:
 		for next in [Enums.Phase.ROLE_REVEAL, Enums.Phase.HEAD_START, Enums.Phase.HUNT]:
 			_check(_phases.has(next), "phase observed " + Enums.Phase.keys()[next])
-	_check(bool(get_meta(&"timer_ticked", false)), "HUD timer decreased")
+	# WHY: timeout gives every peer a full ten-second window to observe continuous timer sync.
+	if _scenario == "timeout":
+		_check(bool(get_meta(&"timer_ticked", false)), "HUD timer decreased")
 	for p in Players.all():
 		_check(p.role == Enums.Role.NONE and p.is_alive and p.can_control(), "lobby resets roles, health and locks")
 	if _late:
