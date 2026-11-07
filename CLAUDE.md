@@ -30,6 +30,11 @@ Godot binary: `/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot` 
   macOS preset must keep `codesign/codesign=3` (Apple codesign, identity `-`): Godot's built-in ad-hoc signer
   produced an app macOS SIGKILLs at launch (exit 137). Running exported binaries from the Claude sandbox
   also needs the sandbox disabled.
+- **After every export, publish a GitHub release** (user's standing instruction; no need to ask). In `build/`:
+  `rm -f windows.zip macos.zip && zip -r -X windows.zip windows && ditto -c -k --keepParent macos macos.zip`, then
+  `gh release create vX.Y.Z windows.zip macos.zip --title "Version X.Y.Z" --notes "<what changed>"`.
+  Pick the next version after `gh release list` (tags must be unique; don't reuse the old `Windows` tag).
+  No `--target` to an unpushed branch (pushing still needs asking).
 - CLI args (after `--`): `--host`, `--join=IP`, `--port=N`, `--name=X`, `--no-steam`, `--autotest=SEC`,
   `--quit-after=SEC`, `--test-target=x,z`, `--test-voice`
 
