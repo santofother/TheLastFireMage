@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/interact/interact_manager.gd" id="1"]
+
+[node name="Interact" type="Node"]
+script = ExtResource("1")

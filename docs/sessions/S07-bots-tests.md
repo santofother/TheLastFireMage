@@ -10,9 +10,11 @@ Let any card test multiplayer with 2–5 fake players without the user. This sav
 on every later card.
 
 ## Steps (all done in this one session)
-- `--bot` CLI flag: the client joins and is driven by a bot brain instead of the keyboard (feeds the same
-  input actions as a human: wander, random jumps, sprint, occasionally interact/primary).
-- `--bots=N` on the host: spawn N local bot players (server-side) for quick local testing in one process.
+- `--bot` CLI flag: the client joins and is driven by a `BotBrain` set as `player.input_driver` on
+  `GameEvents.local_player_ready` (fills `PlayerInput` like a human: wander, random jumps, sprint,
+  occasionally interact/primary).
+- `--bots=N` on the host: spawn N server-side bot players with `GameEvents.system(&"main").spawn_player(id,
+  name, true)`, ids from `Players.BOT_ID_BASE`, then set their `input_driver`.
 - `tools/tests/lib.sh`: helpers for launching host + clients with args, waiting, grepping logs, asserting.
 - `run_tests.sh`: `--quick` (fast subset) and full mode, timing per test.
 - A soak test: host + 4 bots for 60 s → no errors in logs, all still connected.

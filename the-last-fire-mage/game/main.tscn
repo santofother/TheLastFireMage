@@ -1,7 +1,17 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://game/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://game/menu.gd" id="2_menu"]
+[ext_resource type="Script" path="res://game/ui/menu/menu.gd" id="2_menu"]
+[ext_resource type="PackedScene" path="res://game/match/match_manager.tscn" id="3_match"]
+[ext_resource type="PackedScene" path="res://game/chicken/chicken_manager.tscn" id="4_chickens"]
+[ext_resource type="PackedScene" path="res://game/bots/bot_manager.tscn" id="5_bots"]
+[ext_resource type="PackedScene" path="res://game/interact/interact_manager.tscn" id="6_interact"]
+[ext_resource type="PackedScene" path="res://game/spectator/spectator_manager.tscn" id="7_spectator"]
+[ext_resource type="PackedScene" path="res://game/power/power_manager.tscn" id="8_power"]
+[ext_resource type="PackedScene" path="res://game/firestorm/firestorm_manager.tscn" id="9_firestorm"]
+[ext_resource type="PackedScene" path="res://game/counterplay/counterplay_manager.tscn" id="10_counterplay"]
+[ext_resource type="PackedScene" path="res://game/scoring/scoring_manager.tscn" id="11_scoring"]
+[ext_resource type="PackedScene" path="res://game/ui/hud/hud.tscn" id="12_hud"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 
@@ -13,111 +23,49 @@ background_mode = 2
 sky = SubResource("sky")
 tonemap_mode = 2
 
-[sub_resource type="StandardMaterial3D" id="mat_floor"]
-albedo_color = Color(0.36, 0.42, 0.34, 1)
-
-[sub_resource type="StandardMaterial3D" id="mat_wall"]
-albedo_color = Color(0.62, 0.57, 0.5, 1)
-
-[sub_resource type="StandardMaterial3D" id="mat_house"]
-albedo_color = Color(0.55, 0.38, 0.28, 1)
-
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." groups=["world_environment"]]
 environment = SubResource("env")
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." groups=["sun"]]
 transform = Transform3D(1, 0, 0, 0, 0.643, -0.766, 0, 0.766, 0.643, 0, 10, 0)
 shadow_enabled = true
 
 [node name="Map" type="Node3D" parent="."]
-
-[node name="Floor" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-use_collision = true
-size = Vector3(40, 1, 40)
-material = SubResource("mat_floor")
-
-[node name="WallN" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -20.5)
-use_collision = true
-size = Vector3(42, 3, 1)
-material = SubResource("mat_wall")
-
-[node name="WallS" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 20.5)
-use_collision = true
-size = Vector3(42, 3, 1)
-material = SubResource("mat_wall")
-
-[node name="WallE" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.5, 1.5, 0)
-use_collision = true
-size = Vector3(1, 3, 40)
-material = SubResource("mat_wall")
-
-[node name="WallW" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20.5, 1.5, 0)
-use_collision = true
-size = Vector3(1, 3, 40)
-material = SubResource("mat_wall")
-
-[node name="HouseA" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2, 12)
-use_collision = true
-size = Vector3(6, 4, 6)
-material = SubResource("mat_house")
-
-[node name="HouseB" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 2.5, 10)
-use_collision = true
-size = Vector3(7, 5, 5)
-material = SubResource("mat_house")
-
-[node name="HouseC" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 3, -12)
-use_collision = true
-size = Vector3(5, 6, 8)
-material = SubResource("mat_house")
-
-[node name="Barn" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 2, -13)
-use_collision = true
-size = Vector3(9, 4, 6)
-material = SubResource("mat_house")
-
-[node name="BarnDoor" type="CSGBox3D" parent="Map/Barn"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 1.5)
-operation = 2
-size = Vector3(3, 3, 4)
-
-[node name="WallMid" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -6)
-use_collision = true
-size = Vector3(12, 2.5, 0.5)
-material = SubResource("mat_wall")
-
-[node name="WallSide" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.25, 2)
-use_collision = true
-size = Vector3(0.5, 2.5, 8)
-material = SubResource("mat_wall")
-
-[node name="Crate" type="CSGBox3D" parent="Map"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.5, -2)
-use_collision = true
-material = SubResource("mat_wall")
 
 [node name="Players" type="Node3D" parent="."]
 
 [node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
 spawn_path = NodePath("../Players")
 
+[node name="Systems" type="Node" parent="."]
+
+[node name="Match" parent="Systems" instance=ExtResource("3_match")]
+
+[node name="Chickens" parent="Systems" instance=ExtResource("4_chickens")]
+
+[node name="Interact" parent="Systems" instance=ExtResource("6_interact")]
+
+[node name="Power" parent="Systems" instance=ExtResource("8_power")]
+
+[node name="Firestorm" parent="Systems" instance=ExtResource("9_firestorm")]
+
+[node name="Counterplay" parent="Systems" instance=ExtResource("10_counterplay")]
+
+[node name="Scoring" parent="Systems" instance=ExtResource("11_scoring")]
+
+[node name="Spectator" parent="Systems" instance=ExtResource("7_spectator")]
+
+[node name="Bots" parent="Systems" instance=ExtResource("5_bots")]
+
+[node name="HUD" parent="." instance=ExtResource("12_hud")]
+
 [node name="MenuCamera" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.707, -0.707, 0, 0.707, 0.707, 0, 26, 26)
 current = true
 
 [node name="Menu" type="CanvasLayer" parent="."]
+layer = 20
 script = ExtResource("2_menu")

@@ -16,9 +16,13 @@ Server-run round from lobby to results.
   Listen to `GameEvents.player_died`; firestorm death arrives the same way.
 - Late join = spectator; disconnecting mage ends the round (villagers win, flag "mage left").
 - Fire every phase change on `GameEvents`. Synced `time_left` for the HUD.
-- Spawn points: read from nodes in group `villager_spawn` / `mage_spawn` (map card provides them; use 2 dummy
-  ones in a test scene).
+- Spawn points: nodes in group `villager_spawn` / `mage_spawn`. `game/map/test_arena.tscn` already has them
+  (run tests with `--map=res://game/map/test_arena.tscn`).
+- Use the Player server hooks (`teleport`, `set_input_lock`), `Health.revive()` / `invulnerable`, and call
+  `Player.set_role()` on every peer inside your RPC before emitting `role_assigned`.
+- Host lobby UI (start button, mage pick) lives inside `match_manager.tscn`. Add your own CLI flags there
+  (e.g. `--autostart`).
 
 ## Tests
-Headless: host + 2 clients with `--autostart` (or a test hook), short timers (`--match-time=10`), check the log
+Headless: host + 2 clients with `--autostart` (or a test hook), short timers (`--tune=match.hunt_time=10,match.head_start_time=2`), check the log
 goes through all phases and the right winner is printed for: timeout, all villagers killed (test hook kill).

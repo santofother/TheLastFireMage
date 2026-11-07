@@ -10,12 +10,14 @@ handoffs S03 S04
 Knife, Ignite, Fire Wave, with the server deciding every hit.
 
 ## Steps (all done in this one session)
-- Mage abilities scene added under the player's `Abilities` node when the role is assigned.
+- Implement `game/mage/mage_abilities.tscn` (stub exists). `Player.set_role(MAGE)` already adds it under
+  `Abilities` on every peer. Read only `player.input` (`primary_pressed`, `ability_1_pressed`, `ability_2_pressed`).
 - Knife: short melee, low damage. Client sends "swing" with aim; server validates range/angle/cooldown and
   applies damage through the health component.
 - Ignite (short cooldown): knife burns for N seconds, more damage, small fire VFX placeholder.
 - Fire Wave (long cooldown): forward cone/expanding wave, damage + knockback, blocked by walls (raycasts).
-- Damage/range/spread read a `power_multiplier` value (default 1.0) that S13 will drive. `# CONTRACT:`
+- Damage/range/spread read `power_multiplier` (default 1.0, already updated from `GameEvents.power_changed`). Knockback via
+  `player.apply_knockback()`.
 - Feedback: hit flash, sound placeholder, camera shake on the victim.
 - Chickens are valid targets (they use the same health component).
 

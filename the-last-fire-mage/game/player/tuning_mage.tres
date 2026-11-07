@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PlayerTuning" format=3]
+
+[ext_resource type="Script" path="res://game/player/player_tuning.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+height = 1.4
+radius = 0.35
+walk_speed = 4.5
+sprint_speed = 6.0
+camera_height = 1.25

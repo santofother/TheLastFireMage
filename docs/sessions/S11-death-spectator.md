@@ -9,7 +9,8 @@ Read: `docs/ARCHITECTURE.md` §Spectator §Player §Voice, `docs/design/GDD.md` 
 Dying works cleanly and dead players watch from above. (Throwing items as a ghost is wave 4.)
 
 ## Steps (all done in this one session)
-- On `player_died`: body becomes a ragdoll-lite/flattened corpse prop, input off, switch to the spectator camera.
+- On `player_died` for the local player (and for role SPECTATOR): switch to the spectator camera. The corpse
+  look, collision off and input off are already done by Player (S03 owns that).
 - Top-down camera with limited vision radius (fog-of-war look: dark outside radius), no player highlighting.
   Free movement over the map on a separate height layer.
 - Dead players stay in voice: set a `voice_group` flag the voice card (S12) uses. Until S12 is merged, dead

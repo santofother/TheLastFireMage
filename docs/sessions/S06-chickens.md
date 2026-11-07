@@ -15,9 +15,11 @@ Server-simulated chickens that wander, cluck, flee, and can be picked up and kil
 - Cluck sound: `AudioStreamPlayer3D` with random intervals (placeholder generated beep is fine), louder when
   scared. Carried/hidden chickens cluck less (TUNE).
 - Health via the common health component; on death fire `GameEvents.chicken_killed(killer_id, pos)`.
-- Pickup hooks for S10: `can_be_carried()`, `on_picked_up(carrier)`, `on_dropped(pos)`, `on_hidden(spot)`.
-  Implement the chicken side; the carry system itself is S10.
-- Manager spawns N chickens at `chicken_spawn` markers (test scene if map isn't merged), respawn rule (TUNE).
+- Carryable hooks for S10 (stubbed in `chicken.gd`, see ARCHITECTURE §Interact): `can_be_carried()`,
+  `carry_speed_multiplier()`, `on_picked_up(carrier)`, `on_dropped(pos, impulse)`, `on_hidden(spot)`,
+  `on_unhidden()`. Implement the chicken side; the carry system itself is S10. While `carrier_id != 0` every
+  peer places the chicken at the carrier's `carry_socket`.
+- Manager spawns N chickens at `chicken_spawn` markers (`test_arena.tscn` has 4; add more in your own test scene), respawn rule (TUNE).
 
 ## Tests
 Headless: spawn 10 chickens in a test scene with a flat navmesh, run 10 s, check all moved and none fell

@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/test_arena.tscn" id="1_arena"]
+
+[node name="Town" type="Node3D"]
+
+[node name="TestArena" parent="." instance=ExtResource("1_arena")]

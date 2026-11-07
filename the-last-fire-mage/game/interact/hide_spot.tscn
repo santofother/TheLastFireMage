@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/interact/hide_spot.gd" id="1"]
+[ext_resource type="Script" path="res://game/interact/interactable.gd" id="2"]
+
+[sub_resource type="StandardMaterial3D" id="mat"]
+albedo_color = Color(0.45, 0.32, 0.2, 1)
+
+[sub_resource type="SphereShape3D" id="zone"]
+radius = 1.2
+
+[node name="HideSpot" type="Node3D" groups=["hide_spot"]]
+script = ExtResource("1")
+
+[node name="Crate" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+use_collision = true
+material = SubResource("mat")
+
+[node name="Interactable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+monitoring = false
+script = ExtResource("2")
+prompt = "hide chicken"
+kind = &"hide_spot"
+
+[node name="Zone" type="CollisionShape3D" parent="Interactable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("zone")

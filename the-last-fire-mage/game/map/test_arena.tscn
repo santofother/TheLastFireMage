@@ -1,0 +1,143 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/interact/hide_spot.tscn" id="2_hide"]
+
+[sub_resource type="StandardMaterial3D" id="mat_floor"]
+albedo_color = Color(0.36, 0.42, 0.34, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_wall"]
+albedo_color = Color(0.62, 0.57, 0.5, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_house"]
+albedo_color = Color(0.55, 0.38, 0.28, 1)
+
+[node name="TestArena" type="Node3D"]
+
+[node name="Geometry" type="Node3D" parent="."]
+
+
+[node name="Floor" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(40, 1, 40)
+material = SubResource("mat_floor")
+
+[node name="WallN" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -20.5)
+use_collision = true
+size = Vector3(42, 3, 1)
+material = SubResource("mat_wall")
+
+[node name="WallS" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 20.5)
+use_collision = true
+size = Vector3(42, 3, 1)
+material = SubResource("mat_wall")
+
+[node name="WallE" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.5, 1.5, 0)
+use_collision = true
+size = Vector3(1, 3, 40)
+material = SubResource("mat_wall")
+
+[node name="WallW" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20.5, 1.5, 0)
+use_collision = true
+size = Vector3(1, 3, 40)
+material = SubResource("mat_wall")
+
+[node name="HouseA" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2, 12)
+use_collision = true
+size = Vector3(6, 4, 6)
+material = SubResource("mat_house")
+
+[node name="HouseB" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 2.5, 10)
+use_collision = true
+size = Vector3(7, 5, 5)
+material = SubResource("mat_house")
+
+[node name="HouseC" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 3, -12)
+use_collision = true
+size = Vector3(5, 6, 8)
+material = SubResource("mat_house")
+
+[node name="Barn" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 2, -13)
+use_collision = true
+size = Vector3(9, 4, 6)
+material = SubResource("mat_house")
+
+[node name="BarnDoor" type="CSGBox3D" parent="Geometry/Barn"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 1.5)
+operation = 2
+size = Vector3(3, 3, 4)
+
+[node name="WallMid" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -6)
+use_collision = true
+size = Vector3(12, 2.5, 0.5)
+material = SubResource("mat_wall")
+
+[node name="WallSide" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.25, 2)
+use_collision = true
+size = Vector3(0.5, 2.5, 8)
+material = SubResource("mat_wall")
+
+[node name="Crate" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.5, -2)
+use_collision = true
+material = SubResource("mat_wall")
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="VillagerSpawn1" type="Marker3D" parent="Markers" groups=["villager_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
+
+[node name="VillagerSpawn2" type="Marker3D" parent="Markers" groups=["villager_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, 4)
+
+[node name="VillagerSpawn3" type="Marker3D" parent="Markers" groups=["villager_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 1, 4)
+
+[node name="VillagerSpawn4" type="Marker3D" parent="Markers" groups=["villager_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, 0)
+
+[node name="VillagerSpawn5" type="Marker3D" parent="Markers" groups=["villager_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 0)
+
+[node name="VillagerSpawn6" type="Marker3D" parent="Markers" groups=["villager_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -2)
+
+[node name="MageSpawn1" type="Marker3D" parent="Markers" groups=["mage_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -16)
+
+[node name="ChickenSpawn1" type="Marker3D" parent="Markers" groups=["chicken_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.5, 8)
+
+[node name="ChickenSpawn2" type="Marker3D" parent="Markers" groups=["chicken_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.5, 8)
+
+[node name="ChickenSpawn3" type="Marker3D" parent="Markers" groups=["chicken_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.5, -8)
+
+[node name="ChickenSpawn4" type="Marker3D" parent="Markers" groups=["chicken_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.5, -8)
+
+[node name="ItemSpawn1" type="Marker3D" parent="Markers" groups=["item_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.5, 10)
+
+[node name="ItemSpawn2" type="Marker3D" parent="Markers" groups=["item_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.5, -10)
+
+[node name="ItemSpawn3" type="Marker3D" parent="Markers" groups=["item_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.5, 0)
+
+[node name="HideSpot1" parent="." instance=ExtResource("2_hide")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, 3)
+
+[node name="HideSpot2" parent="." instance=ExtResource("2_hide")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -5)

@@ -1,18 +1,29 @@
 extends Node3D
-## Test map root. The spawner lives here from startup so late joiners never miss spawns.
+## Game root (main scene). Owner: S02 / head engineer. Registered as GameEvents.system(&"main").
+## Loads the map from MAP_SCENE_PATH, owns the player spawner, and holds every system under $Systems.
+## CONTRACT: later cards never edit main.tscn or this file. Each system owns its own scene that main.tscn
+## instances; change a system by editing that scene.
+## NET: runs on every peer. Spawning/despawning players is server only (MultiplayerSpawner replicates).
+## Public API: `spawn_player(id, name, is_bot) -> Node` (server), `get_map() -> Node3D`.
 
-const PLAYER_SCENE := preload("res://game/player.tscn")
-const SPAWN_POINTS := [
-	Vector3(0, 1, 6), Vector3(4, 1, 4), Vector3(-4, 1, 4),
-	Vector3(6, 1, 0), Vector3(-6, 1, 0), Vector3(0, 1, -2),
-]
+## CONTRACT: the map scene. S05 regenerates this file; tests can override with `--map=res://...`.
+const MAP_SCENE_PATH := "res://game/map/town.tscn"
+const PLAYER_SCENE := preload("res://game/player/player.tscn")
+## Used only if the map has no `villager_spawn` markers.
+const FALLBACK_SPAWNS := [Vector3(0, 1, 0), Vector3(3, 1, 0), Vector3(-3, 1, 0)]
 
 @onready var players: Node3D = $Players
 @onready var spawner: MultiplayerSpawner = $PlayerSpawner
 @onready var menu_camera: Camera3D = $MenuCamera
+@onready var map_root: Node3D = $Map
+
+
+func _enter_tree() -> void:
+	GameEvents.register_system(&"main", self)
 
 
 func _ready() -> void:
+	_load_map(String(NetworkManager.args.get("map", MAP_SCENE_PATH)))
 	spawner.spawn_function = _spawn_player
 	NetworkManager.player_registered.connect(_on_player_registered)
 	NetworkManager.peer_left.connect(_on_peer_left)
@@ -24,12 +35,36 @@ func _ready() -> void:
 		get_tree().create_timer(q).timeout.connect(get_tree().quit)
 
 
-func _on_player_registered(id: int, pname: String) -> void: # server only
+## The loaded map scene root (child of $Map).
+func get_map() -> Node3D:
+	return map_root.get_child(0) as Node3D if map_root.get_child_count() > 0 else null
+
+
+## NET: server only. Spawns a player for `id` (real peer, or a bot id >= Players.BOT_ID_BASE with
+## is_bot = true) at the next `villager_spawn` marker. Returns the node (or the existing one).
+func spawn_player(id: int, pname: String, is_bot: bool = false) -> Node:
 	if players.has_node(str(id)):
+		return players.get_node(str(id))
+	var spawns := get_tree().get_nodes_in_group(&"villager_spawn")
+	var i := players.get_child_count()
+	var pos: Vector3 = (spawns[i % spawns.size()] as Node3D).global_position if not spawns.is_empty() \
+		else FALLBACK_SPAWNS[i % FALLBACK_SPAWNS.size()]
+	var node := spawner.spawn({"id": id, "name": pname, "pos": pos, "bot": is_bot})
+	print("[Game] Spawned ", pname, " (", id, ")", " [bot]" if is_bot else "")
+	return node
+
+
+func _load_map(path: String) -> void:
+	var scene := load(path) as PackedScene
+	if scene == null:
+		push_error("[Game] Could not load map %s" % path)
 		return
-	var pos: Vector3 = SPAWN_POINTS[players.get_child_count() % SPAWN_POINTS.size()]
-	spawner.spawn({"id": id, "name": pname, "pos": pos})
-	print("[Game] Spawned ", pname, " (", id, ")")
+	map_root.add_child(scene.instantiate())
+	print("[Game] Map ", path)
+
+
+func _on_player_registered(id: int, pname: String) -> void: # server only
+	spawn_player(id, pname)
 
 
 func _spawn_player(data: Dictionary) -> Node:
@@ -37,6 +72,7 @@ func _spawn_player(data: Dictionary) -> Node:
 	p.name = str(data["id"])
 	p.peer_id = data["id"]
 	p.display_name = data["name"]
+	p.is_bot = data.get("bot", false)
 	p.position = data["pos"]
 	return p
 

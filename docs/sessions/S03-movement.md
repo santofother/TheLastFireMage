@@ -15,11 +15,14 @@ different tuning resource).
 - Fall consequences: stumble/ragdoll-lite tumble (short loss of control) from big falls. No fall damage yet.
 - Third-person camera rig with collision; small FOV kick on sprint.
 - Player-player bump (push each other a little on collision).
-- `stun(seconds)` from the contract actually freezes input.
-- All numbers in `game/player/tuning_villager.tres` and `tuning_mage.tres`.
+- Keep the S02 Player contract (ARCHITECTURE §Player) working: public vars/nodes/hooks, `set_role()`, the
+  corpse look, and `can_control()` (stun/locks already freeze input in the stub; keep that).
+- Read input only from `player.input` (PlayerInput), so bots (S07) drive the same code. Mouse look arrives
+  as `input.look_delta`.
+- All numbers in `game/player/tuning_villager.tres` and `tuning_mage.tres` (`PlayerTuning`, add fields freely).
 - Keep the existing sync working (`MultiplayerSynchronizer`); add synced anim/state flags if needed.
 
 ## Tests
-Extend/keep `tools/tests/` net test green. Add a headless test that spawns a player, feeds scripted input
+Keep `net_test` and `contract_test` green. Add a headless test that spawns a player, feeds scripted input
 (e.g. `--test-input=` or a test hook), and checks it moved, jumped and mantled a test ledge.
 Manual for the user: "Does running/jumping feel good? Is the mantle reliable?"
