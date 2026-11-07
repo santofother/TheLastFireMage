@@ -13,17 +13,17 @@ waiting for merge) · DONE · BLOCKED (reason)
 | Card | Title | Wave | Status | Branch / note |
 |---|---|---|---|---|
 | S01 | Foundation: merge spike, GDD, test runner | 0 | DONE | merged to main (push pending user OK) |
-| S02 | Architecture + contracts + stubs | 0 | READY | |
-| S03 | Villager movement v2 | 1 | TODO | |
-| S04 | Match flow, roles, timer, win | 1 | TODO | |
-| S05 | Greybox town map v1 | 1 | TODO | |
-| S06 | Chickens | 1 | TODO | |
-| S07 | Headless bots + test runner v2 | 1 | TODO | |
-| S08 | HUD shell | 1 | TODO | |
+| S02 | Architecture + contracts + stubs | 0 | DONE | merged to main |
+| S03 | Villager movement v2 | 1 | READY | |
+| S04 | Match flow, roles, timer, win | 1 | READY | |
+| S05 | Greybox town map v1 | 1 | READY | |
+| S06 | Chickens | 1 | READY | |
+| S07 | Headless bots + test runner v2 | 1 | READY | |
+| S08 | HUD shell | 1 | READY | |
 | S09 | Mage combat | 2 | TODO | |
 | S10 | Carry, hide, interact | 2 | TODO | |
 | S11 | Death + basic spectator | 2 | TODO | |
-| S12 | Voice v2 (bandwidth, mage distortion, dead routing) | 2 | TODO | |
+| S12 | Voice v2 (bandwidth, mage distortion, dead routing) | 2 | READY | can start in wave 1 (stub dead routing) |
 | S13 | Mage power + decay | 3 | TODO | |
 | S14 | Firestorm | 3 | TODO | |
 | S15 | Villager stuns / counterplay | 3 | TODO | |
@@ -35,3 +35,4 @@ waiting for merge) · DONE · BLOCKED (reason)
 | Date | Card | Merged by | Notes |
 |---|---|---|---|
 | 2026-11-07 | S01 | Claude | spike + docs fast-forwarded into main; GDD, run_tests.sh added |
+| 2026-11-07 | S02 | Claude | fast-forward; ARCHITECTURE.md, common/, stubs, InputMap; contract_test added |
