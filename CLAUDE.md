@@ -9,7 +9,8 @@ Design doc: `LastMageBrainstorming.md.txt` (untracked; read only the sections yo
   - `core/`: reusable network/voice layer (autoloads, in this order):
     - `network_manager.gd`: ENet/Steam-agnostic session; host/join, player names, ping, CLI args (`NetworkManager.args`)
     - `steam_manager.gd`: Steam init (app 480), lobbies, invites → `SteamMultiplayerPeer`
-    - `voice_manager.gd`: proximity voice. Steam voice in Steam mode, raw 16 kHz PCM in ENet mode, sent via RPC
+    - `voice_manager.gd`: proximity voice. Raw 16 kHz PCM from Godot's mic in both modes, sent via RPC.
+      F4 / `--voice-loopback` = hear yourself (single-machine playback test)
     - `debug_overlay.gd`: F3 overlay + mic meter
   - `game/`: this game's scenes. `main.tscn` = greybox map + `PlayerSpawner` + menu; `player.tscn` = capsule
   - `addons/godotsteam/`: GodotSteam 4.23.2 GDExtension (includes SteamMultiplayerPeer). The macOS paths in
@@ -56,11 +57,9 @@ Godot binary: `/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot` 
 Branch `feat/net-voice-spike` (not pushed). Tested by the user on Mac + Windows PC:
 - Works: launch, movement/jump, map, LAN host/join, Steam lobby join (Mac↔Windows), position sync.
 - Fixed: mic capture (direct mic API), Windows startup crash (mic restart; see `set_input_device`).
-- **OPEN: proximity voice still not heard between players.** Unknown yet: which mode (Steam/LAN),
-  whether the mic bar moves on each machine, whether F3 `Voice packets sent` rises on the speaker and
-  `received` rises on the listener. Get these numbers from the user first — they split the problem into
-  capture vs network vs playback. Suspects: Steam mode `getVoice`/`decompressVoice` dictionary keys or result
-  codes unverified (GodotSteam 4.23.2); AudioStreamGenerator playback on AudioStreamPlayer3D with
-  ATTENUATION_DISABLED + manual volume; PTT key V needs game window focus.
+- Voice: Steam mode used Steam `getVoice()`, which returned no data (talking:false, 0 packets sent) even
+  though the Godot mic worked. Now both modes send Godot-mic raw PCM (20 ms / 640-byte packets).
+  **Awaiting user retest** of Steam-mode voice + falloff Mac↔Windows. If still silent: check F3 sent/received,
+  then F4 loopback on each machine to separate network from playback.
 - Exported Windows builds can't be run here; the user copies `build/windows` to their PC and reports
   `TheLastFireMage.console.exe` output.

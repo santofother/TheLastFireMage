@@ -41,7 +41,7 @@ func _process(_delta: float) -> void:
 	_hud.visible = NetworkManager.is_in_session()
 	_mic_bar.value = VoiceManager.mic_level * 100.0
 	var ptt := "Hold V to talk" if VoiceManager.push_to_talk else "Open mic"
-	_hint.text = ("● TALKING  " if VoiceManager.local_speaking else "") + ptt + "   (Esc: menu, F3: debug)"
+	_hint.text = ("● TALKING  " if VoiceManager.local_speaking else "") + ptt + "   (Esc: menu, F3: debug, F4: hear yourself)"
 	if not _panel.visible:
 		return
 	var mp := multiplayer
@@ -52,7 +52,7 @@ func _process(_delta: float) -> void:
 		"My peer id: %s" % (str(mp.get_unique_id()) if in_s else "-"),
 		"Peers: %d   Players: %s" % [mp.get_peers().size() if in_s else 0, ", ".join(NetworkManager.player_names.values())],
 		"Ping: %s" % ("host" if in_s and mp.is_server() else ("%d ms" % NetworkManager.ping_ms if NetworkManager.ping_ms >= 0 else "-")),
-		"Voice: %s   PTT: %s" % [VoiceManager.voice_mode_name(), VoiceManager.push_to_talk],
+		"Voice: %s   PTT: %s   loopback(F4): %s" % [VoiceManager.voice_mode_name(), VoiceManager.push_to_talk, VoiceManager.loopback],
 		"Voice packets sent: %d   received: %d" % [VoiceManager.packets_sent, VoiceManager.packets_received],
 		"Mic level: %d%%   talking: %s   device: %s" % [int(VoiceManager.mic_level * 100), VoiceManager.local_speaking, AudioServer.input_device],
 		"Falloff: full <= %.0f m, silent >= %.0f m" % [VoiceManager.full_volume_distance, VoiceManager.silent_distance],

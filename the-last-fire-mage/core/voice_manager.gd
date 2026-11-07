@@ -1,7 +1,9 @@
 extends Node
 ## Proximity voice chat.
-## - Steam mode: Steam voice (getVoice / decompressVoice). Uses the mic chosen in Steam's settings.
-## - ENet mode: raw 16 kHz 16-bit PCM from Godot's mic (AudioEffectCapture). Fine for LAN tests.
+## Both Steam and ENet modes send raw 16 kHz 16-bit PCM from Godot's mic (direct input API).
+## (Steam's own getVoice() returned no data in testing, so it is no longer used for sending;
+## STEAM codec packets are still decoded on receive for compatibility.)
+## F4 / --voice-loopback: hear your own mic locally (tests playback on one machine).
 ## Packets go over Godot RPC (unreliable_ordered, channel 2), so both transports share one path.
 ## The game calls register_speaker() for each remote player and sets `listener` to the local player.
 
@@ -9,7 +11,7 @@ enum Codec { RAW_PCM16 = 0, STEAM = 1 }
 
 const RAW_RATE := 16000
 const STEAM_RATE := 24000
-const RAW_CHUNK := 640 ## samples per packet (40 ms at 16 kHz)
+const RAW_CHUNK := 320 ## samples per packet (20 ms at 16 kHz, 640 bytes: fits one Steam/ENet datagram)
 const OPEN_MIC_GATE := 0.04 ## peak level that opens the open-mic gate
 const GATE_HOLD := 0.35 ## seconds the gate stays open after speech
 const SPEAKING_TIMEOUT := 0.3
@@ -20,6 +22,7 @@ var silent_distance := 25.0
 var push_to_talk := true
 var ptt_key: Key = KEY_V
 var enable_raw_voice := true
+var loopback := false ## play own mic locally (debug)
 
 var mic_level := 0.0 ## 0..1, Godot mic (for the meter)
 var local_speaking := false
@@ -34,17 +37,23 @@ var _headless := false
 var _mic_active := false
 var _mic_restart_id := 0
 var _mic_started := false
-var _steam_recording := false
 var _last_local_voice := -10.0
 var _gate_timer := 0.0
 var _rs_pos := 0.0
 var _rs_acc := 0.0
 var _rs_count := 0
 var _pending := PackedFloat32Array()
+var _loop_sp := {}
+var _f4_was_down := false
 
 
 func _ready() -> void:
 	_headless = DisplayServer.get_name() == "headless"
+	loopback = NetworkManager.args.has("voice-loopback")
+	var lp := AudioStreamPlayer.new()
+	lp.name = "LoopbackPlayer"
+	add_child(lp)
+	_loop_sp = {"player": lp, "node": null, "rate": 0, "last": -10.0}
 	# Deferred so the menu can apply the saved mic device first (no restart at startup).
 	_setup_mic.call_deferred()
 
@@ -83,10 +92,8 @@ func set_input_device(device: String) -> void:
 
 func voice_mode_name() -> String:
 	match NetworkManager.mode:
-		NetworkManager.Mode.STEAM:
-			return "Steam voice" if SteamManager.available else "Steam voice (unavailable)"
-		NetworkManager.Mode.ENET:
-			return "Raw PCM 16 kHz (LAN)" if enable_raw_voice else "Off"
+		NetworkManager.Mode.STEAM, NetworkManager.Mode.ENET:
+			return "Raw PCM 16 kHz" if enable_raw_voice else "Off"
 	return "Idle"
 
 
@@ -118,11 +125,13 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	var ptt_down := Input.is_physical_key_pressed(ptt_key) and not _text_has_focus()
 
-	if in_session and NetworkManager.mode == NetworkManager.Mode.STEAM:
-		# Steam has its own silence detection, so open mic = record continuously.
-		_steam_tick(ptt_down if push_to_talk else true, now)
-		local_speaking = now - _last_local_voice < SPEAKING_TIMEOUT
-	elif in_session and NetworkManager.mode == NetworkManager.Mode.ENET and enable_raw_voice:
+	var f4 := Input.is_physical_key_pressed(KEY_F4)
+	if f4 and not _f4_was_down:
+		loopback = not loopback
+		print("[Voice] loopback=%s" % loopback)
+	_f4_was_down = f4
+
+	if (in_session or loopback) and enable_raw_voice:
 		if NetworkManager.args.has("test-voice"): # headless test: synthetic 440 Hz tone instead of the mic
 			buf = _test_tone(n if n > 0 else int(_input_rate() * delta))
 			ptt_down = true
@@ -138,8 +147,7 @@ func _process(delta: float) -> void:
 			_reset_raw()
 		local_speaking = want
 	else:
-		if _steam_recording:
-			_steam_tick(false, now)
+		_reset_raw()
 		local_speaking = false
 
 	_update_speakers(now)
@@ -164,25 +172,6 @@ func _input_rate() -> float:
 
 func _text_has_focus() -> bool:
 	return get_viewport().gui_get_focus_owner() is LineEdit
-
-
-func _steam_tick(want: bool, now: float) -> void:
-	if not SteamManager.available:
-		return
-	if want != _steam_recording:
-		_steam_recording = want
-		if want:
-			Steam.startVoiceRecording()
-		else:
-			Steam.stopVoiceRecording()
-	if not _steam_recording:
-		return
-	var v: Dictionary = Steam.getVoice()
-	var written := int(v.get("written", 0))
-	if int(v.get("result", -1)) == Steam.VOICE_RESULT_OK and written > 0:
-		var data: PackedByteArray = v.get("buffer", PackedByteArray())
-		_send(data.slice(0, written), Codec.STEAM)
-		_last_local_voice = now
 
 
 func _raw_encode(buf: PackedVector2Array) -> void:
@@ -219,8 +208,11 @@ func _encode_pcm16(samples: PackedFloat32Array) -> PackedByteArray:
 
 
 func _send(data: PackedByteArray, codec: int) -> void:
-	_voice_packet.rpc(data, codec)
-	packets_sent += 1
+	if loopback:
+		_play_pcm(_loop_sp, data, RAW_RATE)
+	if NetworkManager.is_in_session():
+		_voice_packet.rpc(data, codec)
+		packets_sent += 1
 
 
 # ---------------------------------------------------------------- receive / playback
@@ -246,7 +238,7 @@ func _voice_packet(data: PackedByteArray, codec: int) -> void:
 
 
 func _play_pcm(sp: Dictionary, pcm: PackedByteArray, rate: int) -> void:
-	var player: AudioStreamPlayer3D = sp["player"]
+	var player = sp["player"] # AudioStreamPlayer3D, or AudioStreamPlayer for loopback
 	if not is_instance_valid(player):
 		return
 	if sp["rate"] != rate or not player.playing:
@@ -256,7 +248,7 @@ func _play_pcm(sp: Dictionary, pcm: PackedByteArray, rate: int) -> void:
 		player.stream = gen
 		player.play()
 		sp["rate"] = rate
-	var pb := player.get_stream_playback() as AudioStreamGeneratorPlayback
+	var pb := player.call("get_stream_playback") as AudioStreamGeneratorPlayback
 	if pb == null:
 		return
 	var count := mini(pcm.size() / 2, pb.get_frames_available())
