@@ -155,11 +155,33 @@ func _spawn_round() -> void:
 	var index := 0
 	for p in Players.all():
 		if get_role(p.peer_id) == Enums.Role.MAGE:
-			p.teleport((mages.pick_random() as Node3D).global_position if not mages.is_empty() else Vector3(0, 1, 0))
+			var points := _clear_spawns(p, mages)
+			var pos: Vector3 = points.pick_random() if not points.is_empty() else Vector3(0, 1, 0)
+			print("[Match] Spawn ", p.peer_id, " MAGE at ", pos)
+			p.teleport(pos)
 		elif get_role(p.peer_id) == Enums.Role.VILLAGER:
-			p.teleport((villagers[index % villagers.size()] as Node3D).global_position \
-				if not villagers.is_empty() else Vector3(3 + index * 2, 1, 0))
+			var points := _clear_spawns(p, villagers)
+			var pos: Vector3 = points[index % points.size()] if not points.is_empty() else Vector3(3 + index * 2, 1, 0)
+			print("[Match] Spawn ", p.peer_id, " VILLAGER at ", pos)
+			p.teleport(pos)
 			index += 1
+
+
+func _clear_spawns(p: Node3D, markers: Array[Node]) -> Array[Vector3]:
+	# WHY: markers can intersect walls (including one in test_arena); avoid physics depenetration.
+	var shape := CapsuleShape3D.new()
+	shape.radius = p.tuning.radius
+	shape.height = p.tuning.height
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = shape
+	query.collision_mask = 1 # world only; players are being repositioned together
+	var points: Array[Vector3] = []
+	for marker in markers:
+		var pos: Vector3 = marker.global_position
+		query.transform = Transform3D(Basis.IDENTITY, pos + Vector3(0, shape.height / 2.0, 0))
+		if p.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty():
+			points.append(pos)
+	return points
 
 
 func _return_to_lobby() -> void:

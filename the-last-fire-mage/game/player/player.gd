@@ -206,6 +206,8 @@ func _rpc_lock(reason: StringName, locked: bool) -> void:
 @rpc("any_peer", "call_local", "reliable")
 func _rpc_teleport(pos: Vector3) -> void:
 	if Net.from_server(self):
+		# FIX(S04, Codex): players must not carry each other as platforms during round teleports.
+		platform_floor_layers &= ~2
 		global_position = pos
 		velocity = Vector3.ZERO
 

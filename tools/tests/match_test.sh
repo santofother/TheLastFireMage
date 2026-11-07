@@ -9,7 +9,7 @@ cleanup() { for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null || true; done; }
 trap cleanup EXIT
 mkdir -p "$OUT"
 echo "Logs: $OUT"
-for scenario in timeout all_dead mage_died mage_left late_join; do
+for scenario in ${MATCH_CASES:-timeout all_dead mage_died mage_left late_join}; do
 	port="${PORT:-$((20000 + RANDOM % 20000))}"
 	common=(--headless --path "$ROOT/the-last-fire-mage" res://game/match/tests/match_test.tscn -- --no-steam "--port=$port" "--match-case=$scenario" --map=res://game/map/test_arena.tscn)
 	tune="match.role_reveal_time=0.5,match.head_start_time=0.6,match.hunt_time=3,match.results_time=0.5"
