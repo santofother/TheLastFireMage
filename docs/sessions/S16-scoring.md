@@ -1,5 +1,5 @@
 # S16 — Scoring + Mage rotation
-Agent: **Lean Codex** · Tier: **T3** · Wave 3 · Branch: `s16-scoring`
+Agent: **Either** · Tier: **T3** · Codex: GPT-6.1 Sol, medium · Claude: Sonnet 5.5, medium · Wave 3 · Branch: `s16-scoring`
 Depends on: S04, S11 · Parallel with: S13 S14 S15
 
 Owns: `game/scoring/**`

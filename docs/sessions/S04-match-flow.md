@@ -1,5 +1,5 @@
 # S04 — Match flow, roles, timer, win conditions
-Agent: **Lean Codex** (well-specified state machine) · Tier: **T2** · Wave 1 · Branch: `s04-match`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6.1 Sol, high · Claude: Opus 5.5, medium · Wave 1 · Branch: `s04-match`
 Depends on: S02 · Parallel with: S03 S05 S06 S07 S08
 
 Owns: `game/match/**`

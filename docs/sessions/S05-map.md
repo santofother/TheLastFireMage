@@ -1,5 +1,5 @@
 # S05 — Greybox town map v1
-Agent: **Lean Claude** (spatial layout reasoning) · Tier: **T2** (Opus 5.5 medium) · Wave 1 · Branch: `s05-map`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6.1 Sol, high · Claude: Opus 5.5, medium · Wave 1 · Branch: `s05-map`
 Depends on: S02 · Parallel with: S03 S04 S06 S07 S08
 
 Owns: `game/map/**` (except keep `test_arena.tscn` working: tests use it), `tools/map/**` (generator)
@@ -12,7 +12,7 @@ A ~150×150 m dense seaside neighbourhood in grey boxes, good enough to playtest
 - Build it from data, not by hand: a layout file (JSON or `.tres`) of blocks/houses/roofs/stairs + a generator
   script that writes the `.tscn` (CSG or MeshInstance+StaticBody boxes). Then the layout is cheap to edit.
 - 3–4 districts, narrow alleys, plazas, a harbour edge, rooftops connected by planks/low gaps, stairs and
-  mantle-height ledges, dead ends, interiors-lite (open doorways into 1-room houses), hiding nooks.
+  mantle-height ledges (≤2 m), roof gaps sized for running jumps (~3 m, see GDD §Movement; no climbable walls), dead ends, interiors-lite (open doorways into 1-room houses), hiding nooks.
 - Map rules from the GDD: every district has multiple escape routes, roof and street routes connect, the mage
   (1.4 m) can reach most areas, no permanently safe spot.
 - The generator writes `game/map/town.tscn` (main loads it by that path). No WorldEnvironment/lights in the

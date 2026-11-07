@@ -1,5 +1,5 @@
 # S14 — Firestorm
-Agent: **Lean Codex** · Tier: **T2** · Wave 3 · Branch: `s14-firestorm`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6.1 Sol, high · Claude: Opus 5.5, medium · Wave 3 · Branch: `s14-firestorm`
 Depends on: S04 (S13 for the threshold; use a stub value until merged) · Parallel with: S13 S15 S16
 
 Owns: `game/firestorm/**`

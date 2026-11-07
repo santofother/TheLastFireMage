@@ -1,5 +1,5 @@
 # S02 — Architecture, contracts and stubs
-Agent: **Claude only** (head engineer) · Tier: **T1** (Opus 5.5, high) · Wave 0 · Branch: `s02-architecture`
+Agent: **Claude only** (head-engineer role, not capability) · Tier: **T1** · Claude: Opus 5.5, high (Codex could do it equally well: GPT-6 Astra, high) · Wave 0 · Branch: `s02-architecture`
 Depends on: S01 · Parallel with: nothing (every later card builds on this)
 
 Owns: `docs/ARCHITECTURE.md`, `the-last-fire-mage/project.godot` (autoloads + InputMap), `game/main.tscn`,

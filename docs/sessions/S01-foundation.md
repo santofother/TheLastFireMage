@@ -1,5 +1,5 @@
 # S01 — Foundation: merge spike, GDD, test runner
-Agent: **Claude only** (head engineer) · Tier: **T3** (Sonnet 5.5, medium) · Wave 0 · Branch: `s01-foundation`
+Agent: **Claude only** (head-engineer role, not capability) · Tier: **T3** · Claude: Sonnet 5.5, medium (Codex could do it equally well: GPT-6.1 Sol, medium) · Wave 0 · Branch: `s01-foundation`
 Depends on: — · Parallel with: nothing (S02 needs this)
 
 Owns: `main` merge of `feat/net-voice-spike`, `docs/design/GDD.md`, `tools/run_tests.sh`, `tools/tests/`,

@@ -8,7 +8,7 @@ closes in. Proximity voice chat is central. Later the same lobby/voice layer wil
 
 ## Who's who
 - **The user** owns the project and makes every final decision: they test builds, run playtests, approve
-  pushes and merges.
+  pushing `main` and merges into it.
 - **Head engineer = Claude Code** (under the user). It owns `docs/ARCHITECTURE.md`, the contracts, task
   cards and merges into `main`.
 - **Builders = any agent** (Claude Code or Codex, any model) running one session card from
@@ -24,7 +24,8 @@ closes in. Proximity voice chat is central. Later the same lobby/voice layer wil
 4. Add or extend a headless test for what you built whenever it can be tested without a screen.
 5. Run `tools/run_tests.sh` (runs every `tools/tests/*.sh`). All tests must pass.
 6. Write your handoff `docs/handoffs/Sxx.md` (template: `docs/handoffs/README.md`), max ~25 lines.
-7. Commit on your branch. Ask the user before pushing or opening a PR. Don't merge into `main` yourself.
+7. Commit on your branch, then push your branch and open a PR **without asking** (it doesn't touch `main`).
+   Don't merge into `main` and never push `main` yourself: only merge sessions do that, after the user's OK.
 8. Don't edit `docs/STATUS.md` (the head engineer updates it at merge time, to avoid merge conflicts).
 
 ## Cross-agent rules

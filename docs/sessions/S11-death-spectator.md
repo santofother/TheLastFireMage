@@ -1,5 +1,5 @@
 # S11 — Death + basic spectator
-Agent: **Either** · Tier: **T3** · Wave 2 · Branch: `s11-death`
+Agent: **Either** · Tier: **T3** · Codex: GPT-6.1 Sol, medium · Claude: Sonnet 5.5, medium · Wave 2 · Branch: `s11-death`
 Depends on: S04 · Parallel with: S09 S10 S12
 
 Owns: `game/spectator/**`

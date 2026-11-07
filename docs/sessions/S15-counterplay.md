@@ -1,5 +1,5 @@
 # S15 — Villager stuns / counterplay
-Agent: **Either** · Tier: **T3** · Wave 3 · Branch: `s15-counterplay`
+Agent: **Either** · Tier: **T3** · Codex: GPT-6.1 Sol, medium · Claude: Sonnet 5.5, medium · Wave 3 · Branch: `s15-counterplay`
 Depends on: S03 (S10 for item pickup; stub if not merged) · Parallel with: S13 S14 S16
 
 Owns: `game/counterplay/**`
