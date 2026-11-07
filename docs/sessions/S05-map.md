@@ -12,7 +12,7 @@ A ~150×150 m dense seaside neighbourhood in grey boxes, good enough to playtest
 - Build it from data, not by hand: a layout file (JSON or `.tres`) of blocks/houses/roofs/stairs + a generator
   script that writes the `.tscn` (CSG or MeshInstance+StaticBody boxes). Then the layout is cheap to edit.
 - 3–4 districts, narrow alleys, plazas, a harbour edge, rooftops connected by planks/low gaps, stairs and
-  mantle-height ledges, dead ends, interiors-lite (open doorways into 1-room houses), hiding nooks.
+  mantle-height ledges (≤2 m), roof gaps sized for running jumps (~3 m, see GDD §Movement; no climbable walls), dead ends, interiors-lite (open doorways into 1-room houses), hiding nooks.
 - Map rules from the GDD: every district has multiple escape routes, roof and street routes connect, the mage
   (1.4 m) can reach most areas, no permanently safe spot.
 - Marker nodes in groups: `villager_spawn` (≥8), `mage_spawn` (2), `chicken_spawn` (≥10), `item_spawn` (≥10),

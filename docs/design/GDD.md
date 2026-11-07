@@ -28,7 +28,8 @@ Pillars: chaotic, social (proximity voice), risky parkour, escalating mage, comp
 | Mage health | 100 (guess) |
 
 ## Movement
-- Jump simple and responsive; climbing easy to understand but exposes you; rooftops rewarding but risky.
+- Jump simple and responsive. **No climbing.** Getting up = jumps + a simple ledge mantle; getting across =
+  parkour jumps between roofs, balconies and crates. Being up high exposes you; rooftops rewarding but risky.
 - Falling is funny and costly; collisions cause slapstick; momentum matters; physics creates accidents.
 - Hard-to-reach hiding spots are not inherently safe. Mage is powerful but not automatically faster/better.
 
@@ -37,6 +38,8 @@ Pillars: chaotic, social (proximity voice), risky parkour, escalating mage, comp
 | Villager walk / sprint | 4 / 6.5 m/s (guess) |
 | Mage walk / sprint | 4.5 / 6 m/s (guess) |
 | Jump height | ~1.2 m (guess) |
+| Mantle reach (edge above feet) | up to ~2 m (guess) |
+| Running jump gap | ~3 m (guess) |
 | Fall damage threshold | 4 m (guess) |
 
 ## Mage combat

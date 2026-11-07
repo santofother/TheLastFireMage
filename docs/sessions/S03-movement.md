@@ -11,7 +11,11 @@ different tuning resource).
 
 ## Steps (all done in this one session)
 - Momentum-based run (accel/decel), sprint, jump with coyote time + jump buffer, air control, crouch.
-- Ledge mantle onto ~1.2–2 m edges (no full climbing yet: that's wave 4).
+- Ledge mantle: grab an edge you jump at (~1.2–2 m above your feet) and pull up in one quick move.
+  **No climbing** (no wall scaling, no hanging/shimmying, no climbing walls or ladders). Vertical movement =
+  jumps + mantles only.
+- Parkour jumps: momentum carries into jumps so you can leap gaps between roofs/balconies and from crates up
+  onto ledges; a running jump clears noticeably more than a standing one.
 - Fall consequences: stumble/ragdoll-lite tumble (short loss of control) from big falls. No fall damage yet.
 - Third-person camera rig with collision; small FOV kick on sprint.
 - Player-player bump (push each other a little on collision).

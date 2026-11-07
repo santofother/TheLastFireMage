@@ -7,8 +7,8 @@ This is the user's guide. Agents don't need to read it (their rules are in `AGEN
    (see "What can run concurrently").
 2. Start a session with the agent and model the card names (table below), in a **new worktree**.
 3. Paste the **builder prompt** with the card number. Nothing else is needed: the card holds the details.
-4. The session builds, tests, writes `docs/handoffs/Sxx.md`, commits on its branch and asks you about pushing.
-   Say yes to pushing the branch.
+4. The session builds, tests, writes `docs/handoffs/Sxx.md`, commits, pushes its branch and opens a PR.
+   It shouldn't need to ask you anything unless it's blocked.
 5. When one or more cards are finished, run a **merge session** (Claude, cheap model). It merges the branches
    into `main`, runs the tests, updates `STATUS.md` and marks the next cards READY.
 6. After each wave, export a build and play it (alone with 2 machines, or with friends at the checkpoints).
@@ -22,7 +22,7 @@ re-reads all of them every turn. Handoff files carry what's needed from one sess
 
 **Builder prompt** (any agent, any card):
 ```text
-You're a builder on The Last Fire Mage. Read AGENTS.md, then do card docs/sessions/S06-chickens.md. Follow the card's Owns list, run the tests, write the handoff, commit on branch s06-chickens, and ask me before pushing.
+You're a builder on The Last Fire Mage. Read AGENTS.md, then do card docs/sessions/S06-chickens.md. Follow the card's Owns list, run the tests, write the handoff, commit on branch s06-chickens, then push the branch and open a PR without asking me. Only stop to ask if you're blocked.
 ```
 Change the card file and branch name. That's it.
 
@@ -33,7 +33,7 @@ You're head engineer on The Last Fire Mage, doing a merge session. Read AGENTS.m
 
 **Fix prompt** (when a playtest finds a bug; Sonnet low/medium or a Codex mini model):
 ```text
-Read AGENTS.md. Bug from playtest: <what happened, what you expected, which build>. Find the cause with the smallest read possible, fix it on branch fix-<short-name>, add a test if it's headless-testable, write a 5-line note in docs/handoffs/fix-<short-name>.md, commit and ask before pushing.
+Read AGENTS.md. Bug from playtest: <what happened, what you expected, which build>. Find the cause with the smallest read possible, fix it on branch fix-<short-name>, add a test if it's headless-testable, write a 5-line note in docs/handoffs/fix-<short-name>.md, commit, push the branch and open a PR without asking.
 ```
 
 ## Which agent and model
@@ -90,7 +90,7 @@ Suggested pairing per wave (spread across both tools so neither runs out):
 
 ## Later waves (planned in S17, after the first playtest)
 Not detailed yet on purpose: the playtest will change them.
-- Wave 4, gameplay depth: dead-player overhead layer + throwables, climbing/parkour v2, tuning pass.
+- Wave 4, gameplay depth: dead-player overhead layer + throwables, parkour v2 (jump routes, mantle polish; no climbing), tuning pass.
 - Wave 5, art: concept art + style sheet (**ChatGPT only**, image generation), style test scene in the Salmara
   palette (Lean Claude), modular house kit (Claude only via Blender MCP, or CC0 kits like Kenney/Quaternius:
   Either), characters + chicken, rune fire VFX, sound pass with CC0 sounds.
