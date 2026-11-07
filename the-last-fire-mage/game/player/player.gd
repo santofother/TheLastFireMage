@@ -1,8 +1,8 @@
 class_name Player
 extends CharacterBody3D
 ## Player character (villager and mage share it; role changes tuning + abilities). Owner: S03.
-## S02 wrote the contract surface below; S03 rewrites the movement internals but keeps every public
-## member and its behaviour. See docs/ARCHITECTURE.md §Player.
+## Momentum, buffered/coyote jumps, crouch, one-shot ledge mantles, fall tumbles and contact bumps.
+## Public contract: docs/ARCHITECTURE.md §Player; replicated movement flags listed below.
 ##
 ## NET: spawned by Main's MultiplayerSpawner on the server (data {id, name, pos, bot}). Node name = peer id.
 ## Multiplayer authority = owning peer (client-authoritative movement); local bots (S07) use authority 1.
@@ -30,10 +30,10 @@ signal revived
 
 const VILLAGER_TUNING := "res://game/player/tuning_villager.tres"
 const MAGE_TUNING := "res://game/player/tuning_mage.tres"
-const MOUSE_SENS := 0.0025 # TUNE: radians per pixel (move to settings later)
 
 ## Owning peer id (bots: >= Players.BOT_ID_BASE). Set by the spawner before entering the tree.
 var peer_id := 1
+## Display name shown above the character.
 var display_name := "Player"
 ## True for a server-side local bot (S07). Bots have authority 1 and never take the camera.
 var is_bot := false
@@ -52,6 +52,7 @@ var input_driver: Object = null
 ## Active movement tuning (villager or mage).
 var tuning: PlayerTuning
 
+## Server-authoritative health component.
 @onready var health: Health = $Health
 ## Where carried things sit (S10). Marker3D in front of the chest.
 @onready var carry_socket: Marker3D = $CarrySocket
@@ -60,7 +61,9 @@ var tuning: PlayerTuning
 ## Camera rig: yaw = player body, pitch = this node. Other cards take the view by calling
 ## `make_current()` on their own camera and give it back with `player.camera.make_current()`.
 @onready var camera_rig: Node3D = $CameraRig
+## Third-person camera; other systems may take and restore its view.
 @onready var camera: Camera3D = $CameraRig/SpringArm/Camera
+## Positional voice playback node.
 @onready var voice: AudioStreamPlayer3D = $Voice
 @onready var _spring: SpringArm3D = $CameraRig/SpringArm
 @onready var _nameplate: Label3D = $Nameplate
@@ -68,6 +71,27 @@ var tuning: PlayerTuning
 @onready var _body_mesh: MeshInstance3D = $Body
 @onready var _collision: CollisionShape3D = $Collision
 
+## Replicated stance flag; remote peers resize their own collision and visuals.
+var is_crouching := false
+## Replicated quick mantle animation flag (owner alone moves the character).
+var is_mantling := false
+## Replicated landing tumble flag. While true, can_control() is false.
+var is_tumbling := false
+## Replicated sprint animation state.
+var is_sprinting := false
+
+var _coyote_left := 0.0
+var _jump_buffer_left := 0.0
+var _mantle_armed := false
+var _takeoff_y := 0.0
+var _fall_peak_y := 0.0
+var _tumble_left := 0.0
+var _tumble_angle := 0.0
+var _mantle_elapsed := 0.0
+var _mantle_start := Vector3.ZERO
+var _mantle_target := Vector3.ZERO
+var _last_bump_ms := -1000000
+var _standing_height := 0.0
 var _locks: Dictionary = {} # StringName reason -> true
 var _stun_left := 0.0
 var _speed_mods: Dictionary = {} # StringName source -> float
@@ -111,9 +135,9 @@ func is_local() -> bool:
 	return is_multiplayer_authority() and not is_bot
 
 
-## True when movement/abilities may act: alive, not stunned, no input lock.
+## True when movement/abilities may act: alive, not stunned/tumbling, no input lock.
 func can_control() -> bool:
-	return is_alive and _stun_left <= 0.0 and _locks.is_empty()
+	return is_alive and _stun_left <= 0.0 and _locks.is_empty() and not is_tumbling
 
 
 ## Shows the speaking icon (called every frame for the local player; remote via VoiceManager).
@@ -207,7 +231,7 @@ func _rpc_lock(reason: StringName, locked: bool) -> void:
 func _rpc_teleport(pos: Vector3) -> void:
 	if Net.from_server(self):
 		global_position = pos
-		velocity = Vector3.ZERO
+		_reset_movement()
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -229,6 +253,9 @@ func _rpc_speed(source: StringName, mult: float) -> void:
 # ------------------------------------------------------------------ death (corpse look)
 
 func _on_died(killer_id: int, cause: StringName) -> void:
+	_reset_movement()
+	is_crouching = false
+	_update_stance()
 	collision_layer = 0 # CONTRACT: dead bodies don't block or get hit; they still rest on the floor
 	_body_mesh.rotation.x = -PI / 2.0
 	_body_mesh.position.y = tuning.radius
@@ -239,6 +266,7 @@ func _on_died(killer_id: int, cause: StringName) -> void:
 
 func _on_revived() -> void:
 	collision_layer = _default_layer
+	_reset_movement()
 	_body_mesh.rotation.x = 0.0
 	_body_mesh.position.y = tuning.height / 2.0
 	_nameplate.visible = not is_local()
@@ -246,46 +274,255 @@ func _on_revived() -> void:
 	GameEvents.player_revived.emit(peer_id)
 
 
-# ------------------------------------------------------------------ input + movement (S03 replaces movement)
+# ------------------------------------------------------------------ input + movement
 
 func _unhandled_input(event: InputEvent) -> void:
 	if is_local() and event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_pending_look += event.relative * MOUSE_SENS
+		_pending_look += event.relative * tuning.mouse_sensitivity
 
 
 func _physics_process(delta: float) -> void:
+	_update_stance()
+	_update_pose(delta)
 	if not is_multiplayer_authority():
 		return
-	_read_input(delta)
 	_stun_left = maxf(0.0, _stun_left - delta)
+	_tumble_left = maxf(0.0, _tumble_left - delta)
+	is_tumbling = _tumble_left > 0.0
+	_read_input(delta)
 	if is_local():
 		set_speaking(VoiceManager.local_speaking)
-	if not is_on_floor():
-		velocity += get_gravity() * delta
+		_update_camera(delta)
 
-	if NetworkManager.test_target != null and is_local(): # headless test hook
+	if NetworkManager.test_target != null and is_local(): # CONTRACT: existing network test hook
 		var t: Vector2 = NetworkManager.test_target
 		global_position.x = t.x
 		global_position.z = t.y
-		velocity.x = 0.0
-		velocity.z = 0.0
+		velocity = Vector3.ZERO
 		move_and_slide()
 		return
 
 	rotate_y(-input.look_delta.x)
-	camera_rig.rotation.x = clampf(camera_rig.rotation.x - input.look_delta.y, -1.2, 0.6)
-	if input.jump_pressed and is_on_floor():
+	camera_rig.rotation.x = clampf(camera_rig.rotation.x - input.look_delta.y,
+		tuning.pitch_min, tuning.pitch_max)
+	if not can_control():
+		_jump_buffer_left = 0.0
+		_mantle_armed = false
+		is_mantling = false
+	if is_mantling:
+		_tick_mantle(delta)
+		return
+
+	var grounded := is_on_floor()
+	_coyote_left = tuning.coyote_time if grounded else maxf(0.0, _coyote_left - delta)
+	_jump_buffer_left = maxf(0.0, _jump_buffer_left - delta)
+	if input.jump_pressed:
+		_jump_buffer_left = tuning.jump_buffer
+	if grounded:
+		_mantle_armed = false
+		_takeoff_y = global_position.y
+		_fall_peak_y = global_position.y
+	else:
+		_fall_peak_y = maxf(_fall_peak_y, global_position.y)
+		velocity += get_gravity() * delta
+
+	is_crouching = input.crouch or (is_crouching and not _has_standing_room())
+	_update_stance()
+	if _jump_buffer_left > 0.0 and _coyote_left > 0.0 and can_control() and not is_crouching:
 		velocity.y = tuning.jump_velocity
-	var speed := (tuning.sprint_speed if input.sprint else tuning.walk_speed) * speed_multiplier()
-	var move := (transform.basis * Vector3(input.move.x, 0, input.move.y)).normalized() * speed
-	velocity.x = move.x + _knockback.x
-	velocity.z = move.z + _knockback.z
-	velocity.y += _knockback.y
-	_knockback = Vector3.ZERO if _knockback.length() < 0.1 else _knockback * 0.85
+		_jump_buffer_left = 0.0
+		_coyote_left = 0.0
+		_mantle_armed = true
+		grounded = false
+
+	is_sprinting = can_control() and input.sprint and not is_crouching and not input.move.is_zero_approx()
+	var speed := tuning.crouch_speed if is_crouching else (
+		tuning.sprint_speed if is_sprinting else tuning.walk_speed)
+	var wish := global_basis * Vector3(input.move.x, 0.0, input.move.y).limit_length()
+	var planar := Vector3(velocity.x, 0.0, velocity.z)
+	var target := wish * speed * speed_multiplier()
+	if grounded:
+		var rate := tuning.ground_deceleration if wish.is_zero_approx() else tuning.ground_acceleration
+		planar = planar.move_toward(target, rate * delta)
+	elif wish.is_zero_approx():
+		planar = planar.move_toward(Vector3.ZERO, tuning.air_deceleration * delta)
+	else:
+		# WHY: accelerate only the missing component along intent; never clamp takeoff speed in air.
+		var missing := maxf(0.0, target.length() - planar.dot(wish.normalized()))
+		planar += wish.normalized() * minf(missing, tuning.air_acceleration * delta)
+	velocity.x = planar.x
+	velocity.z = planar.z
+	velocity += _knockback
+	_knockback = Vector3.ZERO
+	if _mantle_armed and can_control() and not is_crouching and not grounded and _try_mantle(wish):
+		return
+	var approach := velocity
 	move_and_slide()
-	if global_position.y < -20.0:
-		global_position = Vector3(0, 2, 0)
-		velocity = Vector3.ZERO
+	_bump_players(approach)
+	if is_on_floor() and not grounded and velocity.y <= 0.0:
+		if is_alive and _fall_peak_y - global_position.y >= tuning.fall_tumble_height:
+			_tumble_left = tuning.tumble_duration
+			is_tumbling = true
+			_jump_buffer_left = 0.0
+			input.clear()
+	if global_position.y < tuning.void_height:
+		global_position = Vector3(0.0, tuning.respawn_height, 0.0)
+		_reset_movement()
+
+
+func _try_mantle(wish: Vector3) -> bool:
+	if wish.is_zero_approx():
+		return false
+	var direction := wish.normalized()
+	var origin := global_position + Vector3.UP * tuning.mantle_probe_height
+	var wall := _ray(origin, origin + direction * (tuning.radius + tuning.mantle_reach))
+	if wall.is_empty() or absf((wall.normal as Vector3).y) > tuning.mantle_wall_max_normal_y:
+		return false
+	var sample: Vector3 = wall.position - wall.normal * (tuning.radius + tuning.mantle_inset)
+	var top := _ray(Vector3(sample.x, _takeoff_y + tuning.mantle_max_height + tuning.collision_clearance, sample.z),
+		Vector3(sample.x, _takeoff_y + tuning.mantle_min_height - tuning.collision_clearance, sample.z))
+	if top.is_empty() or (top.normal as Vector3).dot(Vector3.UP) < cos(floor_max_angle):
+		return false
+	var rise: float = top.position.y - _takeoff_y
+	if rise < tuning.mantle_min_height or rise > tuning.mantle_max_height:
+		return false
+	var target: Vector3 = top.position + Vector3.UP * tuning.collision_clearance
+	if target.y <= global_position.y or not _capsule_clear(target, tuning.height):
+		return false
+	var lift := Vector3(global_position.x, target.y, global_position.z)
+	# WHY: two swept segments prevent mantling through an overhang or across an intervening wall.
+	if test_move(global_transform, lift - global_position) or test_move(
+		Transform3D(global_basis, lift), target - lift):
+		return false
+	_mantle_start = global_position
+	_mantle_target = target
+	_mantle_elapsed = 0.0
+	_mantle_armed = false # One pull per takeoff: no wall scaling or repeated upward grabs.
+	is_mantling = true
+	velocity = Vector3.ZERO
+	return true
+
+
+func _tick_mantle(delta: float) -> void:
+	_mantle_elapsed += delta
+	var t := minf(1.0, _mantle_elapsed / tuning.mantle_duration)
+	var lift := Vector3(_mantle_start.x, _mantle_target.y, _mantle_start.z)
+	var next: Vector3
+	if t < tuning.mantle_lift_fraction:
+		next = _mantle_start.lerp(lift, smoothstep(0.0, tuning.mantle_lift_fraction, t))
+	else:
+		next = lift.lerp(_mantle_target, smoothstep(tuning.mantle_lift_fraction, 1.0, t))
+	var hit := move_and_collide(next - global_position)
+	if hit != null or t >= 1.0:
+		is_mantling = false
+		_fall_peak_y = global_position.y
+
+
+func _ray(from: Vector3, to: Vector3) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1 | 16, [get_rid()])
+	return get_world_3d().direct_space_state.intersect_ray(query)
+
+
+func _capsule_clear(feet: Vector3, height: float) -> bool:
+	var shape := CapsuleShape3D.new()
+	shape.radius = tuning.radius
+	shape.height = height
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = shape
+	query.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (height / 2.0))
+	query.collision_mask = collision_mask
+	query.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
+
+func _has_standing_room() -> bool:
+	return _capsule_clear(global_position + Vector3.UP * tuning.collision_clearance, tuning.height)
+
+
+func _update_stance() -> void:
+	if tuning == null:
+		return
+	var height := tuning.crouch_height if is_crouching and is_alive else tuning.height
+	if is_equal_approx(_standing_height, height):
+		return
+	_standing_height = height
+	(_collision.shape as CapsuleShape3D).height = height
+	_collision.position.y = height / 2.0
+	(_body_mesh.mesh as CapsuleMesh).height = height
+	if is_alive:
+		_body_mesh.position.y = height / 2.0
+	$Nose.position.y = height * 0.8
+	carry_socket.position.y = height * 0.6
+
+
+func _update_pose(delta: float) -> void:
+	if not is_alive:
+		return # CONTRACT: death owns the corpse pose.
+	_tumble_angle = _tumble_angle + tuning.tumble_roll_speed * delta if is_tumbling else 0.0
+	_body_mesh.rotation.x = _tumble_angle
+
+
+func _update_camera(delta: float) -> void:
+	var blend := 1.0 - exp(-tuning.camera_response * delta)
+	var height := tuning.camera_height - (tuning.height - tuning.crouch_height if is_crouching else 0.0)
+	camera_rig.position.y = lerpf(camera_rig.position.y, height, blend)
+	camera.fov = lerpf(camera.fov, tuning.camera_fov + (tuning.sprint_fov_kick if is_sprinting else 0.0), blend)
+
+
+func _bump_players(approach: Vector3) -> void:
+	for i in get_slide_collision_count():
+		var hit := get_slide_collision(i)
+		var other := hit.get_collider() as Player
+		if other == null or not other.is_alive or not is_alive:
+			continue
+		var normal := hit.get_normal()
+		normal.y = 0.0
+		if normal.is_zero_approx() or -approach.dot(normal) < tuning.bump_min_speed:
+			continue
+		if Time.get_ticks_msec() - _last_bump_ms < tuning.bump_cooldown * 1000.0:
+			return
+		_knockback += normal.normalized() * tuning.bump_recoil
+		if Net.is_server(self):
+			_rpc_bump(other.name)
+		else:
+			_rpc_bump.rpc_id(1, other.name)
+		# Owner rate-limits requests too; the server independently validates and rate-limits.
+		_last_bump_ms = Time.get_ticks_msec()
+		return
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_bump(other_name: StringName) -> void:
+	# NET: server alone validates contact and decides the pushed player's impulse.
+	if not Net.is_server(self) or Net.sender_id(self) != get_multiplayer_authority() or not is_alive:
+		return
+	if Time.get_ticks_msec() - _last_bump_ms < tuning.bump_cooldown * 1000.0:
+		return
+	var other := get_parent().get_node_or_null(NodePath(other_name)) as Player
+	if other == null or other == self or not other.is_alive:
+		return
+	var offset := other.global_position - global_position
+	if absf(offset.y) > maxf(tuning.height, other.tuning.height):
+		return
+	offset.y = 0.0
+	if offset.length() > tuning.radius + other.tuning.radius + tuning.bump_contact_slack:
+		return
+	_last_bump_ms = Time.get_ticks_msec()
+	other.apply_knockback(offset.normalized() * tuning.bump_speed)
+
+
+func _reset_movement() -> void:
+	velocity = Vector3.ZERO
+	_knockback = Vector3.ZERO
+	_coyote_left = 0.0
+	_jump_buffer_left = 0.0
+	_mantle_armed = false
+	is_mantling = false
+	is_tumbling = false
+	is_sprinting = false
+	_tumble_left = 0.0
+	_fall_peak_y = global_position.y
+	_takeoff_y = global_position.y
 
 
 func _read_input(delta: float) -> void:
@@ -305,6 +542,14 @@ func _read_input(delta: float) -> void:
 func _apply_tuning(path: String, section: String) -> void:
 	tuning = Tuning.load_tuning(path, section) as PlayerTuning
 	health.max_hp = tuning.max_hp
+	_standing_height = 0.0
+	floor_snap_length = tuning.floor_snap
+	floor_max_angle = deg_to_rad(tuning.floor_max_angle_degrees)
+	_spring.spring_length = tuning.camera_distance
+	_spring.position.x = tuning.camera_shoulder
+	_spring.margin = tuning.camera_margin
+	_spring.collision_mask = 1 | 16
+	camera.fov = tuning.camera_fov
 	var shape := (_collision.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
 	shape.radius = tuning.radius
 	shape.height = tuning.height
@@ -321,3 +566,8 @@ func _apply_tuning(path: String, section: String) -> void:
 	_speaking_icon.position.y = tuning.height + 0.7
 	voice.position.y = tuning.height * 0.85
 	carry_socket.position = Vector3(0, tuning.height * 0.6, -tuning.radius - 0.25)
+
+	_update_stance()
+	if not is_alive:
+		_body_mesh.rotation.x = -PI / 2.0
+		_body_mesh.position.y = tuning.radius
