@@ -7,10 +7,11 @@ This is the user's guide. Agents don't need to read it (their rules are in `AGEN
    (see "What can run concurrently").
 2. Start a session with the agent and model the card names (table below), in a **new worktree**.
 3. Paste the **builder prompt** with the card number. Nothing else is needed: the card holds the details.
-4. The session builds, tests, writes `docs/handoffs/Sxx.md`, commits, pushes its branch and opens a PR.
-   It shouldn't need to ask you anything unless it's blocked.
-5. When one or more cards are finished, run a **merge session** (Claude, cheap model). It merges the branches
-   into `main`, runs the tests, updates `STATUS.md` and marks the next cards READY.
+4. The session builds, tests, writes `docs/handoffs/Sxx.md`, then **lands its own work on `main`**: it pulls the
+   latest `main` into its branch, reruns all tests on the combined code, updates its row in `STATUS.md` and
+   pushes. It shouldn't need to ask you anything unless it's blocked.
+5. Only if a builder couldn't land (its STATUS row says `REVIEW (needs merge session: …)`), run a
+   **merge session**. That's the exception, not every card.
 6. After each wave, export a build and play it (alone with 2 machines, or with friends at the checkpoints).
    Feed what you noticed into the next merge or triage session.
 
@@ -22,18 +23,25 @@ re-reads all of them every turn. Handoff files carry what's needed from one sess
 
 **Builder prompt** (any agent, any card):
 ```text
-You're a builder on The Last Fire Mage. Read AGENTS.md, then do card docs/sessions/S06-chickens.md. Follow the card's Owns list, run the tests, write the handoff, commit on branch s06-chickens, then push the branch and open a PR without asking me. Only stop to ask if you're blocked.
+You're a builder on The Last Fire Mage. Read AGENTS.md, then do card docs/sessions/S06-chickens.md on branch s06-chickens. Follow the card's Owns list, run the tests, write the handoff, and land it on main yourself following AGENTS.md step 8, without asking me. Only stop to ask if you're blocked.
 ```
 Change the card file and branch name. That's it.
 
-**Merge prompt** (Claude Code, Sonnet 5.5, low effort, or Codex GPT-6 Luna, medium if Claude is out; normal session in the main folder, not a worktree):
+**Merge prompt** (only when a STATUS row says `REVIEW (needs merge session: …)`. Claude Code, Sonnet 5.5,
+medium, or Codex GPT-6.1 Sol, medium; normal session in the main folder, not a worktree):
 ```text
-You're head engineer on The Last Fire Mage, doing a merge session. Read AGENTS.md and docs/STATUS.md. Merge these finished branches into main one at a time: s03-movement, s06-chickens. For each: read its handoff, merge, resolve conflicts (keep both sides' intent; ask me if unsure), run tools/run_tests.sh. Then update STATUS.md (status, merge log, mark newly READY cards), note any "Contract change requested" items for me, and ask before pushing main.
+You're head engineer on The Last Fire Mage, doing a merge session. Read AGENTS.md and docs/STATUS.md. Find every card whose STATUS row is REVIEW, and for each read its handoff and land its branch on main: merge main into it, resolve conflicts (keep both sides' intent; ask me if unsure), run tools/run_tests.sh, update STATUS.md (row + merge log). List any "Contract change requested" items for me with your recommendation before changing a contract. Push main when tests pass.
+```
+
+**Question prompt** (for general questions, so you don't continue a long chat. New Claude session in the
+`LastMage` folder, no worktree; Sonnet 5.5, medium, or Codex GPT-6.1 Sol, medium):
+```text
+You're the head engineer on The Last Fire Mage, answering a question (no code changes unless I ask). Read AGENTS.md and docs/STATUS.md first; open other files only if the question needs them. My question: <question>
 ```
 
 **Fix prompt** (when a playtest finds a bug; Codex GPT-6.1 Sol medium / Luna high, or Claude Sonnet 5.5 medium):
 ```text
-Read AGENTS.md. Bug from playtest: <what happened, what you expected, which build>. Find the cause with the smallest read possible, fix it on branch fix-<short-name>, add a test if it's headless-testable, write a 5-line note in docs/handoffs/fix-<short-name>.md, commit, push the branch and open a PR without asking.
+Read AGENTS.md. Bug from playtest: <what happened, what you expected, which build>. Find the cause with the smallest read possible, fix it on branch fix-<short-name>, add a test if it's headless-testable, write a 5-line note in docs/handoffs/fix-<short-name>.md, commit, and land it on main following AGENTS.md step 8 without asking.
 ```
 
 ## Which agent and model
@@ -79,9 +87,14 @@ pick the model and reasoning level → paste the builder prompt. Codex reads `AG
 First time in a new worktree, the session runs Godot's import once (it's in `AGENTS.md`); that's normal.
 
 ## What can run concurrently
-Cards in the same wave don't share files (each card has an Owns list), so they can run at the same time.
-Practical limit: **3 builder sessions at once**. More than that and you become the bottleneck (approving,
-pushing, testing), and merges get messy.
+"Can run together" means the cards **won't conflict in git**: they don't share files (each card has an Owns
+list). It doesn't mean nothing can go wrong. Practical limit: **3 builder sessions at once**, because:
+- **Memory:** each test run starts ~3 Godot processes. Several local sessions testing at once is heavy on a
+  16 GB Mac (Codex cloud tasks don't use your Mac).
+- **Hidden assumptions:** files don't overlap, but behaviour can (e.g. S04 spawning and S03 movement). The
+  self-merge rule catches this, because each builder retests on the latest `main` before pushing.
+- **You:** every finished card is a build to check and possibly a question to answer.
+Tests use a random network port, so parallel test runs don't collide.
 
 | Wave | Cards | Can run together | Needs before starting |
 |---|---|---|---|

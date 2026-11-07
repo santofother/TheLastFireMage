@@ -1,9 +1,10 @@
 # Status board
 
-Only the head engineer (Claude, during S01 / merge sessions) edits this file. Builders write handoffs instead.
+Builders edit **only their own row** when they land on `main` (and may flip TODO→READY for cards whose
+dependencies are all DONE). The merge log is written only by merge sessions. See AGENTS.md step 8.
 
-Legend: TODO · READY (dependencies merged, can start) · IN PROGRESS (branch name) · REVIEW (handoff written,
-waiting for merge) · DONE · BLOCKED (reason)
+Legend: TODO · READY (dependencies on main, can start) · IN PROGRESS (branch name) · REVIEW (needs merge
+session: reason) · DONE (on main, date) · BLOCKED (reason)
 
 ## Done before the plan
 - Net + voice spike (`feat/net-voice-spike`): LAN + Steam lobby join Mac↔Windows, position sync, proximity

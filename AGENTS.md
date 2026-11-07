@@ -7,10 +7,10 @@ single source of truth. `CLAUDE.md` only adds Claude-specific notes.
 closes in. Proximity voice chat is central. Later the same lobby/voice layer will host more party games.
 
 ## Who's who
-- **The user** owns the project and makes every final decision: they test builds, run playtests, approve
-  pushing `main` and merges into it.
+- **The user** owns the project and makes every final decision: they test builds and run playtests.
+  They've pre-approved builders landing on `main` under the self-merge rules below.
 - **Head engineer = Claude Code** (under the user). It owns `docs/ARCHITECTURE.md`, the contracts, task
-  cards and merges into `main`.
+  cards, and merge sessions for anything a builder couldn't land cleanly.
 - **Builders = any agent** (Claude Code or Codex, any model) running one session card from
   `docs/sessions/`. Builders work on their card and nothing else.
 
@@ -24,9 +24,18 @@ closes in. Proximity voice chat is central. Later the same lobby/voice layer wil
 4. Add or extend a headless test for what you built whenever it can be tested without a screen.
 5. Run `tools/run_tests.sh` (runs every `tools/tests/*.sh`). All tests must pass.
 6. Write your handoff `docs/handoffs/Sxx.md` (template: `docs/handoffs/README.md`), max ~25 lines.
-7. Commit on your branch, then push your branch and open a PR **without asking** (it doesn't touch `main`).
-   Don't merge into `main` and never push `main` yourself: only merge sessions do that, after the user's OK.
-8. Don't edit `docs/STATUS.md` (the head engineer updates it at merge time, to avoid merge conflicts).
+7. Commit on your branch.
+8. **Land it on `main` yourself, without asking** (self-merge), only if all of this holds:
+   1. `git fetch origin && git merge origin/main` into your branch.
+   2. Re-run `tools/run_tests.sh` on the merged result. All green.
+   3. Update **only your own row** in `docs/STATUS.md`: status `DONE`, date, branch. You may also flip rows from
+      `TODO` to `READY` when every card they depend on is now `DONE`. Don't touch other rows or the merge log.
+   4. Commit, then `git push origin HEAD:main`. Git only accepts this if nobody pushed in between. If it's
+      rejected, go back to 8.1. Also push your branch (`git push -u origin HEAD`) so its history is on GitHub.
+   - **Stop instead of landing** if: the merge with `main` conflicts in a file you don't own, tests fail outside
+     your files, or your handoff has a "Contract change requested". Then push your branch, open a PR, set your
+     row to `REVIEW (needs merge session: <one-line reason>)` on your branch, and stop. A merge session handles it.
+   - Never force-push, never push `main` with failing tests, never rewrite `main`'s history.
 
 ## Cross-agent rules
 - You are **not** here to review, audit or "improve" other agents' code. Don't refactor, restyle or rename
@@ -116,3 +125,5 @@ Godot binary: `$GODOT`, default `/Users/santofothergill/Downloads/Godot.app/Cont
 - Log with prefixes `[Net]`, `[Steam]`, `[Game]`, `[TEST]` (new systems add their own, e.g. `[Match]`,
   `[Mage]`). Tests grep these.
 - GDScript: static types, `snake_case` files and funcs, `PascalCase` classes/nodes, tabs. One system per folder.
+- Tests: never hard-code a network port. Use `PORT="${PORT:-$(( 20000 + RANDOM % 20000 ))}"` (or the helper in
+  `tools/tests/lib.sh` once it exists) so several sessions can run tests at the same time.

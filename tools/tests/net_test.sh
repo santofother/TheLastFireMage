@@ -7,7 +7,7 @@ GODOT="${GODOT:-/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot}
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PROJ="$ROOT/the-last-fire-mage"
 OUT="${OUT:-$(mktemp -d -t lastmage_nettest)}"
-PORT="${PORT:-24690}"
+PORT="${PORT:-$(( 20000 + RANDOM % 20000 ))}" # WHY: random so parallel sessions can test at the same time
 COMMON=(--headless --path "$PROJ" --)
 
 mkdir -p "$OUT"; echo "Logs: $OUT"
