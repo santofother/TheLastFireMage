@@ -16,7 +16,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S01 | Foundation: merge spike, GDD, test runner | 0 | DONE | merged to main (push pending user OK) |
 | S02 | Architecture + contracts + stubs | 0 | DONE | merged to main |
 | S03 | Villager movement v2 | 1 | READY | |
-| S04 | Match flow, roles, timer, win | 1 | READY | |
+| S04 | Match flow, roles, timer, win | 1 | DONE (2026-11-07) | s04-match |
 | S05 | Greybox town map v1 | 1 | READY | |
 | S06 | Chickens | 1 | READY | |
 | S07 | Headless bots + test runner v2 | 1 | READY | |
