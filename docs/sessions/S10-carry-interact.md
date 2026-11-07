@@ -1,5 +1,5 @@
 # S10 — Carry, hide, interact
-Agent: **Lean Codex** · Tier: **T2** · Wave 2 · Branch: `s10-interact`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6.1 Sol, high · Claude: Opus 5.5, medium · Wave 2 · Branch: `s10-interact`
 Depends on: S03, S06 · Parallel with: S09 S11 S12
 
 Owns: `game/interact/**`

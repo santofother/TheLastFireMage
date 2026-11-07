@@ -1,5 +1,5 @@
 # S09 — Mage combat
-Agent: **Lean Claude** (server-authoritative hit detection is subtle) · Tier: **T2** (Opus 5.5 medium) · Wave 2 · Branch: `s09-mage`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6 Astra, low · Claude: Opus 5.5, medium · Wave 2 · Branch: `s09-mage`
 Depends on: S03, S04 · Parallel with: S10 S11 S12
 
 Owns: `game/mage/**`

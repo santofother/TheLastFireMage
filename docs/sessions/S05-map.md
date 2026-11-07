@@ -1,5 +1,5 @@
 # S05 — Greybox town map v1
-Agent: **Lean Claude** (spatial layout reasoning) · Tier: **T2** (Opus 5.5 medium) · Wave 1 · Branch: `s05-map`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6.1 Sol, high · Claude: Opus 5.5, medium · Wave 1 · Branch: `s05-map`
 Depends on: S02 · Parallel with: S03 S04 S06 S07 S08
 
 Owns: `game/map/**`, `tools/map/**` (generator)

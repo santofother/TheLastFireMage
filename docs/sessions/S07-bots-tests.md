@@ -1,5 +1,5 @@
 # S07 — Headless bots + test runner v2
-Agent: **Lean Codex** · Tier: **T3** · Wave 1 · Branch: `s07-bots`
+Agent: **Either** · Tier: **T3** · Codex: GPT-6.1 Sol, medium · Claude: Sonnet 5.5, medium · Wave 1 · Branch: `s07-bots`
 Depends on: S02 · Parallel with: S03 S04 S05 S06 S08
 
 Owns: `game/bots/**`, `tools/tests/**` (new files only; don't rewrite other cards' tests), `tools/run_tests.sh`

@@ -1,5 +1,5 @@
 # S03 — Villager movement v2
-Agent: **Either** · Tier: **T2** (Sonnet 5.5 high / top Codex medium) · Wave 1 · Branch: `s03-movement`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6.1 Sol, high · Claude: Opus 5.5, medium · Wave 1 · Branch: `s03-movement`
 Depends on: S02 · Parallel with: S04 S05 S06 S07 S08
 
 Owns: `game/player/**`

@@ -1,5 +1,5 @@
 # S08 — HUD shell
-Agent: **Either** (lean Codex mini) · Tier: **T3** · Wave 1 · Branch: `s08-hud`
+Agent: **Either** · Tier: **T3** · Codex: GPT-6.1 Sol, medium · Claude: Sonnet 5.5, medium · Wave 1 · Branch: `s08-hud`
 Depends on: S02 · Parallel with: S03 S04 S05 S06 S07
 
 Owns: `game/ui/hud/**`

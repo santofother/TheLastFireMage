@@ -1,5 +1,5 @@
 # S17 — Playtest triage + next plan
-Agent: **Claude only** (head engineer) · Tier: **T2** (Opus 5.5 medium) · Branch: `s17-plan`
+Agent: **Claude only** (head-engineer role, not capability) · Tier: **T2** · Claude: Opus 5.5, medium (Codex could do it equally well: GPT-6.1 Sol, high) · Branch: `s17-plan`
 Depends on: P1 notes
 
 Owns: `docs/sessions/**`, `docs/STATUS.md`, `docs/design/GDD.md`, `docs/ARCHITECTURE.md`

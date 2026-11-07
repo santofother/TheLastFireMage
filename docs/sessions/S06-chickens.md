@@ -1,5 +1,5 @@
 # S06 — Chickens
-Agent: **Lean Codex** · Tier: **T2** · Wave 1 · Branch: `s06-chickens`
+Agent: **Either** · Tier: **T2** · Codex: GPT-6.1 Sol, high · Claude: Opus 5.5, medium · Wave 1 · Branch: `s06-chickens`
 Depends on: S02 · Parallel with: S03 S04 S05 S07 S08
 
 Owns: `game/chicken/**`

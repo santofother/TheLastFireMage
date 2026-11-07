@@ -1,5 +1,5 @@
 # S13 — Mage power + decay
-Agent: **Either** · Tier: **T2** · Wave 3 · Branch: `s13-power`
+Agent: **Either** · Tier: **T3** · Codex: GPT-6.1 Sol, medium · Claude: Sonnet 5.5, medium · Wave 3 · Branch: `s13-power`
 Depends on: S06, S09 · Parallel with: S14 S15 S16
 
 Owns: `game/power/**`

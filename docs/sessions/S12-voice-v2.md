@@ -1,5 +1,5 @@
 # S12 — Voice v2: bandwidth, mage distortion, dead routing
-Agent: **Lean Claude** (owns the voice code it wrote) · Tier: **T2** (Opus 5.5 medium) · Wave 2 (can start in wave 1) · Branch: `s12-voice`
+Agent: **Either** · Tier: **T1** · Codex: GPT-6 Astra, medium · Claude: Opus 5.5, high · Wave 2 (can start in wave 1) · Branch: `s12-voice`
 Depends on: S02 (S11 for dead routing; stub it if S11 isn't merged) · Parallel with: S09 S10 S11
 
 Owns: `core/voice_manager.gd`, `core/voice/**`
