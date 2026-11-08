@@ -1,5 +1,5 @@
-Cause: roof/wall, stair/landing, plank/roof and quay surfaces overlapped coplanarly, causing motion-dependent z-fighting.
-Fix: separated surface joins; regenerated a 104×104 m, 32-house town with three roof elevations, pitched sections, mixed plaster and purple accents.
-Validation: overlap regression reproduces the old bug; map checks cover starts, hide spots, nav routes, jumps and capsule climbs at each height; full suite passes.
-Manual: explore stairs/roofs while turning the camera; judge the smaller town, silhouette variety and chase pacing against village-purple references.
-Delivery: fix-village targets main and includes the existing unpublished town/solo-explore commits; no contract changes or edits outside map ownership.
+Cause: the first regression checked only top faces; bridge/roof and mole/rail side faces still overlapped, and the playtest checkout was still on the original map.
+Fix: separate all coplanar box faces; author 24 asymmetrically placed, rotated buildings with usable 1–3 storeys and four upper entrances reached only by neighbour-roof jumps.
+Validation: old revision fails the expanded six-direction overlap check; all four suites pass, including actual mage jumps, three-height stair climbs and street/upper-floor navigation.
+Manual: restart the running game, orbit near roofs/bridges/quay, and climb each district's short approach building to jump into its tall neighbour; judge chase pacing.
+Delivery: fix-village PR targets main with the existing town prerequisites; update the PersonalProjects/LastMage checkout to this branch while preserving local session notes and concept art.

@@ -11,7 +11,7 @@ var _diagnostics := 0
 
 
 func _ready() -> void:
-	get_tree().create_timer(45).timeout.connect(func() -> void: get_tree().quit(1))
+	get_tree().create_timer(60).timeout.connect(func() -> void: get_tree().quit(1))
 	_nav_map = get_world_3d().navigation_map
 	# WHY: synchronous setup avoids querying an empty initial map iteration in headless tests.
 	NavigationServer3D.map_set_use_async_iterations(_nav_map, false)
@@ -33,7 +33,16 @@ func _run() -> void:
 	_check(get_tree().get_nodes_in_group("mage_spawn").size() == 2, "exactly two mage starts")
 	_check(_town.get_meta("footprint") == Vector2(104, 104), "compact 104 m footprint")
 	_check(get_tree().get_nodes_in_group("map_district").size() == 4, "four districts")
-	_check(get_tree().get_nodes_in_group("map_house").size() == 32, "32 houses across four compact districts")
+	_check(get_tree().get_nodes_in_group("map_house").size() == 24, "24 individually placed buildings across four districts")
+	var floors: Dictionary = {}
+	var orientations: Dictionary = {}
+	var setbacks: Dictionary = {}
+	for building: Node3D in get_tree().get_nodes_in_group("map_house"):
+		floors[int(building.get_meta("storeys"))] = true
+		orientations[roundi(building.rotation_degrees.y)] = true
+		setbacks[snappedf(building.position.z, 0.1)] = true
+	_check(floors.has(1) and floors.has(2) and floors.has(3), "one-, two- and three-storey buildings")
+	_check(orientations.size() >= 3 and setbacks.size() >= 16, "varied orientations and authored setbacks")
 	_check(get_tree().get_nodes_in_group("map_nook").size() >= 4, "dead-end hiding nooks")
 	_check(get_tree().get_nodes_in_group("map_landmark").size() >= 3, "landmark placeholders")
 	var all_nodes := _town.find_children("*", "", true, false)
@@ -53,8 +62,10 @@ func _run() -> void:
 	for group: String in ["villager_spawn", "mage_spawn", "chicken_spawn", "item_spawn"]:
 		for marker: Node3D in get_tree().get_nodes_in_group(group):
 			var p := marker.global_position
-			placements_ok = placements_ok and _clear(p + Vector3(0, 0.75, 0), 1.4)
-			placements_ok = placements_ok and not _ray(p, p - Vector3(0, 2, 0)).is_empty()
+			var clear := _clear(p + Vector3(0, 0.75, 0), 1.4) and not _ray(p, p - Vector3(0, 2, 0)).is_empty()
+			if not clear:
+				print("[Map] Blocked start ", marker.name, " at ", p)
+			placements_ok = placements_ok and clear
 			connected_ok = connected_ok and _reachable(Vector3(0, 0, 0), p)
 	_check(placements_ok, "all starts have ground and mage clearance")
 	_check(connected_ok, "all starts connect to central plaza on navmesh")
@@ -68,8 +79,9 @@ func _run() -> void:
 		var house := door.get_parent() as Node3D
 		var inside := house.global_position + Vector3(0, 1, 0)
 		doors_ok = doors_ok and _ray(inside, door.global_position + Vector3(0, 0.9, 0)).is_empty()
-		doors_ok = doors_ok and _reachable(house.global_position, door.global_position)
-	_check(doors_ok, "every one-room house has two open navigable doors")
+		if house.position.y == 0:
+			doors_ok = doors_ok and _reachable(house.global_position, door.global_position)
+	_check(doors_ok, "all storey doors are open and ground entrances are navigable")
 	var stairs_ok := true
 	for ramp: Node3D in get_tree().get_nodes_in_group("map_stair_ramp"):
 		var house := ramp.get_parent() as Node3D
@@ -78,24 +90,36 @@ func _run() -> void:
 		var start := (points[0] + points[1]) / 2
 		var end := (points[4] + points[5]) / 2
 		for step in 20:
-			var feet := house.global_position + start.lerp(end, (step + 0.5) / 20)
-			var floor_hit := _ray(feet + Vector3(0, end.y + 2, 0), feet - Vector3(0, end.y + 2, 0))
+			var feet := house.to_global(start.lerp(end, (step + 0.5) / 20))
+			var floor_hit := _ray(feet + Vector3(0, 0.25, 0), feet - Vector3(0, 0.25, 0))
 			stairs_ok = stairs_ok and not floor_hit.is_empty()
 			if not floor_hit.is_empty():
 				stairs_ok = stairs_ok and _clear(floor_hit.position + Vector3(0, 0.8, 0), 1.4)
 	_check(stairs_ok, "1.4 m mage clears every roof staircase")
-	var roofs_ok := true
-	for access: Node3D in get_tree().get_nodes_in_group("map_roof_access"):
-		roofs_ok = roofs_ok and _reachable(Vector3.ZERO, access.global_position)
-	_check(roofs_ok, "all roofs connect to streets by walkable stairs")
+	var entries: Dictionary = {}
 	var gaps_ok := true
 	for gap: Node3D in get_tree().get_nodes_in_group("map_roof_gap"):
 		var metres: float = gap.get_meta("gap_metres")
+		var takeoff: Vector3 = gap.get_meta("takeoff")
+		var landing: Vector3 = gap.get_meta("landing")
+		var target := gap.get_parent().get_node(NodePath(gap.get_meta("target"))) as Node3D
+		entries[target] = landing
 		gaps_ok = gaps_ok and metres > 0 and metres <= 3.0
-		for side in [-1, 1]:
-			var p := gap.global_position + Vector3(side * (metres / 2 + 0.2), 1, 0)
-			gaps_ok = gaps_ok and not _ray(p, p - Vector3(0, 1.2, 0)).is_empty()
-	_check(gaps_ok and not get_tree().get_nodes_in_group("map_roof_gap").is_empty(), "running jumps span at most 3 m with solid landings")
+		gaps_ok = gaps_ok and _reachable(Vector3.ZERO, takeoff)
+		gaps_ok = gaps_ok and _ray(gap.global_position, gap.global_position - Vector3(0, 1, 0)).is_empty()
+		for p: Vector3 in [takeoff, landing]:
+			gaps_ok = gaps_ok and not _ray(p + Vector3.UP, p - Vector3.UP).is_empty()
+		_check(not target.get_node("Storey0").has_node("StairRamp"), "parkour building has no stairs from its ground room")
+		_check(not _reachable_silent(Vector3.ZERO, landing), "upper entrance requires crossing the jump")
+		await _jump_gap(takeoff, landing)
+	_check(gaps_ok and entries.size() == 4, "four reachable neighbour-roof jumps with solid landings")
+	var roofs_ok := true
+	for access: Node3D in get_tree().get_nodes_in_group("map_roof_access"):
+		var room := access.get_parent() as Node3D
+		var building := room.get_parent() as Node3D
+		var start: Vector3 = entries[building] if room.get_meta("parkour_only") else Vector3.ZERO
+		roofs_ok = _reachable(start, access.global_position) and roofs_ok
+	_check(roofs_ok, "every roof reachable by stairs after its street or parkour entrance")
 	var ledges_ok := true
 	for ledge: StaticBody3D in get_tree().get_nodes_in_group("map_mantle_ledge"):
 		var shape: BoxShape3D = ledge.get_node("Collision").shape
@@ -103,8 +127,10 @@ func _run() -> void:
 	_check(ledges_ok, "mantle ledges at most 2 m")
 	_check_surfaces()
 	var heights: Dictionary = {}
-	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
-		var top: float = house.get_meta("roof_height")
+	for house: Node3D in get_tree().get_nodes_in_group("map_storey"):
+		if not house.get_meta("stairs"):
+			continue
+		var top: float = house.global_position.y + float(house.get_meta("roof_height"))
 		if not heights.has(top):
 			heights[top] = true
 			await _walk_stairs(house)
@@ -126,15 +152,17 @@ func _walk_stairs(house: Node3D) -> void:
 	shape.position.y = 0.7
 	body.add_child(shape)
 	add_child(body)
-	body.global_position = house.global_position + Vector3(-4.1, 0.4, -3.9)
+	var depth: float = house.get_meta("depth")
+	body.global_position = house.to_global(Vector3(-float(house.get_meta("width")) / 2 + 1.4, 0.4, -depth / 2 + 1.1))
+	var direction := house.global_basis * Vector3(0, 0, 3)
 	for i in 240:
 		await get_tree().physics_frame
-		body.velocity = Vector3(0, 0.0 if body.is_on_floor() else body.velocity.y - 9.8 / 60, 3)
+		body.velocity = Vector3(direction.x, 0.0 if body.is_on_floor() else body.velocity.y - 9.8 / 60, direction.z)
 		body.move_and_slide()
-		if body.global_position.z > house.global_position.z + 3.4:
+		if house.to_local(body.global_position).z > depth / 2 - 1.5:
 			break
 	print("[Map] Walk end ", body.global_position - house.global_position)
-	_check(body.global_position.y >= float(house.get_meta("roof_height")) - 0.2, "mage capsule walks staircase without jumping or snagging")
+	_check(body.global_position.y >= house.global_position.y + float(house.get_meta("roof_height")) - 0.2, "mage capsule walks staircase without jumping or snagging")
 	body.queue_free()
 
 
@@ -175,20 +203,72 @@ func _check(ok: bool, label: String) -> void:
 
 
 func _check_surfaces() -> void:
-	# Flat exposed tops must not share area: this catches wall/roof, landing/tread,
-	# quay/foundation and horizontal plank/roof z-fighting without a renderer.
+	# Test all outward face directions, including buildings rotated by quarter turns.
 	var bounds: Array[AABB] = []
 	var labels: Array[String] = []
 	var clean := true
 	for mesh: MeshInstance3D in _town.find_children("*", "MeshInstance3D", true, false):
-		if not mesh.mesh is BoxMesh or not mesh.global_basis.is_equal_approx(Basis.IDENTITY):
+		if not mesh.mesh is BoxMesh or not _axis_aligned(mesh.global_basis):
 			continue
 		var box := mesh.global_transform * mesh.get_aabb()
 		for i in bounds.size():
 			var other := bounds[i]
-			if absf(box.end.y - other.end.y) < 0.001 and minf(box.end.x, other.end.x) - maxf(box.position.x, other.position.x) > 0.001 and minf(box.end.z, other.end.z) - maxf(box.position.z, other.position.z) > 0.001:
-				print("[Map] Coplanar tops: ", mesh.get_path(), " / ", labels[i])
-				clean = false
+			for axis in 3:
+				var u := (axis + 1) % 3
+				var v := (axis + 2) % 3
+				var area_u := minf(box.end[u], other.end[u]) - maxf(box.position[u], other.position[u])
+				var area_v := minf(box.end[v], other.end[v]) - maxf(box.position[v], other.position[v])
+				if area_u <= 0.001 or area_v <= 0.001:
+					continue
+				if absf(box.end[axis] - other.end[axis]) < 0.001 or absf(box.position[axis] - other.position[axis]) < 0.001:
+					print("[Map] Coplanar faces: ", mesh.get_path(), " / ", labels[i])
+					clean = false
 		bounds.append(box)
 		labels.append(str(mesh.get_path()))
-	_check(clean, "no overlapping coplanar box tops")
+	_check(clean, "no overlapping coplanar box faces")
+
+
+func _axis_aligned(basis: Basis) -> bool:
+	for axis: Vector3 in [basis.x, basis.y, basis.z]:
+		if axis.abs()[axis.abs().max_axis_index()] < 0.9999:
+			return false
+	return true
+
+
+func _reachable_silent(from: Vector3, to: Vector3) -> bool:
+	var end := NavigationServer3D.map_get_closest_point(_nav_map, to)
+	var path := NavigationServer3D.map_get_path(_nav_map, from, end, true)
+	return not path.is_empty() and path[-1].distance_to(end) < 0.1
+
+
+func _jump_gap(start: Vector3, end: Vector3) -> void:
+	var body := CharacterBody3D.new()
+	body.collision_layer = 2
+	body.collision_mask = 1
+	body.floor_snap_length = 0.3
+	var collider := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.35
+	capsule.height = 1.4
+	collider.shape = capsule
+	collider.position.y = 0.7
+	body.add_child(collider)
+	add_child(body)
+	body.global_position = start + Vector3(0, 0.06, 0)
+	for i in 10:
+		await get_tree().physics_frame
+		body.velocity.y -= 9.8 / 60
+		body.move_and_slide()
+	var grounded := body.is_on_floor()
+	var direction := (end - start).normalized()
+	var tuning := load("res://game/player/tuning_mage.tres") as PlayerTuning
+	body.velocity.y = tuning.jump_velocity
+	for i in 100:
+		await get_tree().physics_frame
+		var travel := direction * tuning.sprint_speed if (end - body.global_position).dot(direction) > 0.1 else Vector3.ZERO
+		body.velocity = Vector3(travel.x, body.velocity.y - 9.8 / 60, travel.z)
+		body.move_and_slide()
+		if i > 10 and body.is_on_floor():
+			break
+	_check(grounded and body.is_on_floor() and body.global_position.distance_to(end) < 0.5, "mage capsule jumps into upper-storey entrance")
+	body.queue_free()
