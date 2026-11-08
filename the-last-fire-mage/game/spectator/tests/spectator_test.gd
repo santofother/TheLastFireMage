@@ -17,15 +17,21 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	_check(not mgr.is_spectating, "not spectating while alive")
 	_check(Players.local_player() == p, "player is local")
-	# Fall damage: jump off one story = 5, sprint jump = 8, scales with height, below a story = none.
-	p._report_fall(2.9, false)
-	_check(p.health.hp == 100.0, "no damage below one story")
-	p._report_fall(3.0, false)
-	_check(is_equal_approx(p.health.hp, 95.0), "one-story jump = 5")
-	p._report_fall(3.0, true)
-	_check(is_equal_approx(p.health.hp, 87.0), "one-story sprint jump = 8")
-	p._report_fall(6.0, false)
-	_check(is_equal_approx(p.health.hp, 77.0), "two stories = 10")
+	# Fall damage (x2.7): none below 3.1 m; jump 5, sprint jump 8, walk/sprint off 3 per story; linear in height.
+	p._report_fall(3.0, false, true)
+	p._report_fall(3.0, true, false)
+	_check(p.health.hp == 100.0, "no damage below 3.1 m, jumping or not")
+	p._report_fall(3.1, false, false)
+	_check(is_equal_approx(p.health.hp, 100.0 - 3.0 * 2.7), "walk-off one story = 8.1")
+	p.health.hp = 100.0
+	p._report_fall(3.1, false, true)
+	_check(is_equal_approx(p.health.hp, 100.0 - 5.0 * 2.7), "one-story jump = 13.5")
+	p.health.hp = 100.0
+	p._report_fall(3.1, true, true)
+	_check(is_equal_approx(p.health.hp, 100.0 - 8.0 * 2.7), "one-story sprint jump = 21.6")
+	p.health.hp = 100.0
+	p._report_fall(6.2, false, true)
+	_check(is_equal_approx(p.health.hp, 100.0 - 10.0 * 2.7), "two stories scale linearly")
 	p.health.kill(0, &"test")
 	await get_tree().physics_frame
 	_check(not p.is_alive, "player dead")

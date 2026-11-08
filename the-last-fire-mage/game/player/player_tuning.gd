@@ -69,8 +69,14 @@ extends Tuning
 ## TUNE: Fall distance that triggers a tumble, metres; no damage.
 @export var fall_tumble_height := 4.0
 
-## TUNE: One building story, metres. Jumping off a drop this high (or more) hurts; walking off never does.
-@export var fall_story_height := 3.0
+## TUNE: Drops shorter than this (metres) never hurt, however you leave the ledge.
+@export var fall_story_height := 3.1
+
+## TUNE: Multiplier on every fall damage value below.
+@export var fall_damage_scale := 2.7
+
+## TUNE: Damage (before scale) for walking/sprinting off (no jump) a drop of one story; less than a jump.
+@export var fall_damage_walk_off := 3.0
 
 ## TUNE: Damage for a standing/walking jump off exactly one story; scales linearly with height.
 @export var fall_damage_jump := 5.0

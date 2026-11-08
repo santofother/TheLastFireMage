@@ -378,8 +378,8 @@ func _physics_process(delta: float) -> void:
 	is_airborne = not is_on_floor()
 	_bump_players(approach)
 	if is_on_floor() and not grounded and velocity.y <= 0.0:
-		if is_alive and _jumped_in_air and not _mantled_in_air:
-			_report_fall(_fall_peak_y - global_position.y, _jump_sprinted)
+		if is_alive and not _mantled_in_air:
+			_report_fall(_fall_peak_y - global_position.y, _jump_sprinted, _jumped_in_air)
 		_jumped_in_air = false
 		if is_alive and _fall_peak_y - global_position.y >= tuning.fall_tumble_height:
 			_tumble_left = tuning.tumble_duration
@@ -391,29 +391,32 @@ func _physics_process(delta: float) -> void:
 		_reset_movement()
 
 
-## FIX(S11, Claude): fall damage only for JUMPS off a roof (>= one story); walking off hurts nothing.
+## FIX(S11, Claude): no fall damage below `fall_story_height` (3.1 m) however you leave the ledge.
+## Above it, walking/sprinting off (no jump) does reduced damage; jumps hurt more.
 ## NET: owner peer reports, server validates and applies. Damage scales linearly with stories fallen.
-func _report_fall(fall_height: float, sprinted: bool) -> void:
+func _report_fall(fall_height: float, sprinted: bool, jumped: bool = true) -> void:
 	if fall_height < tuning.fall_story_height:
 		return
 	if Net.is_server(self):
-		_apply_fall_damage(fall_height, sprinted)
+		_apply_fall_damage(fall_height, sprinted, jumped)
 	else:
-		_rpc_fall.rpc_id(1, fall_height, sprinted)
+		_rpc_fall.rpc_id(1, fall_height, sprinted, jumped)
 
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_fall(fall_height: float, sprinted: bool) -> void:
+func _rpc_fall(fall_height: float, sprinted: bool, jumped: bool) -> void:
 	if not Net.is_server(self) or Net.sender_id(self) != get_multiplayer_authority():
 		return
-	_apply_fall_damage(fall_height, sprinted)
+	_apply_fall_damage(fall_height, sprinted, jumped)
 
 
-func _apply_fall_damage(fall_height: float, sprinted: bool) -> void:
+func _apply_fall_damage(fall_height: float, sprinted: bool, jumped: bool) -> void:
 	if not is_alive or fall_height < tuning.fall_story_height:
 		return
-	var base := tuning.fall_damage_sprint_jump if sprinted else tuning.fall_damage_jump
-	health.apply_damage(base * minf(fall_height, 60.0) / tuning.fall_story_height, 0, &"fall")
+	var base := tuning.fall_damage_walk_off
+	if jumped:
+		base = tuning.fall_damage_sprint_jump if sprinted else tuning.fall_damage_jump
+	health.apply_damage(base * tuning.fall_damage_scale * minf(fall_height, 60.0) / tuning.fall_story_height, 0, &"fall")
 
 
 # FIX(S02, Codex): the shipped stub ignored Space in the air; probe a ledge on a fresh press.
