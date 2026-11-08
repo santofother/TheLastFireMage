@@ -8,6 +8,7 @@ const EMBER := Color("ffb766")
 var _root: Control
 var _labels: Dictionary = {}
 var _blind: ColorRect
+var _health_meter: ProgressBar
 var _meter: ProgressBar
 var _marks: Control
 var _threshold: ColorRect
@@ -75,6 +76,16 @@ func _build() -> void:
 	_label("Warning", Rect2(.25, .15, .5, .1), 24, HORIZONTAL_ALIGNMENT_CENTER)
 	_label("Feed", Rect2(.71, .05, .26, .23), 18, HORIZONTAL_ALIGNMENT_RIGHT)
 	_label("Speaking", Rect2(.035, .25, .25, .24), 18)
+	_label("Health", Rect2(.035, .63, .25, .05), 20)
+	_health_meter = ProgressBar.new()
+	_health_meter.name = "HealthMeter"
+	_health_meter.show_percentage = false
+	_health_meter.anchor_left = .035
+	_health_meter.anchor_right = .285
+	_health_meter.anchor_top = .69
+	_health_meter.anchor_bottom = .715
+	_health_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_health_meter)
 	_label("Power", Rect2(.035, .76, .42, .055), 20)
 	_meter = ProgressBar.new()
 	_meter.name = "PowerMeter"
@@ -149,7 +160,10 @@ func _process(delta: float) -> void:
 	_labels.Results.visible = not _result.is_empty() and not _labels.Scoreboard.visible
 
 func _local_id() -> int:
-	return int(_local.get("peer_id")) if is_instance_valid(_local) else multiplayer.get_unique_id()
+	if is_instance_valid(_local):
+		return int(_local.get("peer_id"))
+	# WHY: a session-end power reset can arrive after the local player and peer are removed.
+	return multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 0
 
 func _name_for(id: int) -> String:
 	return str(NetworkManager.player_names.get(id, "Player %d" % id)) if id != 0 else "Firestorm / environment"
@@ -264,6 +278,13 @@ func _refresh() -> void:
 	_labels.Reveal.text = _labels.Role.text if _phase == Enums.Phase.ROLE_REVEAL else ""
 	_blind.visible = _role == Enums.Role.MAGE and _phase in [Enums.Phase.ROLE_REVEAL, Enums.Phase.HEAD_START]
 	_labels.Blind.text = "YOU ARE BLINDED\nVillagers are hiding. Hunt begins in %d s" % seconds if _blind.visible else ""
+	var health := _local.get_node_or_null("Health") as Health if is_instance_valid(_local) else null
+	_health_meter.visible = health != null
+	_labels.Health.visible = health != null
+	if health:
+		_health_meter.max_value = maxf(1.0, health.max_hp)
+		_health_meter.value = health.hp
+		_labels.Health.text = "HEALTH %.0f / %.0f" % [health.hp, health.max_hp]
 	var mage := _role == Enums.Role.MAGE
 	_labels.Power.visible = mage
 	_meter.visible = mage

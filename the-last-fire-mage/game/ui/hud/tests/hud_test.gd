@@ -60,9 +60,22 @@ func _ready() -> void:
 	var fake_player := FakePlayer.new()
 	fake_player.mage = FakeMage.new()
 	fake_player.add_child(fake_player.mage)
+	var health := Health.new()
+	health.name = "Health"
+	fake_player.add_child(health)
 	add_child(fake_player)
 	GameEvents.local_player_ready.emit(fake_player)
 	_check(_label("Cooldowns").text.contains("Fire Wave · 4.5s"), "live cooldown API")
+	_check(_label("Health").text == "HEALTH 100 / 100", "initial health")
+	health.apply_damage(35, 2, &"test")
+	_hud.call("_refresh")
+	_check(_hud.get("_health_meter").value == 65, "damage updates health bar")
+	health.kill(2, &"test")
+	_hud.call("_refresh")
+	_check(_hud.get("_health_meter").value == 0, "death empties health bar")
+	health.revive()
+	_hud.call("_refresh")
+	_check(_hud.get("_health_meter").value == 100, "revive restores health bar")
 	VoiceManager.local_speaking = true
 	VoiceManager.set("_speakers", {2: {"last": Time.get_ticks_msec() / 1000.0}})
 	_hud.call("_refresh")
@@ -95,6 +108,10 @@ func _ready() -> void:
 	_check(not _hud.get("_root").visible, "lobby hides HUD")
 	_check(_hud.get("_feed").is_empty(), "reset kill feed")
 	fake_player.free()
+	multiplayer.multiplayer_peer = null
+	GameEvents.power_changed.emit(0, 0.0, 0, 1.0)
+	_check(_hud.call("_local_id") == 0, "session end without a multiplayer peer")
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	_demo()
 	# Check the mic strip and round HUD together, including the smaller playtest window.
 	for dimensions in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(2560, 1440)]:
@@ -116,6 +133,13 @@ func _ready() -> void:
 		get_tree().quit(1 if _failed else 0)
 
 func _demo() -> void:
+	var player := FakePlayer.new()
+	var health := Health.new()
+	health.name = "Health"
+	health.hp = 65.0
+	player.add_child(health)
+	add_child(player)
+	GameEvents.local_player_ready.emit(player)
 	GameEvents.role_assigned.emit(1, Enums.Role.MAGE)
 	GameEvents.role_assigned.emit(2, Enums.Role.VILLAGER)
 	GameEvents.role_assigned.emit(3, Enums.Role.VILLAGER)

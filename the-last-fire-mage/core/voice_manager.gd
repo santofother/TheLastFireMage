@@ -13,14 +13,14 @@ const RAW_RATE := 16000
 const STEAM_RATE := 24000
 const RAW_CHUNK := 320 ## samples per packet (20 ms at 16 kHz, 640 bytes: fits one Steam/ENet datagram)
 # FIX(S08, Codex): raw mic PCM had no gain, making loopback and remote speech faint.
-const MIC_GAIN := 4.0 # TUNE: +12 dB capture gain; clamp before PCM quantization.
+const MIC_GAIN := 12.0 # TUNE: +21.6 dB capture gain; clamp before PCM quantization.
 const OPEN_MIC_GATE := 0.04 ## peak level that opens the open-mic gate
 const GATE_HOLD := 0.35 ## seconds the gate stays open after speech
 const SPEAKING_TIMEOUT := 0.3
 
-## Tunable falloff: full volume inside full_volume_distance, silent at silent_distance (linear between).
-var full_volume_distance := 3.0
-var silent_distance := 25.0
+## Tunable falloff: full volume inside full_volume_distance, silent at silent_distance (gentle quadratic fade between).
+var full_volume_distance := 8.0
+var silent_distance := 45.0
 var push_to_talk := true
 var ptt_key: Key = KEY_V
 var enable_raw_voice := true
@@ -101,7 +101,8 @@ func voice_mode_name() -> String:
 
 func register_speaker(peer_id: int, player: AudioStreamPlayer3D, node: Node3D) -> void:
 	player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
-	player.max_distance = silent_distance
+	# WHY: max_distance adds its own linear attenuation even with attenuation disabled.
+	player.max_distance = 0.0
 	player.volume_db = -80.0
 	_speakers[peer_id] = {"player": player, "node": node, "rate": 0, "last": -10.0}
 
@@ -279,7 +280,8 @@ func _update_speakers(now: float) -> void:
 		if not is_instance_valid(node) or not node.is_inside_tree():
 			continue
 		var d := node.global_position.distance_to(from)
-		var vol := clampf(1.0 - (d - full_volume_distance) / (silent_distance - full_volume_distance), 0.0, 1.0)
+		var fade := clampf((d - full_volume_distance) / maxf(0.001, silent_distance - full_volume_distance), 0.0, 1.0)
+		var vol := 1.0 - fade * fade
 		sp["player"].volume_db = linear_to_db(maxf(vol, 0.0001))
 		if node.has_method("set_speaking"):
 			node.set_speaking(now - float(sp["last"]) < SPEAKING_TIMEOUT)
