@@ -295,9 +295,11 @@ func _refresh() -> void:
 	_layout_meter()
 	var cooldowns := PackedStringArray()
 	var abilities: Node = _local.call("get_ability", &"MageAbilities") if is_instance_valid(_local) and _local.has_method("get_ability") else null
+	# S13: each ability shows its keybind (read from the InputMap so rebinding stays correct).
+	var binds := {&"knife": &"primary", &"ignite": &"ability_1", &"fire_wave": &"ability_2"}
 	for ability in [&"knife", &"ignite", &"fire_wave"]:
 		var left := float(abilities.call("cooldown_left", ability)) if abilities else 0.0
-		cooldowns.append("%s · %s" % [String(ability).capitalize(), "READY" if left <= 0 else "%.1fs" % left])
+		cooldowns.append("[%s] %s · %s" % [_key_names(binds[ability]), String(ability).replace("_", " ").capitalize(), "READY" if left <= 0 else "%.1fs" % left])
 	_labels.Cooldowns.text = "     ".join(cooldowns)
 	_labels.Warning.text = "FIRESTORM %d IN %d s" % [_warning_stage, ceili(_warning_left)] if _warning_left > 0 else ("FIRESTORM · STAGE %d" % _warning_stage if _required > 0 else "")
 	var feed := PackedStringArray()
@@ -316,6 +318,17 @@ func _refresh() -> void:
 	_labels.Scoreboard.text = "SCOREBOARD\n\n" + _summary()
 	_labels.Results.visible = not _result.is_empty()
 	_labels.Results.text = _result + "\n\n" + _summary()
+
+## Short display names of the inputs bound to an action, e.g. "RMB/Q".
+func _key_names(action: StringName) -> String:
+	var names := PackedStringArray()
+	for event in InputMap.action_get_events(action):
+		if event is InputEventMouseButton:
+			names.append({1: "LMB", 2: "RMB", 3: "MMB"}.get(event.button_index, "Mouse%d" % event.button_index))
+		elif event is InputEventKey:
+			var code: Key = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
+			names.append(OS.get_keycode_string(code))
+	return "/".join(names)
 
 func _layout_meter() -> void:
 	if not is_instance_valid(_meter):
