@@ -15,19 +15,19 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 |---|---|---|---|---|
 | S01 | Foundation: merge spike, GDD, test runner | 0 | DONE | merged to main (push pending user OK) |
 | S02 | Architecture + contracts + stubs | 0 | DONE | merged to main |
-| S03 | Villager movement v2 | 1 | READY | |
+| S03 | Villager movement v2 | 1 | DONE (2026-11-07) | s03-movement |
 | S04 | Match flow, roles, timer, win | 1 | DONE (2026-11-07) | s04-match |
 | S05 | Greybox town map v1 | 1 | READY | |
 | S06 | Chickens | 1 | READY | |
 | S07 | Headless bots + test runner v2 | 1 | READY | |
 | S08 | HUD shell | 1 | READY | |
-| S09 | Mage combat | 2 | TODO | |
+| S09 | Mage combat | 2 | READY | |
 | S10 | Carry, hide, interact | 2 | TODO | |
 | S11 | Death + basic spectator | 2 | TODO | |
 | S12 | Voice v2 (bandwidth, mage distortion, dead routing) | 2 | READY | can start in wave 1 (stub dead routing) |
 | S13 | Mage power + decay | 3 | TODO | |
 | S14 | Firestorm | 3 | TODO | |
-| S15 | Villager stuns / counterplay | 3 | TODO | |
+| S15 | Villager stuns / counterplay | 3 | READY | |
 | S16 | Scoring + Mage rotation | 3 | TODO | |
 | P1 | Playtest 1 (user + friends) | — | TODO | after wave 3 |
 | S17 | Playtest triage + next plan | — | TODO | after P1 |
@@ -37,3 +37,4 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 |---|---|---|---|
 | 2026-11-07 | S01 | Claude | spike + docs fast-forwarded into main; GDD, run_tests.sh added |
 | 2026-11-07 | S02 | Claude | fast-forward; ARCHITECTURE.md, common/, stubs, InputMap; contract_test added |
+| 2026-11-07 | S03 | Codex | merged s03-movement; all six test suites passed; no contract changes requested |
