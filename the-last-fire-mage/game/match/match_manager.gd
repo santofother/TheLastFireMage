@@ -47,6 +47,7 @@ func _ready() -> void:
 	NetworkManager.hosting_started.connect(_on_session_started)
 	NetworkManager.connected.connect(_on_session_started)
 	_start.pressed.connect(func() -> void: start_round(mage_id))
+	$UI/Lobby/Content/Explore.pressed.connect(_on_explore_town)
 	_pick.item_selected.connect(_on_mage_picked)
 
 
@@ -345,14 +346,21 @@ func _update_blind() -> void:
 	_blind_text.text = "You are the Mage\nVillagers are hiding… %d" % ceili(time_left)
 
 
+func _on_explore_town() -> void:
+	# FIX(S05, Codex): solo map playtests need captured input before a multiplayer round starts.
+	if NetworkManager.is_in_session() and phase == Enums.Phase.LOBBY:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
 func _update_ui() -> void:
 	_update_blind()
 	var was_visible := _lobby.visible
 	_lobby.visible = NetworkManager.is_in_session() and phase == Enums.Phase.LOBBY
 	if DisplayServer.get_name() != "headless":
-		if _lobby.visible:
+		# FIX(S05, Codex): release the cursor on entry, not every frame while exploring.
+		if _lobby.visible and not was_visible:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		elif was_visible and NetworkManager.is_in_session():
+		elif was_visible and not _lobby.visible and NetworkManager.is_in_session():
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	var roster := Players.all()
 	var key := ""

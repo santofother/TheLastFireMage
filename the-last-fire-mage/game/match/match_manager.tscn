@@ -48,6 +48,16 @@ layout_mode = 2
 layout_mode = 2
 text = "Start round"
 
+[node name="Explore" type="Button" parent="UI/Lobby/Content"]
+layout_mode = 2
+text = "Explore town"
+tooltip_text = "Walk around while waiting for players. Esc opens the menu and releases the cursor."
+
+[node name="ExploreHelp" type="Label" parent="UI/Lobby/Content"]
+layout_mode = 2
+text = "WASD move · Space jump · Shift sprint
+Esc: menu / release cursor"
+
 [node name="Blind" type="ColorRect" parent="UI"]
 visible = false
 anchors_preset = 15
