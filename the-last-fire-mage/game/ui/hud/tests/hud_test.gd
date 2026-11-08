@@ -96,10 +96,15 @@ func _ready() -> void:
 	_check(_hud.get("_feed").is_empty(), "reset kill feed")
 	fake_player.free()
 	_demo()
-	# Test the same anchored layout at both requested display sizes.
-	for dimensions in [Vector2i(1920, 1080), Vector2i(2560, 1440)]:
+	# Check the mic strip and round HUD together, including the smaller playtest window.
+	for dimensions in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(2560, 1440)]:
 		get_window().size = dimensions
 		await get_tree().process_frame
+		var mic: ProgressBar = DebugOverlay.get("_mic_bar")
+		_check(DebugOverlay.get("_hud").get_child_count() == 1, "legacy keybind hint removed")
+		_check(mic.get_global_rect().position.x == 12, "mic remains bottom left")
+		for key in ["Cooldowns", "Carry", "Power"]:
+			_check(_label(key).get_global_rect().end.y + 8 <= mic.get_global_rect().position.y, key + " clears mic strip")
 		_check(_label("Power").get_global_rect().end.x < _hud.get("_root").size.x, "power fits viewport")
 		_check(_label("Cooldowns").get_global_rect().end.y <= _hud.get("_root").size.y, "cooldowns fit viewport")
 	get_window().size = Vector2i(1280, 720)

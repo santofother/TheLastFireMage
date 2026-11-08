@@ -5,7 +5,6 @@ var _panel: PanelContainer
 var _label: Label
 var _hud: VBoxContainer
 var _mic_bar: ProgressBar
-var _hint: Label
 
 
 func _ready() -> void:
@@ -20,12 +19,11 @@ func _ready() -> void:
 	_hud = VBoxContainer.new()
 	_hud.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_hud.offset_left = 12
-	_hud.offset_top = -64
+	_hud.offset_top = -26
 	_hud.offset_right = 240
 	_hud.offset_bottom = -12
 	add_child(_hud)
-	_hint = Label.new()
-	_hud.add_child(_hint)
+	# FIX(S08, Codex): the round HUD owns keybind hints; reserve this strip for the mic.
 	_mic_bar = ProgressBar.new()
 	_mic_bar.custom_minimum_size = Vector2(220, 14)
 	_mic_bar.show_percentage = false
@@ -40,8 +38,6 @@ func _input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	_hud.visible = NetworkManager.is_in_session()
 	_mic_bar.value = VoiceManager.mic_level * 100.0
-	var ptt := "Hold V to talk" if VoiceManager.push_to_talk else "Open mic"
-	_hint.text = ("● TALKING  " if VoiceManager.local_speaking else "") + ptt + "   (Esc: menu, F3: debug, F4: hear yourself)"
 	if not _panel.visible:
 		return
 	var mp := multiplayer

@@ -12,6 +12,8 @@ enum Codec { RAW_PCM16 = 0, STEAM = 1 }
 const RAW_RATE := 16000
 const STEAM_RATE := 24000
 const RAW_CHUNK := 320 ## samples per packet (20 ms at 16 kHz, 640 bytes: fits one Steam/ENet datagram)
+# FIX(S08, Codex): raw mic PCM had no gain, making loopback and remote speech faint.
+const MIC_GAIN := 4.0 # TUNE: +12 dB capture gain; clamp before PCM quantization.
 const OPEN_MIC_GATE := 0.04 ## peak level that opens the open-mic gate
 const GATE_HOLD := 0.35 ## seconds the gate stays open after speech
 const SPEAKING_TIMEOUT := 0.3
@@ -203,7 +205,7 @@ func _encode_pcm16(samples: PackedFloat32Array) -> PackedByteArray:
 	var b := PackedByteArray()
 	b.resize(samples.size() * 2)
 	for i in samples.size():
-		b.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32767.0))
+		b.encode_s16(i * 2, int(clampf(samples[i] * MIC_GAIN, -1.0, 1.0) * 32767.0))
 	return b
 
 

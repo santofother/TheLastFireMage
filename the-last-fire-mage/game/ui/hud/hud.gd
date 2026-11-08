@@ -95,7 +95,7 @@ func _build() -> void:
 	_threshold.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_marks.add_child(_threshold)
 	_label("Carry", Rect2(.035, .82, .4, .08), 24)
-	_label("Cooldowns", Rect2(.035, .9, .65, .06), 18)
+	_label("Cooldowns", Rect2(.035, .87, .65, .045), 18)
 	_label("Prompt", Rect2(.3, .68, .4, .07), 24, HORIZONTAL_ALIGNMENT_CENTER)
 	_label("Hint", Rect2(.7, .91, .27, .05), 16, HORIZONTAL_ALIGNMENT_RIGHT)
 	_labels.Hint.text = "Hold Tab · scoreboard     V · speak"
