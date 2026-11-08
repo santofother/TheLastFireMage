@@ -22,7 +22,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S07 | Headless bots + test runner v2 | 1 | DONE (2026-11-07) | s07-bots |
 | S08 | HUD shell | 1 | DONE (2026-11-07) | s08-hud; fix-hud-voice (playtest HUD/voice fix) |
 | S09 | Mage combat | 2 | DONE (2026-11-07) | s09-mage |
-| S10 | Carry, hide, interact | 2 | READY | |
+| S10 | Carry, hide, interact | 2 | DONE (2026-11-08) | s10-interact |
 | S11 | Death + basic spectator | 2 | READY | |
 | S12 | Voice v2 (bandwidth, mage distortion, dead routing) | 2 | READY | can start in wave 1 (stub dead routing) |
 | S13 | Mage power + decay | 3 | DONE (2026-11-08) | codex/fix-voice-health-power; kill rewards, tiers, decay + sync |
