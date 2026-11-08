@@ -39,3 +39,4 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | 2026-11-07 | S02 | Claude | fast-forward; ARCHITECTURE.md, common/, stubs, InputMap; contract_test added |
 | 2026-11-07 | S03 | Codex | merged s03-movement; all six test suites passed; no contract changes requested |
 | 2026-11-07 | S07 | Codex | merged s07-bots; all 10 test suites passed; no conflicts or contract changes requested |
+| 2026-11-07 | S07 | Codex | verified hosting-menu bot selector follow-up on main; all 11 test suites passed; no contract changes requested |
