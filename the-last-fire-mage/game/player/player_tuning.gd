@@ -76,7 +76,7 @@ extends Tuning
 @export var fall_damage_scale := 2.7
 
 ## TUNE: Damage (before scale) for walking/sprinting off (no jump) a drop of one story; less than a jump.
-@export var fall_damage_walk_off := 3.0
+@export var fall_damage_walk_off := 4.0
 
 ## TUNE: Damage for a standing/walking jump off exactly one story; scales linearly with height.
 @export var fall_damage_jump := 5.0

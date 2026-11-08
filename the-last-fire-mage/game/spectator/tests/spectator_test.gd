@@ -17,12 +17,12 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	_check(not mgr.is_spectating, "not spectating while alive")
 	_check(Players.local_player() == p, "player is local")
-	# Fall damage (x2.7): none below 3.1 m; jump 5, sprint jump 8, walk/sprint off 3 per story; linear in height.
+	# Fall damage (x2.7): none below 3.1 m; jump 5, sprint jump 8, walk/sprint off 4 per story; linear in height.
 	p._report_fall(3.0, false, true)
 	p._report_fall(3.0, true, false)
 	_check(p.health.hp == 100.0, "no damage below 3.1 m, jumping or not")
 	p._report_fall(3.1, false, false)
-	_check(is_equal_approx(p.health.hp, 100.0 - 3.0 * 2.7), "walk-off one story = 8.1")
+	_check(is_equal_approx(p.health.hp, 100.0 - 4.0 * 2.7), "walk-off one story = 10.8")
 	p.health.hp = 100.0
 	p._report_fall(3.1, false, true)
 	_check(is_equal_approx(p.health.hp, 100.0 - 5.0 * 2.7), "one-story jump = 13.5")

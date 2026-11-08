@@ -206,7 +206,7 @@ func _run() -> void:
 		if _player.is_tumbling:
 			saw_tumble = true
 			break
-	_check(saw_tumble and not _player.can_control() and _player.health.hp < 100.0 and _player.health.hp > 80.0,
+	_check(saw_tumble and not _player.can_control() and _player.health.hp < 100.0 and _player.health.hp > 70.0,
 		"big walk-off fall tumbles and takes reduced damage")
 	await _ticks(45)
 	_check(_player.can_control() and not _player.is_tumbling, "recovers from landing tumble")

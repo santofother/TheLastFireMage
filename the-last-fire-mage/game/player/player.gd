@@ -412,10 +412,13 @@ func _physics_process(delta: float) -> void:
 	is_airborne = not is_on_floor()
 	_bump_players(approach)
 	if is_on_floor() and not grounded and velocity.y <= 0.0:
-		if is_alive and not _mantled_in_air:
-			_report_fall(_fall_peak_y - global_position.y, _jump_sprinted, _jumped_in_air)
+		var drop := _fall_peak_y - global_position.y
+		var sprawls := drop >= tuning.fall_tumble_height
+		# CONTRACT: whenever the sprawl plays the player takes fall damage, even after a mid-air mantle.
+		if is_alive and (sprawls or not _mantled_in_air):
+			_report_fall(maxf(drop, tuning.fall_story_height) if sprawls else drop, _jump_sprinted, _jumped_in_air)
 		_jumped_in_air = false
-		if is_alive and _fall_peak_y - global_position.y >= tuning.fall_tumble_height:
+		if is_alive and sprawls:
 			_tumble_left = tuning.tumble_duration
 			is_tumbling = true
 			_jump_buffer_left = 0.0
