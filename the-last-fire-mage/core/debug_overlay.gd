@@ -50,6 +50,7 @@ func _process(_delta: float) -> void:
 		"Ping: %s" % ("host" if in_s and mp.is_server() else ("%d ms" % NetworkManager.ping_ms if NetworkManager.ping_ms >= 0 else "-")),
 		"Voice: %s   PTT: %s   loopback(F4): %s" % [VoiceManager.voice_mode_name(), VoiceManager.push_to_talk, VoiceManager.loopback],
 		"Voice packets sent: %d   received: %d" % [VoiceManager.packets_sent, VoiceManager.packets_received],
+		VoiceManager.status_line(), # FIX(S12, Claude): kbit/s line requested by the S12 card
 		"Mic level: %d%%   talking: %s   device: %s" % [int(VoiceManager.mic_level * 100), VoiceManager.local_speaking, AudioServer.input_device],
 		"Falloff: full <= %.0f m, silent >= %.0f m" % [VoiceManager.full_volume_distance, VoiceManager.silent_distance],
 		"FPS: %d" % Engine.get_frames_per_second(),

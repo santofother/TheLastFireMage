@@ -24,7 +24,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S09 | Mage combat | 2 | DONE (2026-11-07) | s09-mage |
 | S10 | Carry, hide, interact | 2 | DONE (2026-11-08) | s10-interact |
 | S11 | Death + basic spectator | 2 | DONE (2026-11-08) | s11-death |
-| S12 | Voice v2 (bandwidth, mage distortion, dead routing) | 2 | READY | can start in wave 1 (stub dead routing) |
+| S12 | Voice v2 (bandwidth, mage distortion, dead routing) | 2 | DONE (2026-11-08) | s12-voice |
 | S13 | Mage power + decay | 3 | DONE (2026-11-08) | codex/fix-voice-health-power; kill rewards, tiers, decay + sync |
 | S14 | Firestorm | 3 | READY | S13 power threshold now implemented |
 | S15 | Villager stuns / counterplay | 3 | READY | |

@@ -99,8 +99,13 @@ func _on_session_end(_reason: String) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _rpc_state(mage_id: int, power: float, tier: int) -> void:
+	if mage_id != _mage_id:
+		VoiceManager.clear_speaker_effects() # FIX(S12, Claude): previous mage's voice goes back to normal
 	_mage_id = mage_id
 	_power = power
 	_tier = tier
 	GameEvents.power_changed.emit(_mage_id, _power, _tier, multiplier())
-	# TODO(S12): apply mage voice effects once VoiceManager provides that API.
+	if _mage_id != 0:
+		# FIX(S12, Claude): mage voice distortion grows with power (0.35 at start -> 1.0 at the top threshold).
+		var top := maxf(0.001, tuning.tier_thresholds[tuning.tier_thresholds.size() - 1])
+		VoiceManager.set_speaker_effect(_mage_id, &"mage", lerpf(0.35, 1.0, clampf(_power / top, 0.0, 1.0)))

@@ -43,6 +43,9 @@ for f in host c2; do
 	echo "$v" | awk -v f="$f" '{split($4,r,"="); split($5,p,"="); if (r[2]>0 && p[2]>0) print "  ok   " f " voice: " $0; else { print "  FAIL " f " voice: " $0; exit 1 } }' || fail=1
 done
 grep "^\[TEST\] VOICE" "$OUT/c1.log" | sed 's/^/  info c1 /'
+# S12: with the ADPCM codec on, the sender must use <= 50% of raw PCM's 256 kbit/s.
+kb=$(grep -o "tx=[0-9.]*" "$OUT/c1.log" | head -1 | cut -d= -f2)
+awk -v k="$kb" 'BEGIN{exit !(k+0 > 0 && k+0 <= 128)}' && echo "  ok   c1 voice bandwidth ${kb} kbit/s (raw 256)" || { echo "  FAIL c1 voice bandwidth: '${kb}' kbit/s"; fail=1; }
 
 if [ $fail -eq 0 ]; then echo "NET TEST PASSED"; else echo "NET TEST FAILED (see $OUT)"; fi
 exit $fail

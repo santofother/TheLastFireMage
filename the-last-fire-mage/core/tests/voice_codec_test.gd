@@ -1,0 +1,125 @@
+## S12 voice v2 checks: ADPCM codec, bandwidth, group rules, effect buses, jitter buffer.
+## Owner: S12. NET: standalone local test (no network).
+extends Node
+
+func _fail(msg: String) -> void:
+	print("[TEST] FAIL voice_codec: %s" % msg)
+	get_tree().quit(1)
+
+
+func _ready() -> void:
+	var Adpcm = VoiceManager.VoiceAdpcm
+	# --- codec round trip on a speech-like signal (two tones + envelope), 20 ms packets
+	var chunk := PackedFloat32Array()
+	chunk.resize(VoiceManager.RAW_CHUNK)
+	var err := 0.0
+	var sig := 0.0
+	var raw_bytes := 0
+	var packed_bytes := 0
+	var phase := 0.0
+	for p in 50: # one second
+		for i in chunk.size():
+			phase += 1.0
+			var env := 0.5 + 0.5 * sin(phase * 0.0004)
+			chunk[i] = (sin(phase * 0.11) * 0.5 + sin(phase * 0.37) * 0.25) * env
+		var packet: PackedByteArray = Adpcm.encode(chunk)
+		var back: PackedFloat32Array = Adpcm.decode(packet)
+		if back.size() != chunk.size():
+			return _fail("decoded %d samples, expected %d" % [back.size(), chunk.size()])
+		for i in chunk.size():
+			err += pow(back[i] - chunk[i], 2.0)
+			sig += pow(chunk[i], 2.0)
+		raw_bytes += chunk.size() * 2
+		packed_bytes += packet.size()
+	var snr := 10.0 * log(sig / maxf(err, 1e-12)) / log(10.0)
+	var drop := 1.0 - float(packed_bytes) / raw_bytes
+	print("[TEST] VOICE CODEC snr=%.1f dB bytes=%d/%d drop=%.0f%% (%.1f kbit/s)" % [snr, packed_bytes, raw_bytes, drop * 100.0, packed_bytes * 8.0 / 1000.0])
+	if snr < 20.0:
+		return _fail("snr too low")
+	if drop < 0.5:
+		return _fail("bandwidth drop < 50%")
+	# --- odd/short packets keep their exact length; garbage doesn't crash
+	for n in [1, 2, 3, 7, 160, 319]:
+		var short := PackedFloat32Array()
+		short.resize(n)
+		if Adpcm.decode(Adpcm.encode(short)).size() != n:
+			return _fail("length mismatch for %d samples" % n)
+	if not Adpcm.decode(PackedByteArray([1])).is_empty():
+		return _fail("malformed packet should decode to nothing")
+	# --- capture gain still applied before 4-bit quantisation (do not revert the volume fix)
+	if not is_equal_approx(VoiceManager.MIC_GAIN, 12.0) or VoiceManager.full_volume_distance != 8.0 or VoiceManager.silent_distance != 45.0:
+		return _fail("voice loudness tuning changed")
+	# --- group rules
+	VoiceManager.set_voice_group(7, &"dead")
+	if VoiceManager.get_voice_group(7) != &"dead" or VoiceManager.get_voice_group(8) != &"alive":
+		return _fail("group storage")
+	if VoiceManager.rule_scale(&"dead", &"dead") != VoiceManager.RULE_GLOBAL or VoiceManager.rule_scale(&"alive", &"alive") != 1.0:
+		return _fail("default rules")
+	var listener := Node3D.new()
+	var speaker := Node3D.new()
+	var player := AudioStreamPlayer3D.new()
+	add_child(listener)
+	add_child(speaker)
+	speaker.add_child(player)
+	speaker.position.x = 100.0 # far beyond silent_distance
+	VoiceManager.listener = listener
+	VoiceManager.register_speaker(7, player, speaker)
+	VoiceManager._update_speakers(0.0)
+	VoiceManager.set_voice_group(1, &"alive")
+	if player.volume_db > -79.0:
+		return _fail("alive listener should not hear a distant dead speaker")
+	VoiceManager.set_voice_group(1, &"dead")
+	VoiceManager._update_speakers(0.0)
+	if not is_equal_approx(player.volume_db, 0.0):
+		return _fail("dead listener should hear dead speakers everywhere (db=%f)" % player.volume_db)
+	VoiceManager.set_voice_rule(&"dead", &"dead", 0.0)
+	VoiceManager._update_speakers(0.0)
+	if player.volume_db > -79.0:
+		return _fail("rule scale 0 should mute")
+	VoiceManager.set_voice_rule(&"dead", &"dead", VoiceManager.RULE_GLOBAL)
+	VoiceManager.set_voice_group(1, &"alive")
+	# --- effect buses
+	VoiceManager.set_speaker_effect(7, &"mage", 1.0)
+	var bus := AudioServer.get_bus_index(&"Voice_7")
+	if bus < 0 or player.bus != &"Voice_7":
+		return _fail("effect bus missing")
+	var on := 0
+	for e in AudioServer.get_bus_effect_count(bus):
+		on += 1 if AudioServer.is_bus_effect_enabled(bus, e) else 0
+	if on != 3:
+		return _fail("mage preset should enable pitch, distortion and reverb (got %d)" % on)
+	VoiceManager.set_speaker_effect(7, &"mage", 0.0)
+	for e in AudioServer.get_bus_effect_count(bus):
+		if AudioServer.is_bus_effect_enabled(bus, e):
+			return _fail("strength 0 should bypass effects")
+	VoiceManager.set_speaker_effect(7, &"mage", 0.5)
+	VoiceManager.unregister_speaker(7)
+	if AudioServer.get_bus_index(&"Voice_7") >= 0:
+		return _fail("effect bus not freed")
+	VoiceManager.clear_speaker_effects()
+	# --- jitter buffer: playback waits for the pre-buffer, then drains in order
+	var jp := AudioStreamPlayer.new()
+	add_child(jp)
+	var sp: Dictionary = VoiceManager._new_speaker(jp, null)
+	var tiny := PackedVector2Array()
+	tiny.resize(320)
+	tiny.fill(Vector2(0.1, 0.1))
+	VoiceManager._enqueue(sp, tiny, 16000)
+	await get_tree().process_frame
+	VoiceManager._pump_one(sp)
+	if not sp["buffering"] or sp["queued"] != 320:
+		return _fail("jitter buffer should hold the first chunk until pre-buffer is filled")
+	for i in 3:
+		VoiceManager._enqueue(sp, tiny, 16000)
+	VoiceManager._pump_one(sp)
+	var pb := jp.get_stream_playback() as AudioStreamGeneratorPlayback
+	if sp["buffering"] or sp["queued"] != 0 or pb == null:
+		return _fail("jitter buffer should have started playback (buffering=%s queued=%d)" % [sp["buffering"], sp["queued"]])
+	for i in 40: # a long burst is bounded to JITTER_MAX_QUEUE
+		VoiceManager._enqueue(sp, tiny, 16000)
+	if sp["queued"] > int(16000 * VoiceManager.JITTER_MAX_QUEUE) + 320:
+		return _fail("queue not bounded (%d)" % sp["queued"])
+	jp.stop()
+	VoiceManager.listener = null
+	print("[TEST] VOICE CODEC PASSED")
+	get_tree().quit()
