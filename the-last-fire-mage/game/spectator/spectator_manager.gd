@@ -1,36 +1,46 @@
 class_name SpectatorManager
 extends Node3D
-## Dead/late-join players watch from a top-down camera with limited vision. Owner: S11.
+## Dead/late-join players watch as a third-person ghost on a one-way glass layer above the map, with fog beyond a radius. Owner: S11.
 ## Registered as GameEvents.system(&"spectator").
 ## NET: local only (each peer handles its own view). Reacts to GameEvents.player_died / player_revived /
 ## role_assigned for the local player. The corpse look is done by Player itself.
-## Public API: `is_spectating`, `enter_spectator()`, `exit_spectator()`, `camera`, `focus`.
+## Public API: `is_spectating`, `enter_spectator()`, `exit_spectator()`, `camera`, `focus` (ghost position on the glass).
 ## Signals: `spectating_changed(on)`.
 
 ## Fires when the local view enters or leaves the spectator camera.
 signal spectating_changed(on: bool)
 
-const FOG_SHADER := """
-shader_type canvas_item;
-uniform vec2 center = vec2(0.5, 0.5);
-uniform float radius_px = 300.0;
-uniform float edge_px = 80.0;
+## One-way glass: back faces are culled, so it is invisible from below (living players never see it).
+## Opaque dark fog outside `radius` around the ghost, clear inside, so the map shows through underneath.
+const GLASS_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_back, depth_draw_never, shadows_disabled;
+uniform vec3 ghost_pos = vec3(0.0);
+uniform float radius = 15.0;
+uniform float edge = 5.0;
+varying vec3 wpos;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	float d = distance(FRAGCOORD.xy, center);
-	COLOR = vec4(0.0, 0.0, 0.02, smoothstep(radius_px - edge_px, radius_px, d) * 0.97);
+	float d = distance(wpos.xz, ghost_pos.xz);
+	float fog = smoothstep(radius - edge, radius, d);
+	ALBEDO = mix(vec3(0.55, 0.75, 1.0), vec3(0.01, 0.01, 0.03), fog);
+	ALPHA = mix(0.07, 0.97, fog);
 }
 """
 
 ## True while the local view is the spectator camera.
 var is_spectating := false
-## The spectator camera (created on first use). Looks straight down.
+## The spectator third-person camera (created on first use).
 var camera: Camera3D
-## Ground point (x, z) the camera is centred on.
+## Ghost position on the glass layer (y = tuning.camera_height).
 var focus := Vector3.ZERO
 var tuning: SpectatorTuning
 
-var _fog_layer: CanvasLayer
-var _fog_mat: ShaderMaterial
+var _ghost: MeshInstance3D
+var _glass: MeshInstance3D
+var _glass_mat: ShaderMaterial
+var _yaw := 0.0
+var _pitch := -0.45
 var _prev_listener: Node3D
 var _own_peer := 0
 
@@ -41,12 +51,13 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	tuning = Tuning.load_tuning("res://game/spectator/tuning_spectator.tres", "spectator") as SpectatorTuning
+	set_process(false)
 	GameEvents.player_died.connect(_on_player_died)
 	GameEvents.player_revived.connect(_on_player_revived)
 	GameEvents.role_assigned.connect(_on_role_assigned)
 
 
-## Switch the local view to the spectator camera.
+## Switch the local view to the spectator ghost.
 func enter_spectator() -> void:
 	if is_spectating:
 		return
@@ -54,14 +65,16 @@ func enter_spectator() -> void:
 	_ensure_nodes()
 	if me != null:
 		_own_peer = me.peer_id
-		focus = Vector3(me.global_position.x, 0.0, me.global_position.z)
+		focus = Vector3(me.global_position.x, tuning.camera_height, me.global_position.z)
+		_yaw = me.rotation.y
 	_prev_listener = VoiceManager.listener
 	is_spectating = true
-	_place_camera()
+	_ghost.visible = true
+	_glass.visible = true
+	_update_view()
 	camera.make_current()
 	VoiceManager.listener = camera # WHY: dead players keep proximity voice, heard from where they watch
 	_set_voice_group(&"dead")
-	_fog_layer.visible = true
 	set_process(true)
 	print("[Spectator] enter peer=%d" % _own_peer)
 	spectating_changed.emit(true)
@@ -79,13 +92,14 @@ func exit_spectator() -> void:
 	elif is_instance_valid(_prev_listener):
 		VoiceManager.listener = _prev_listener
 	_set_voice_group(&"alive")
-	_fog_layer.visible = false
+	_ghost.visible = false
+	_glass.visible = false
 	set_process(false)
 	print("[Spectator] exit peer=%d" % _own_peer)
 	spectating_changed.emit(false)
 
 
-## Test hook: move the camera focus by a ground-plane vector.
+## Test hook: move the ghost by a ground-plane vector.
 func move_focus(delta: Vector3) -> void:
 	focus += Vector3(delta.x, 0.0, delta.z)
 
@@ -96,22 +110,40 @@ func _ensure_nodes() -> void:
 	camera = Camera3D.new()
 	camera.name = "SpectatorCamera"
 	camera.far = 500.0
-	camera.cull_mask = 0xFFFFF # no special layers: no player highlighting for ghosts
 	add_child(camera)
-	camera.global_rotation = Vector3(-PI / 2.0, 0.0, 0.0)
-	_fog_layer = CanvasLayer.new()
-	_fog_layer.layer = 5
-	_fog_layer.visible = false
-	var rect := ColorRect.new()
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Local-only visuals (never networked): translucent ghost + the glass/fog plane.
+	_ghost = MeshInstance3D.new()
+	var capsule := CapsuleMesh.new()
+	capsule.radius = 0.35
+	capsule.height = 1.7
+	_ghost.mesh = capsule
+	var gm := StandardMaterial3D.new()
+	gm.albedo_color = Color(0.7, 0.85, 1.0, 0.45)
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_ghost.material_override = gm
+	_ghost.top_level = true
+	_ghost.visible = false
+	add_child(_ghost)
+	_glass = MeshInstance3D.new()
+	var quad := PlaneMesh.new() # faces up (+Y): front face seen from above only
+	quad.size = Vector2(1.0, 1.0)
+	_glass.mesh = quad
 	var shader := Shader.new()
-	shader.code = FOG_SHADER
-	_fog_mat = ShaderMaterial.new()
-	_fog_mat.shader = shader
-	rect.material = _fog_mat
-	_fog_layer.add_child(rect)
-	add_child(_fog_layer)
+	shader.code = GLASS_SHADER
+	_glass_mat = ShaderMaterial.new()
+	_glass_mat.shader = shader
+	_glass.material_override = _glass_mat
+	_glass.top_level = true
+	_glass.visible = false
+	_glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_glass)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if is_spectating and event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		_yaw -= event.relative.x * tuning.mouse_sensitivity
+		_pitch = clampf(_pitch - event.relative.y * tuning.mouse_sensitivity, -1.2, 0.2)
 
 
 func _process(delta: float) -> void:
@@ -120,27 +152,26 @@ func _process(delta: float) -> void:
 	var dir := Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back")
 	if dir != Vector2.ZERO and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var speed := tuning.move_speed * (2.0 if Input.is_action_pressed(&"sprint") else 1.0)
-		focus += Vector3(dir.x, 0.0, dir.y) * speed * delta
-	_place_camera()
-	_update_fog()
+		var basis := Basis(Vector3.UP, _yaw)
+		focus += basis * Vector3(dir.x, 0.0, dir.y) * speed * delta
+	_update_view()
 
 
-func _place_camera() -> void:
-	# Separate height layer: camera floats above the map regardless of terrain.
-	camera.global_position = Vector3(focus.x, tuning.camera_height, focus.z)
-
-
-func _update_fog() -> void:
-	if not camera.current or DisplayServer.get_name() == "headless":
-		return
-	var vp := get_viewport()
-	var c := camera.unproject_position(Vector3(focus.x, 0.0, focus.z))
-	var e := camera.unproject_position(Vector3(focus.x + tuning.vision_radius, 0.0, focus.z))
-	var scale_px := vp.get_visible_rect().size.y / maxf(get_window().content_scale_size.y, 1.0) \
-			if get_window().content_scale_size.y > 0 else 1.0
-	_fog_mat.set_shader_parameter("center", c * scale_px)
-	_fog_mat.set_shader_parameter("radius_px", c.distance_to(e) * scale_px)
-	_fog_mat.set_shader_parameter("edge_px", c.distance_to(e) * scale_px * 0.25)
+func _update_view() -> void:
+	focus.y = tuning.camera_height
+	_ghost.global_position = focus + Vector3(0, 0.85, 0)
+	_ghost.global_rotation = Vector3(0, _yaw, 0)
+	# Third-person boom: behind and above the ghost, looking at it.
+	var boom := Basis(Vector3.UP, _yaw) * Basis(Vector3.RIGHT, _pitch) * Vector3(0, 0, tuning.camera_distance)
+	camera.global_position = focus + Vector3(0, 1.4, 0) + boom
+	camera.look_at(focus + Vector3(0, 1.0, 0), Vector3.UP)
+	# Glass sits at ghost's feet, large enough to cover the fog radius from any angle; fog centred on ghost.
+	var size := (tuning.vision_radius + 60.0) * 2.0
+	_glass.global_position = Vector3(focus.x, tuning.camera_height, focus.z)
+	_glass.scale = Vector3(size, 1.0, size)
+	_glass_mat.set_shader_parameter("ghost_pos", focus)
+	_glass_mat.set_shader_parameter("radius", tuning.vision_radius)
+	_glass_mat.set_shader_parameter("edge", tuning.fog_edge)
 
 
 func _set_voice_group(group: StringName) -> void:

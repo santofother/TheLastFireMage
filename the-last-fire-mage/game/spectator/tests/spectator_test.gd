@@ -23,7 +23,8 @@ func _ready() -> void:
 	_check(mgr.is_spectating, "spectating after death")
 	_check(p.collision_layer == 0, "corpse has no collision layer")
 	_check(mgr.camera.current, "spectator camera current")
-	_check(is_equal_approx(mgr.camera.global_position.y, mgr.tuning.camera_height), "camera at spectator height")
+	_check(mgr.camera.global_position.y > mgr.tuning.camera_height, "camera above the glass layer")
+	_check(is_equal_approx(mgr.focus.y, mgr.tuning.camera_height), "ghost on glass layer")
 	_check(VoiceManager.listener == mgr.camera, "voice listener follows spectator camera")
 	var before := mgr.focus
 	mgr.move_focus(Vector3(3, 0, 0))
