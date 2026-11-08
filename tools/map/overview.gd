@@ -30,7 +30,7 @@ func _render() -> void:
 	world.add_child(sun)
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 200
+	camera.size = 140
 	camera.far = 600
 	world.add_child(camera)
 	camera.position = Vector3(95, 150, 145)

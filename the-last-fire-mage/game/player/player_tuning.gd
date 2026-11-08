@@ -137,3 +137,12 @@ extends Tuning
 
 ## TUNE: Maximum walkable floor slope, degrees.
 @export var floor_max_angle_degrees := 45.0
+
+## TUNE: lowest wall sample above airborne feet, m.
+@export var mantle_space_probe_height := 0.1
+## TUNE: horizontal reach beyond the capsule, m.
+@export var mantle_space_reach := 0.45
+## TUNE: maximum ledge rise above current airborne feet, m.
+@export var mantle_space_max_rise := 1.0
+## TUNE: clearance above and inside the ledge, m.
+@export var mantle_space_clearance := 0.05

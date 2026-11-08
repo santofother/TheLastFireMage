@@ -9,7 +9,7 @@ Bindings from `the-last-fire-mage/project.godot`. Movement features below requir
 | Jump | Space |
 | Sprint | Hold Shift while moving |
 | Crouch | Hold Ctrl or C |
-| Mantle a ledge | Jump toward it with Space while holding movement toward it; automatic grab/pull-up |
+| Mantle a ledge | Jump toward it with Space while holding movement toward it; automatic grab/pull-up; press Space again in the air for a manual grab |
 | Interact | E |
 | Drop | G |
 | Primary action | Left mouse button |
@@ -27,6 +27,6 @@ Bindings from `the-last-fire-mage/project.godot`. Movement features below requir
 3. Tap **Space** close to the wall and keep holding **W** into it during the jump.
 4. When the controller detects the edge within reach, it automatically pulls you onto the top.
 
-There is no separate mantle key, and holding Space is unnecessary. Sprint is optional. Release crouch first. You must have room for your standing body above the ledge and a clear pull-up path. A tall wall, low overhead ceiling, or walking into a wall without jumping will not trigger a mantle.
+For a manual grab, release Space after jumping and press it again near the ledge; you can face the wall without holding movement. Manual grabs reach up to one metre above your airborne feet. Holding Space does not repeat a grab. Sprint is optional. Release crouch first. You must have room for your standing body above the ledge and a clear pull-up path. A tall wall, low overhead ceiling, or walking into a wall without jumping will not trigger a mantle.
 
 You get one pull-up per jump. There is no hanging, shimmying, ladder climbing, or repeated wall scaling. For longer gaps, build speed with Shift + W before jumping; takeoff momentum carries through the air.

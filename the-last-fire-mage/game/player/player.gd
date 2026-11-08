@@ -83,6 +83,7 @@ var is_sprinting := false
 var _coyote_left := 0.0
 var _jump_buffer_left := 0.0
 var _mantle_armed := false
+var _mantled_in_air := false
 var _takeoff_y := 0.0
 var _fall_peak_y := 0.0
 var _tumble_left := 0.0
@@ -321,6 +322,7 @@ func _physics_process(delta: float) -> void:
 	if input.jump_pressed:
 		_jump_buffer_left = tuning.jump_buffer
 	if grounded:
+		_mantled_in_air = false
 		_mantle_armed = false
 		_takeoff_y = global_position.y
 		_fall_peak_y = global_position.y
@@ -330,6 +332,9 @@ func _physics_process(delta: float) -> void:
 
 	is_crouching = input.crouch or (is_crouching and not _has_standing_room())
 	_update_stance()
+	if input.jump_pressed and not grounded and can_control() and not is_crouching and not _mantled_in_air:
+		if _try_space_mantle():
+			return
 	if _jump_buffer_left > 0.0 and _coyote_left > 0.0 and can_control() and not is_crouching:
 		velocity.y = tuning.jump_velocity
 		_jump_buffer_left = 0.0
@@ -372,6 +377,37 @@ func _physics_process(delta: float) -> void:
 		_reset_movement()
 
 
+# FIX(S02, Codex): the shipped stub ignored Space in the air; probe a ledge on a fresh press.
+func _try_space_mantle() -> bool:
+	var direction := (global_basis * Vector3(input.move.x, 0, input.move.y)).normalized()
+	if direction.is_zero_approx():
+		direction = -global_basis.z
+	var origin := global_position + Vector3.UP * tuning.mantle_space_probe_height
+	var wall := _ray(origin, origin + direction * (tuning.radius + tuning.mantle_space_reach))
+	if wall.is_empty() or absf((wall.normal as Vector3).y) > 0.2:
+		return false
+	var sample: Vector3 = wall.position - wall.normal * (tuning.radius + tuning.mantle_space_clearance)
+	var top := _ray(Vector3(sample.x, global_position.y + tuning.mantle_space_max_rise, sample.z),
+		Vector3(sample.x, origin.y, sample.z))
+	if top.is_empty() or (top.normal as Vector3).dot(Vector3.UP) < cos(floor_max_angle):
+		return false
+	var target: Vector3 = top.position + Vector3.UP * tuning.mantle_space_clearance
+	if not _capsule_clear(target, tuning.height):
+		return false
+	var lift := Vector3(global_position.x, target.y, global_position.z)
+	# WHY: sweep up and then across so the pull cannot pass through ceilings or walls.
+	if test_move(global_transform, lift - global_position) or test_move(
+		Transform3D(global_basis, lift), target - lift):
+		return false
+	global_position = target
+	velocity = Vector3.ZERO
+	_mantled_in_air = true
+	_mantle_armed = false
+	_jump_buffer_left = 0.0
+	_fall_peak_y = target.y
+	return true
+
+
 func _try_mantle(wish: Vector3) -> bool:
 	if wish.is_zero_approx():
 		return false
@@ -399,6 +435,7 @@ func _try_mantle(wish: Vector3) -> bool:
 	_mantle_start = global_position
 	_mantle_target = target
 	_mantle_elapsed = 0.0
+	_mantled_in_air = true
 	_mantle_armed = false # One pull per takeoff: no wall scaling or repeated upward grabs.
 	is_mantling = true
 	velocity = Vector3.ZERO
@@ -514,6 +551,7 @@ func _rpc_bump(other_name: StringName) -> void:
 
 
 func _reset_movement() -> void:
+	_mantled_in_air = false
 	velocity = Vector3.ZERO
 	_knockback = Vector3.ZERO
 	_coyote_left = 0.0
