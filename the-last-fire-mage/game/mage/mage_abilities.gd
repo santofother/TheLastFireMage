@@ -136,6 +136,16 @@ func _on_power_changed(mage_id: int, _power: float, _tier: int, multiplier: floa
 	if _player.peer_id == mage_id and is_finite(multiplier):
 		power_multiplier = multiplier
 
+## FIX(S15, Claude): NET: server only. Puts out Ignite (water bucket hit). Fires on every peer.
+func extinguish() -> void:
+	if Net.is_server(self):
+		Net.broadcast(self, &"_rpc_extinguish")
+
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_extinguish() -> void:
+	if Net.from_server(self):
+		_ignite_left = 0.0
+
 ## True while the knife burns, on every peer.
 func is_ignited() -> bool:
 	return _ignite_left > 0.0

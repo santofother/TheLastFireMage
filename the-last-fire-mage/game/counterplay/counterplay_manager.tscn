@@ -4,3 +4,8 @@
 
 [node name="Counterplay" type="Node3D"]
 script = ExtResource("1")
+
+[node name="Items" type="Node3D" parent="."]
+
+[node name="ItemSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Items")

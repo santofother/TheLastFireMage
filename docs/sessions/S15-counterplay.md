@@ -15,6 +15,9 @@ Villagers can't hurt the mage but can briefly stop them.
   stun-locked (TUNE).
 - Environment: 1–2 map interactions as reusable scenes (e.g. a tippable cart, a laundry line that blocks
   sight) that the map card can place later.
+-Items that spawn in the dead player area that are thrown, have an 90% chance of breaking on imapch with the ground if they dont hit other player
 
 ## Tests
 Headless: bot throws item at mage → mage stunned N s; second hit within the window gives a shorter stun.
+
+
