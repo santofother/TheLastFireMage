@@ -1,35 +1,161 @@
+## Server-validated knife, Ignite and Fire Wave; owner input and replicated feedback.
+## Owner: S09. API: power_multiplier, tuning, cooldown_left(), is_ignited().
 class_name MageAbilities
 extends Node3D
-## Mage knife / Ignite / Fire Wave. Owner: S09. Added under Player/Abilities by Player.set_role(MAGE)
-## (see RoleScenes). Root name must stay "MageAbilities".
-## NET: authority = owning peer, which reads `player.input` and sends requests to the server
-## (`@rpc("any_peer")` + server validation of range/angle/cooldown/line of sight). Damage only through
-## Health.apply_damage on the server.
-## CONTRACT: `power_multiplier` scales fire damage/range/spread. It is updated on every peer from
-## GameEvents.power_changed (S13 fires it). Default 1.0.
-## Public API: `power_multiplier`, `is_ignited()`, `cooldown_left(ability)` (HUD).
 
-## Fire effectiveness from the power system (1.0 = base).
+## Fire effectiveness from GameEvents.power_changed; base is 1.0.
 var power_multiplier := 1.0
+## Private tuning copy; mage_combat CLI overrides are supported.
 var tuning: MageCombatTuning
-
+var _player: Player
+var _cooldowns := {&"knife": 0.0, &"ignite": 0.0, &"fire_wave": 0.0}
+var _ignite_left := 0.0
+var _flame: MeshInstance3D
 
 func _ready() -> void:
+	_player = get_parent().get_parent() as Player
 	tuning = Tuning.load_tuning("res://game/mage/tuning_mage_combat.tres", "mage_combat") as MageCombatTuning
 	GameEvents.power_changed.connect(_on_power_changed)
+	_flame = $Flame
+	_request_snapshot.call_deferred()
 
+func _physics_process(delta: float) -> void:
+	for key in _cooldowns:
+		_cooldowns[key] = maxf(0.0, float(_cooldowns[key]) - delta)
+	_ignite_left = maxf(0.0, _ignite_left - delta)
+	_flame.visible = is_ignited()
+	if not _player.is_multiplayer_authority() or not _player.can_control():
+		return
+	var aim := -_player.camera_rig.global_basis.z
+	if _player.input.ability_1_pressed:
+		_request(&"ignite", aim)
+	if _player.input.primary_pressed:
+		_request(&"knife", aim)
+	if _player.input.ability_2_pressed:
+		_request(&"fire_wave", aim)
+
+func _request(ability: StringName, aim: Vector3) -> void:
+	if cooldown_left(ability) > 0.0:
+		return
+	if Net.is_server(self):
+		_rpc_request(ability, aim)
+	else:
+		_rpc_request.rpc_id(1, ability, aim)
+
+# NET: requests carry intent only. Position, targets, damage and cooldowns come from the server.
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_request(ability: StringName, aim: Vector3) -> void:
+	if not Net.is_server(self) or Net.sender_id(self) != _player.get_multiplayer_authority():
+		return
+	if not _player.can_control() or _player.role != Enums.Role.MAGE:
+		return
+	if not _cooldowns.has(ability) or cooldown_left(ability) > 0.0:
+		return
+	if not aim.is_finite() or aim.length_squared() < 0.9 or aim.length_squared() > 1.1:
+		return
+	aim = aim.normalized()
+	# WHY: pitch is not replicated by Player; allow pitch but reject backwards forged aim.
+	if aim.dot(-_player.global_basis.z) < cos(deg_to_rad(80.0)):
+		return
+	var cooldown := tuning.knife_cooldown
+	if ability == &"ignite":
+		cooldown = tuning.ignite_cooldown
+	elif ability == &"fire_wave":
+		cooldown = tuning.wave_cooldown
+	Net.broadcast(self, &"_rpc_cast", [ability, cooldown, tuning.ignite_duration])
+	if ability != &"ignite":
+		_attack(ability, aim)
+
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_cast(ability: StringName, cooldown: float, duration: float) -> void:
+	if not Net.from_server(self):
+		return
+	_cooldowns[ability] = cooldown
+	if ability == &"ignite":
+		_ignite_left = duration
+	elif ability == &"knife":
+		var tween := create_tween()
+		$Knife.rotation.z = -0.9
+		tween.tween_property($Knife, "rotation:z", 0.0, 0.2)
+
+func _attack(ability: StringName, aim: Vector3) -> void:
+	var wave := ability == &"fire_wave"
+	var power := clampf(power_multiplier, 0.1, 10.0)
+	var reach := (tuning.wave_range if wave else tuning.knife_range) * power
+	var angle := minf(170.0, (tuning.wave_angle_deg if wave else tuning.knife_angle_deg) * power)
+	var damage := (tuning.wave_damage if wave else (tuning.ignite_damage if is_ignited() else tuning.knife_damage)) * power
+	var origin := _player.global_position + Vector3.UP * 0.65
+	var sphere := SphereShape3D.new()
+	sphere.radius = reach + 1.0
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = sphere
+	query.transform = Transform3D(Basis.IDENTITY, origin)
+	query.collision_mask = 2 | 4 | 32
+	query.exclude = [_player.get_rid()]
+	var seen: Array[Health] = []
+	for hit in get_world_3d().direct_space_state.intersect_shape(query, 128):
+		var health := Health.find_on(hit.collider)
+		if not health or health in seen or not health.is_alive or health.invulnerable:
+			continue
+		seen.append(health)
+		var target := health.get_parent() as Node3D
+		if not target or target == _player:
+			continue
+		var point := target.global_position + Vector3.UP * (0.4 if target is Player else 0.25)
+		var offset := point - origin
+		if offset.length() > reach or (offset.length() > 0.01 and aim.dot(offset.normalized()) < cos(deg_to_rad(angle * 0.5))):
+			continue
+		var ray := PhysicsRayQueryParameters3D.create(origin, point, 1 | 16, [_player.get_rid()])
+		if not get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
+			continue
+		health.apply_damage(damage, _player.peer_id, ability)
+		if wave and target is Player:
+			target.apply_knockback((aim + Vector3.UP * 0.25).normalized() * tuning.wave_knockback * power)
+		Net.broadcast(self, &"_rpc_hit", [target.get_path(), point])
+	if wave:
+		Net.broadcast(self, &"_rpc_wave", [origin, aim, reach, angle])
+
+@rpc("any_peer", "call_local", "unreliable", 1)
+func _rpc_hit(target_path: NodePath, point: Vector3) -> void:
+	if not Net.from_server(self) or DisplayServer.get_name() == "headless":
+		return
+	var target := get_node_or_null(target_path) as Player
+	var effect := preload("res://game/mage/mage_feedback.gd").new()
+	get_tree().current_scene.add_child(effect)
+	effect.hit(point, target)
+
+@rpc("any_peer", "call_local", "unreliable", 1)
+func _rpc_wave(origin: Vector3, aim: Vector3, reach: float, angle: float) -> void:
+	if not Net.from_server(self) or DisplayServer.get_name() == "headless":
+		return
+	var effect := preload("res://game/mage/mage_feedback.gd").new()
+	get_tree().current_scene.add_child(effect)
+	effect.wave(origin, aim, reach, angle)
 
 func _on_power_changed(mage_id: int, _power: float, _tier: int, multiplier: float) -> void:
-	var p := get_parent().get_parent() as Player
-	if p and p.peer_id == mage_id:
+	if _player.peer_id == mage_id and is_finite(multiplier):
 		power_multiplier = multiplier
 
-
-## True while the knife burns.
+## True while the knife burns, on every peer.
 func is_ignited() -> bool:
-	return false # TODO(S09)
+	return _ignite_left > 0.0
 
+## Seconds until an ability is ready; HUD countdown mirrors server-approved casts.
+func cooldown_left(ability: StringName) -> float:
+	return float(_cooldowns.get(ability, 0.0))
 
-## Seconds until `ability` (&"knife", &"ignite", &"fire_wave") is ready again (0 = ready). Any peer.
-func cooldown_left(_ability: StringName) -> float:
-	return 0.0 # TODO(S09)
+func _request_snapshot() -> void:
+	if Net.is_online(self) and not Net.is_server(self):
+		_rpc_snapshot_request.rpc_id(1)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_snapshot_request() -> void:
+	if Net.is_server(self):
+		_rpc_snapshot.rpc_id(Net.sender_id(self), _cooldowns, _ignite_left, power_multiplier)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_snapshot(cooldowns: Dictionary, ignite_left: float, power: float) -> void:
+	if Net.from_server(self):
+		_cooldowns = cooldowns
+		_ignite_left = ignite_left
+		power_multiplier = power
