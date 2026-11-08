@@ -5,6 +5,8 @@ const SETTINGS_PATH := "user://settings.cfg"
 
 var _root: CenterContainer
 var _name_edit: LineEdit
+# FIX(S07, Codex): expose server bots for editor playtests without CLI arguments.
+var _bot_count: SpinBox
 var _steam_label: Label
 var _host_steam_btn: Button
 var _invite_btn: Button
@@ -73,6 +75,7 @@ func _apply_name() -> void:
 
 func _on_host_steam() -> void:
 	_apply_name()
+	NetworkManager.args["bots"] = int(_bot_count.value)
 	SteamManager.host_lobby()
 
 
@@ -87,6 +90,7 @@ func _on_join_lobby() -> void:
 
 func _on_host_lan() -> void:
 	_apply_name()
+	NetworkManager.args["bots"] = int(_bot_count.value)
 	NetworkManager.host_enet(int(_port_edit.text))
 
 
@@ -131,6 +135,7 @@ func _refresh_buttons() -> void:
 	_host_lan_btn.disabled = in_s
 	_join_ip_btn.disabled = in_s
 	_name_edit.editable = not in_s
+	_bot_count.editable = not in_s
 	_invite_btn.disabled = not (steam and SteamManager.lobby_id != 0)
 	_leave_btn.visible = in_s
 
@@ -189,6 +194,16 @@ func _build_ui() -> void:
 	_name_edit.placeholder_text = "Player name"
 	_name_edit.max_length = 20
 	v.add_child(_row("Name", _name_edit))
+
+	# FIX(S07, Codex): shared by Steam and LAN hosting; CLI automation keeps its supplied count.
+	_bot_count = SpinBox.new()
+	_bot_count.name = "BotCount"
+	_bot_count.min_value = 0
+	_bot_count.max_value = 5
+	_bot_count.step = 1
+	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
+	_bot_count.tooltip_text = "Computer players to add when you host (0–5)."
+	v.add_child(_row("Bots", _bot_count))
 
 	v.add_child(HSeparator.new())
 	_steam_label = Label.new()
