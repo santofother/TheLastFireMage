@@ -74,6 +74,7 @@ var _speed_mods: Dictionary = {} # StringName source -> float
 var _knockback := Vector3.ZERO
 var _pending_look := Vector2.ZERO
 var _default_layer := 0
+var _mantled_in_air := false
 
 
 func _enter_tree() -> void:
@@ -276,8 +277,13 @@ func _physics_process(delta: float) -> void:
 
 	rotate_y(-input.look_delta.x)
 	camera_rig.rotation.x = clampf(camera_rig.rotation.x - input.look_delta.y, -1.2, 0.6)
-	if input.jump_pressed and is_on_floor():
-		velocity.y = tuning.jump_velocity
+	if is_on_floor():
+		_mantled_in_air = false
+	if input.jump_pressed and can_control():
+		if is_on_floor():
+			velocity.y = tuning.jump_velocity
+		elif not _mantled_in_air and not input.crouch and _try_mantle():
+			return
 	var speed := (tuning.sprint_speed if input.sprint else tuning.walk_speed) * speed_multiplier()
 	var move := (transform.basis * Vector3(input.move.x, 0, input.move.y)).normalized() * speed
 	velocity.x = move.x + _knockback.x
@@ -288,6 +294,44 @@ func _physics_process(delta: float) -> void:
 	if global_position.y < -20.0:
 		global_position = Vector3(0, 2, 0)
 		velocity = Vector3.ZERO
+
+
+# FIX(S02, Codex): the shipped stub ignored Space in the air; probe a ledge on a fresh press.
+func _try_mantle() -> bool:
+	var direction := (global_basis * Vector3(input.move.x, 0, input.move.y)).normalized()
+	if direction.is_zero_approx():
+		direction = -global_basis.z
+	var origin := global_position + Vector3.UP * tuning.mantle_probe_height
+	var wall := _mantle_ray(origin, origin + direction * (tuning.radius + tuning.mantle_reach))
+	if wall.is_empty() or absf((wall.normal as Vector3).y) > 0.2:
+		return false
+	var sample: Vector3 = wall.position - wall.normal * (tuning.radius + tuning.mantle_clearance)
+	var top := _mantle_ray(Vector3(sample.x, global_position.y + tuning.mantle_max_rise, sample.z),
+		Vector3(sample.x, origin.y, sample.z))
+	if top.is_empty() or (top.normal as Vector3).dot(Vector3.UP) < cos(floor_max_angle):
+		return false
+	var target: Vector3 = top.position + Vector3.UP * tuning.mantle_clearance
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _collision.shape
+	query.transform = Transform3D(global_basis, target) * _collision.transform
+	query.collision_mask = collision_mask
+	query.exclude = [get_rid()]
+	if not get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty():
+		return false
+	var lift := Vector3(global_position.x, target.y, global_position.z)
+	# WHY: sweep up and then across so the pull cannot pass through ceilings or walls.
+	if test_move(global_transform, lift - global_position) or test_move(
+		Transform3D(global_basis, lift), target - lift):
+		return false
+	global_position = target
+	velocity = Vector3.ZERO
+	_mantled_in_air = true
+	return true
+
+
+func _mantle_ray(from: Vector3, to: Vector3) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(from, to, collision_mask & ~2, [get_rid()])
+	return get_world_3d().direct_space_state.intersect_ray(query)
 
 
 func _read_input(delta: float) -> void:
