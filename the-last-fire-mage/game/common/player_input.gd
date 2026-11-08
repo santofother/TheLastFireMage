@@ -16,6 +16,8 @@ var crouch := false
 var primary := false
 var jump_pressed := false
 var interact_pressed := false
+## E is currently down (hold-to-revive).
+var interact_held := false
 var drop_pressed := false
 var primary_pressed := false
 var ability_1_pressed := false
@@ -30,6 +32,7 @@ func clear() -> void:
 	sprint = false
 	crouch = false
 	primary = false
+	interact_held = false
 	clear_edges()
 
 
@@ -54,6 +57,7 @@ func fill_from_devices() -> void:
 	primary = Input.is_action_pressed(&"primary")
 	jump_pressed = Input.is_action_just_pressed(&"jump")
 	interact_pressed = Input.is_action_just_pressed(&"interact")
+	interact_held = Input.is_action_pressed(&"interact")
 	drop_pressed = Input.is_action_just_pressed(&"drop")
 	primary_pressed = Input.is_action_just_pressed(&"primary")
 	ability_1_pressed = Input.is_action_just_pressed(&"ability_1")

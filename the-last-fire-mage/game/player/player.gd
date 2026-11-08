@@ -300,10 +300,11 @@ func _add_revive_interactable() -> void:
 	node.collision_mask = 0
 	node.kind = &"revive"
 	node.max_distance = 2.5
+	node.hold_time = tuning.revive_hold_time
 	node.condition = func(who: Node) -> bool:
 		return who != self and health.is_downed and health.is_alive and who.is_alive \
 			and who.role == Enums.Role.VILLAGER
-	node.prompt_provider = func(_who: Node) -> String: return "Revive %s" % display_name
+	node.prompt_provider = func(_who: Node) -> String: return "Hold to revive %s" % display_name
 	node.interacted.connect(func(_who: Node) -> void:
 		health.recover(health.max_hp * tuning.revive_hp_fraction))
 	add_child(node)

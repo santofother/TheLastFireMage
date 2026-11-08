@@ -18,6 +18,9 @@ signal interacted(player: Node)
 ## Max use distance in metres (server checks it, plus `InteractTuning.range_slack`).
 @export var max_distance := 2.0 # TUNE
 
+## Seconds E must be held before `interacted` fires (0 = instant). Server counts it in Interactor.
+@export var hold_time := 0.0
+
 ## Optional `func(player: Node) -> bool` replacing the default usability check.
 var condition := Callable()
 ## Optional `func(player: Node) -> String` replacing `prompt`, for prompts that depend on who is looking.

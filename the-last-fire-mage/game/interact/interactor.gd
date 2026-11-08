@@ -26,8 +26,18 @@ func _exit_tree() -> void:
 		GameEvents.interact_prompt_changed.emit("")
 
 
+## Server: villager currently channelling a hold-interaction (revive) and seconds held so far.
+var hold_target: Interactable = null
+var hold_elapsed := 0.0
+var _sent_hold := NodePath()
+
+
 func _physics_process(delta: float) -> void:
-	if _player == null or not _player.is_multiplayer_authority() or _manager() == null:
+	if _player == null or _manager() == null:
+		return
+	if Net.is_server(self):
+		_tick_hold(delta)
+	if not _player.is_multiplayer_authority():
 		return
 	if _player.is_local():
 		_prompt_left -= delta
@@ -36,9 +46,14 @@ func _physics_process(delta: float) -> void:
 			_refresh_prompt()
 	if not _player.can_control():
 		return
+	var held := find_target() if _player.input.interact_held else null
+	var want := held.get_path() if held and held.hold_time > 0.0 else NodePath()
+	if want != _sent_hold:
+		_sent_hold = want
+		_send(&"_rpc_hold", [want])
 	if _player.input.interact_pressed:
 		var target := find_target()
-		if target:
+		if target and target.hold_time <= 0.0:
 			_send(&"_rpc_interact", [target.get_path()])
 	var carrying := _manager().carried_kind(_player.peer_id) != &""
 	if carrying and _player.input.drop_pressed:
@@ -73,7 +88,7 @@ func _refresh_prompt() -> void:
 	if _player.can_control():
 		var target := find_target()
 		if target:
-			parts.append("E · %s" % target.prompt_for(_player))
+			parts.append(("Hold E · %s" if target.hold_time > 0.0 else "E · %s") % target.prompt_for(_player))
 		if _manager().carried_kind(_player.peer_id) != &"":
 			parts.append("G · Drop")
 			parts.append("LMB · Throw")
@@ -99,6 +114,32 @@ func _send(method: StringName, args: Array) -> void:
 func _rpc_interact(path: NodePath) -> void:
 	if _authorized():
 		_manager().server_interact(_player, get_node_or_null(path) as Interactable)
+
+
+## NET: server only. Counts the hold; completes via the normal validated interact path.
+func _tick_hold(delta: float) -> void:
+	if hold_target == null:
+		return
+	if not is_instance_valid(hold_target) or not _player.can_control() or not hold_target.can_interact(_player) \
+			or _player.global_position.distance_to(hold_target.global_position) > hold_target.max_distance + _manager().tuning.range_slack:
+		hold_target = null
+		return
+	hold_elapsed += delta
+	if hold_elapsed >= hold_target.hold_time:
+		var done := hold_target
+		hold_target = null
+		_manager().server_interact(_player, done)
+
+
+## NET: owner peer says which hold target E is on (empty path = released).
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_hold(path: NodePath) -> void:
+	if not _authorized():
+		return
+	var target := get_node_or_null(path) as Interactable if not path.is_empty() else null
+	if target != hold_target:
+		hold_target = target
+		hold_elapsed = 0.0
 
 
 @rpc("any_peer", "call_local", "reliable")

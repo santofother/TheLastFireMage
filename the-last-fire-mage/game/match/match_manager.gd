@@ -91,6 +91,8 @@ func start_round(selected_mage: int = 0) -> void:
 		_known[p.peer_id] = true
 		if p.peer_id != chosen:
 			_living_villagers[p.peer_id] = true
+			if not p.health.downed.is_connected(_check_villagers):
+				p.health.downed.connect(_check_villagers)
 	Net.broadcast(self, &"_rpc_roles", [assigned, chosen])
 	for p in roster:
 		p.health.invulnerable = true
@@ -206,8 +208,16 @@ func _on_player_died(id: int, _killer: int, _cause: StringName) -> void:
 		_check_villagers()
 
 
+## Mage wins when no villager is left standing: dead, or downed with nobody free to revive them.
 func _check_villagers() -> void:
-	if _living_villagers.is_empty():
+	if not Net.is_server(self) or not _round_started():
+		return
+	var standing := false
+	for id in _living_villagers:
+		var p := Players.get_player(id)
+		if p == null or not p.health.is_downed:
+			standing = true
+	if not standing:
 		end_round(Enums.Winner.MAGE, "all_dead")
 
 

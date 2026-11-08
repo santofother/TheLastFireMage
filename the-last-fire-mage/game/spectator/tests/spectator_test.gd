@@ -17,21 +17,21 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	_check(not mgr.is_spectating, "not spectating while alive")
 	_check(Players.local_player() == p, "player is local")
-	# Fall damage (x2.7): none below 3.1 m; jump 5, sprint jump 8, walk/sprint off 4 per story; linear in height.
+	# Fall damage (x4.5): none below 3.1 m; jump 5, sprint jump 8, walk/sprint off 4 per story; linear in height.
 	p._report_fall(3.0, false, true)
 	p._report_fall(3.0, true, false)
 	_check(p.health.hp == 100.0, "no damage below 3.1 m, jumping or not")
 	p._report_fall(3.1, false, false)
-	_check(is_equal_approx(p.health.hp, 100.0 - 4.0 * 2.7), "walk-off one story = 10.8")
+	_check(is_equal_approx(p.health.hp, 100.0 - 4.0 * 4.5), "walk-off one story = 10.8")
 	p.health.hp = 100.0
 	p._report_fall(3.1, false, true)
-	_check(is_equal_approx(p.health.hp, 100.0 - 5.0 * 2.7), "one-story jump = 13.5")
+	_check(is_equal_approx(p.health.hp, 100.0 - 5.0 * 4.5), "one-story jump = 13.5")
 	p.health.hp = 100.0
 	p._report_fall(3.1, true, true)
-	_check(is_equal_approx(p.health.hp, 100.0 - 8.0 * 2.7), "one-story sprint jump = 21.6")
+	_check(is_equal_approx(p.health.hp, 100.0 - 8.0 * 4.5), "one-story sprint jump = 21.6")
 	p.health.hp = 100.0
 	p._report_fall(6.2, false, true)
-	_check(is_equal_approx(p.health.hp, 100.0 - 10.0 * 2.7), "two stories scale linearly")
+	_check(is_equal_approx(p.health.hp, 100.0 - 10.0 * 4.5), "two stories scale linearly")
 	# Lethal fall: first one downs (alive, hp 1, no control), a villager revive gives 80%, the second one kills.
 	p.health.hp = 10.0
 	p._report_fall(6.2, false, true)
@@ -65,6 +65,36 @@ func _ready() -> void:
 	_check(p.camera.current, "player camera restored")
 	_check(VoiceManager.listener == p, "listener restored")
 	_check(p.collision_layer != 0, "collision restored")
+	# 3 storeys (9.3 m) sprint-jump must be over 100 (playtest: 86 was too low).
+	p._report_fall(9.3, true, true)
+	_check(p.health.is_downed or not p.is_alive, "3-story sprint jump is lethal (>100 dmg)")
+	p.health.revive()
+	# Hold-to-revive: 4 s of server-counted hold by a free villager.
+	_check(is_equal_approx(p.tuning.revive_hold_time, 4.0), "revive hold = 4 s")
+	add_child(preload("res://game/interact/interact_manager.tscn").instantiate())
+	await get_tree().process_frame
+	var v := preload("res://game/player/player.tscn").instantiate() as Player
+	v.peer_id = 77
+	v.name = "77"
+	v.position = Vector3(5, 0, 6)
+	add_child(v)
+	v.set_role(Enums.Role.VILLAGER)
+	await get_tree().physics_frame
+	p.health.down(1.0)
+	var it := v.find_child("Interactor", true, false) as Interactor
+	var node := p.get_node("Interactable") as Interactable
+	_check(it != null and node.hold_time == 4.0, "revive interactable has hold_time")
+	it.hold_target = node
+	it._tick_hold(3.5)
+	_check(p.health.is_downed, "3.5 s hold does not revive yet")
+	it._tick_hold(0.6)
+	_check(not p.health.is_downed, "4 s hold revives")
+	# Knife (20) kills a downed player.
+	p.health.down(1.0)
+	p.health.apply_damage(20.0, 77, &"knife")
+	_check(not p.is_alive, "one knife hit kills a downed player")
+	p.health.revive()
+	v.queue_free()
 	# Late-join spectator role.
 	GameEvents.role_assigned.emit(1, Enums.Role.SPECTATOR)
 	_check(mgr.is_spectating, "SPECTATOR role enters spectator")

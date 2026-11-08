@@ -73,7 +73,7 @@ extends Tuning
 @export var fall_story_height := 3.1
 
 ## TUNE: Multiplier on every fall damage value below.
-@export var fall_damage_scale := 2.7
+@export var fall_damage_scale := 4.5
 
 ## TUNE: Damage (before scale) for walking/sprinting off (no jump) a drop of one story; less than a jump.
 @export var fall_damage_walk_off := 4.0
@@ -89,6 +89,9 @@ extends Tuning
 
 ## TUNE: hp fraction of max a player gets back when a villager revives them.
 @export var revive_hp_fraction := 0.8
+
+## TUNE: seconds a villager must hold E to revive a downed player.
+@export var revive_hold_time := 4.0
 
 ## TUNE: hp while downed (any damage kills).
 @export var downed_hp := 1.0
