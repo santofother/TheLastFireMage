@@ -18,7 +18,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S03 | Villager movement v2 | 1 | DONE (2026-11-07) | s03-movement |
 | S04 | Match flow, roles, timer, win | 1 | DONE (2026-11-07) | s04-match |
 | S05 | Greybox town map v1 | 1 | READY | |
-| S06 | Chickens | 1 | READY | |
+| S06 | Chickens | 1 | DONE (2026-11-07) | s06-chickens |
 | S07 | Headless bots + test runner v2 | 1 | READY | |
 | S08 | HUD shell | 1 | READY | |
 | S09 | Mage combat | 2 | READY | |
