@@ -198,9 +198,13 @@ party mode calls `MatchManager.start_round(next_mage)` after RESULTS and fires `
 changes game state. Menu (`game/ui/menu/`, head engineer) owns Esc and the mouse capture.
 
 ## Voice
-`core/voice_manager.gd` (S12) stays game-agnostic. Game hooks: `register_speaker(peer_id, player, node)`,
-`listener` (set by Player). Planned by S12: `set_speaker_effect(peer_id, preset, strength)`,
-`set_voice_group(peer_id, group)`. The game calls them; `core/` knows nothing about mages or death.
+`core/voice_manager.gd` + `core/voice/` (S12) stay game-agnostic. Capture is 16 kHz mono, sent as IMA ADPCM
+(~65 kbit/s; raw PCM fallback via `--voice-raw`), RPC `_voice_packet(data, codec, group)`, unreliable_ordered, channel 2.
+Receivers have a jitter buffer. Loudness tuning (MIC_GAIN 12, 8 m / 45 m falloff, `max_distance = 0`) is a contract.
+Game hooks: `register_speaker(peer_id, player, node)`, `listener` (set by Player),
+`set_speaker_effect(peer_id, preset, strength)` (presets `mage deep distort cave none`; S13 PowerManager drives `mage`),
+`set_voice_group(peer_id, group)` for the LOCAL peer (`alive`/`dead`; S11 SpectatorManager calls it) with the
+data-driven `voice_rules` table (`set_voice_rule`). The game calls them; `core/` knows nothing about mages or death.
 
 ## Bots
 `--bot` (client) or `--bots=N` (host) handled by `BotManager`. A `BotBrain` implements
