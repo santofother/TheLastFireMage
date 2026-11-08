@@ -2,6 +2,10 @@
 
 [ext_resource type="Script" path="res://game/chicken/chicken.gd" id="1"]
 [ext_resource type="PackedScene" path="res://game/common/health.tscn" id="2"]
+[ext_resource type="Script" path="res://game/interact/interactable.gd" id="3"]
+
+[sub_resource type="SphereShape3D" id="interact_zone"]
+radius = 0.4
 
 [sub_resource type="SphereShape3D" id="shape"]
 radius = 0.2
@@ -117,3 +121,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
 [node name="Sync" type="MultiplayerSynchronizer" parent="."]
 replication_interval = 0.05
 replication_config = SubResource("repl")
+
+[node name="Interactable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+monitoring = false
+script = ExtResource("3")
+prompt = "Pick up chicken"
+kind = &"chicken"
+
+[node name="Zone" type="CollisionShape3D" parent="Interactable"]
+shape = SubResource("interact_zone")

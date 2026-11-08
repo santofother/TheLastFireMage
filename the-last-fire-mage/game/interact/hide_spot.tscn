@@ -22,7 +22,7 @@ collision_layer = 8
 collision_mask = 0
 monitoring = false
 script = ExtResource("2")
-prompt = "hide chicken"
+prompt = "Hide chicken"
 kind = &"hide_spot"
 
 [node name="Zone" type="CollisionShape3D" parent="Interactable"]
