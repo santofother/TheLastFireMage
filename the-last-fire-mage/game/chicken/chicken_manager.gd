@@ -3,7 +3,8 @@ extends Node3D
 ## Spawns and tracks chickens. Owner: S06. Registered as GameEvents.system(&"chickens").
 ## NET: server spawns chickens into `$Chickens` through `$ChickenSpawner` (MultiplayerSpawner), at nodes in
 ## group `chicken_spawn`. Chickens are server-simulated.
-## Round hook: on `phase_changed(ROLE_REVEAL)` the server clears and spawns `tuning.count` chickens.
+## Lobby: when hosting starts the server spawns `tuning.count`. Round hook: on `phase_changed(ROLE_REVEAL)`
+## the server clears and spawns a fresh `tuning.count`.
 ## Respawn: if `tuning.respawn_time > 0`, a killed chicken is replaced after that many seconds (server).
 ## Public API: `spawn_chickens(count)`, `clear_chickens()`, `get_chickens()`, `alive_count()`, `tuning`.
 
@@ -28,6 +29,10 @@ func _ready() -> void:
 	GameEvents.phase_changed.connect(_on_phase_changed)
 	GameEvents.chicken_killed.connect(_on_chicken_killed)
 	NetworkManager.session_ended.connect(func(_r: String) -> void: clear_chickens())
+	# WHY: playtesters run around the lobby before any round; chickens should be there from the start.
+	NetworkManager.hosting_started.connect(func() -> void:
+		if alive_count() == 0:
+			spawn_chickens.call_deferred(tuning.count))
 
 
 ## NET: server only. Spawns `count` chickens spread over the `chicken_spawn` markers (random jitter).

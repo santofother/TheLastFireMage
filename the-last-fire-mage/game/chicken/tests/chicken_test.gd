@@ -1,6 +1,6 @@
 extends Node3D
 ## Headless chicken test (host + one client). Owner: S06. Run by `tools/tests/chicken_test.sh`.
-## Host: bakes a flat navmesh, spawns 10 chickens, scares one with a fake threat, carries/drops one,
+## Host: bakes a flat navmesh, hosts (manager auto-spawns 10 chickens), scares one with a fake threat, carries/drops one,
 ## checks all moved and none fell through, kills one. Client: checks synced movement, carry placement,
 ## the `chicken_killed` event and that the dead chicken is gone.
 
@@ -45,8 +45,7 @@ func _physics_process(delta: float) -> void:
 
 func _host_tick() -> void:
 	if _once(&"spawn", 1.5):
-		_mgr.spawn_chickens(COUNT)
-		_check(_mgr.alive_count() == COUNT, "spawned %d" % COUNT)
+		_check(_mgr.alive_count() == COUNT, "host auto-spawned %d in the lobby" % COUNT)
 		for c in _mgr.get_chickens():
 			_start[c.name] = c.global_position
 		print("[TEST] has_nav=%s" % (_mgr.get_chickens()[0] as Chicken)._has_nav())
