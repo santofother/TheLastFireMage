@@ -36,7 +36,11 @@ var camera: Camera3D
 var focus := Vector3.ZERO
 var tuning: SpectatorTuning
 
-var _ghost: MeshInstance3D
+var _ghost: Node3D
+var _ghost_anim: AnimationPlayer
+var _ghost_clip: StringName = &""
+var _ghost_for_peer := 0
+var _last_focus := Vector3.ZERO
 var _glass: MeshInstance3D
 var _glass_mat: ShaderMaterial
 var _yaw := 0.0
@@ -69,6 +73,7 @@ func enter_spectator() -> void:
 		_yaw = me.rotation.y
 	_prev_listener = VoiceManager.listener
 	is_spectating = true
+	_build_ghost_model(me)
 	_ghost.visible = true
 	_glass.visible = true
 	_update_view()
@@ -112,16 +117,7 @@ func _ensure_nodes() -> void:
 	camera.far = 500.0
 	add_child(camera)
 	# Local-only visuals (never networked): translucent ghost + the glass/fog plane.
-	_ghost = MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.35
-	capsule.height = 1.7
-	_ghost.mesh = capsule
-	var gm := StandardMaterial3D.new()
-	gm.albedo_color = Color(0.7, 0.85, 1.0, 0.45)
-	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_ghost.material_override = gm
+	_ghost = Node3D.new()
 	_ghost.top_level = true
 	_ghost.visible = false
 	add_child(_ghost)
@@ -140,6 +136,51 @@ func _ensure_nodes() -> void:
 	add_child(_glass)
 
 
+## Rebuild the ghost from the player's own villager model, so future model choices carry over.
+## Falls back to a translucent capsule when the player has no villager model (e.g. the mage).
+func _build_ghost_model(me: Player) -> void:
+	for c in _ghost.get_children():
+		c.queue_free()
+	_ghost_anim = null
+	_ghost_clip = &""
+	var src := me.get_node_or_null("VillagerVisual/Model") as Node3D if me != null else null
+	if src != null and src.scene_file_path != "":
+		var model := (load(src.scene_file_path) as PackedScene).instantiate() as Node3D
+		model.transform = src.transform
+		_ghost.add_child(model)
+		_ghost_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		return
+	var mesh := MeshInstance3D.new()
+	var capsule := CapsuleMesh.new()
+	capsule.radius = 0.35
+	capsule.height = 1.7
+	mesh.mesh = capsule
+	mesh.position.y = 0.85
+	var gm := StandardMaterial3D.new()
+	gm.albedo_color = Color(0.7, 0.85, 1.0, 0.45)
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mesh.material_override = gm
+	_ghost.add_child(mesh)
+
+
+func _animate_ghost(delta: float) -> void:
+	if _ghost_anim == null:
+		return
+	var speed := Vector2(focus.x - _last_focus.x, focus.z - _last_focus.z).length() / maxf(delta, 0.0001)
+	var next: StringName = &"idle"
+	var rate := 1.0
+	if speed > 12.0:
+		next = &"sprint"
+		rate = speed / 16.0
+	elif speed > 0.5:
+		next = &"run"
+		rate = clampf(speed / 8.0, 0.5, 2.0)
+	if next != _ghost_clip and _ghost_anim.has_animation(next):
+		_ghost_clip = next
+		_ghost_anim.play(next, 0.12)
+	_ghost_anim.speed_scale = rate
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if is_spectating and event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_yaw -= event.relative.x * tuning.mouse_sensitivity
@@ -155,11 +196,13 @@ func _process(delta: float) -> void:
 		var basis := Basis(Vector3.UP, _yaw)
 		focus += basis * Vector3(dir.x, 0.0, dir.y) * speed * delta
 	_update_view()
+	_animate_ghost(delta)
+	_last_focus = focus
 
 
 func _update_view() -> void:
 	focus.y = tuning.camera_height
-	_ghost.global_position = focus + Vector3(0, 0.85, 0)
+	_ghost.global_position = focus
 	_ghost.global_rotation = Vector3(0, _yaw, 0)
 	# Third-person boom: behind and above the ghost, looking at it.
 	var boom := Basis(Vector3.UP, _yaw) * Basis(Vector3.RIGHT, _pitch) * Vector3(0, 0, tuning.camera_distance)

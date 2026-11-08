@@ -90,6 +90,8 @@ var _mantle_armed := false
 var _mantled_in_air := false
 var _takeoff_y := 0.0
 var _fall_peak_y := 0.0
+var _jumped_in_air := false ## FIX(S11, Claude): true only if airborne from a jump (walking off = no damage)
+var _jump_sprinted := false
 var _tumble_left := 0.0
 var _tumble_angle := 0.0
 var _mantle_elapsed := 0.0
@@ -343,6 +345,8 @@ func _physics_process(delta: float) -> void:
 			return
 	if _jump_buffer_left > 0.0 and _coyote_left > 0.0 and can_control() and not is_crouching:
 		velocity.y = tuning.jump_velocity
+		_jumped_in_air = true
+		_jump_sprinted = input.sprint and not input.move.is_zero_approx()
 		_jump_buffer_left = 0.0
 		_coyote_left = 0.0
 		_mantle_armed = true
@@ -374,6 +378,9 @@ func _physics_process(delta: float) -> void:
 	is_airborne = not is_on_floor()
 	_bump_players(approach)
 	if is_on_floor() and not grounded and velocity.y <= 0.0:
+		if is_alive and _jumped_in_air and not _mantled_in_air:
+			_report_fall(_fall_peak_y - global_position.y, _jump_sprinted)
+		_jumped_in_air = false
 		if is_alive and _fall_peak_y - global_position.y >= tuning.fall_tumble_height:
 			_tumble_left = tuning.tumble_duration
 			is_tumbling = true
@@ -382,6 +389,31 @@ func _physics_process(delta: float) -> void:
 	if global_position.y < tuning.void_height:
 		global_position = Vector3(0.0, tuning.respawn_height, 0.0)
 		_reset_movement()
+
+
+## FIX(S11, Claude): fall damage only for JUMPS off a roof (>= one story); walking off hurts nothing.
+## NET: owner peer reports, server validates and applies. Damage scales linearly with stories fallen.
+func _report_fall(fall_height: float, sprinted: bool) -> void:
+	if fall_height < tuning.fall_story_height:
+		return
+	if Net.is_server(self):
+		_apply_fall_damage(fall_height, sprinted)
+	else:
+		_rpc_fall.rpc_id(1, fall_height, sprinted)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_fall(fall_height: float, sprinted: bool) -> void:
+	if not Net.is_server(self) or Net.sender_id(self) != get_multiplayer_authority():
+		return
+	_apply_fall_damage(fall_height, sprinted)
+
+
+func _apply_fall_damage(fall_height: float, sprinted: bool) -> void:
+	if not is_alive or fall_height < tuning.fall_story_height:
+		return
+	var base := tuning.fall_damage_sprint_jump if sprinted else tuning.fall_damage_jump
+	health.apply_damage(base * minf(fall_height, 60.0) / tuning.fall_story_height, 0, &"fall")
 
 
 # FIX(S02, Codex): the shipped stub ignored Space in the air; probe a ledge on a fresh press.
@@ -461,6 +493,7 @@ func _tick_mantle(delta: float) -> void:
 	var hit := move_and_collide(next - global_position)
 	if hit != null or t >= 1.0:
 		is_mantling = false
+		_jumped_in_air = false
 		_fall_peak_y = global_position.y
 
 

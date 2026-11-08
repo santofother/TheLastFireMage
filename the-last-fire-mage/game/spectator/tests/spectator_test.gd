@@ -17,11 +17,21 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	_check(not mgr.is_spectating, "not spectating while alive")
 	_check(Players.local_player() == p, "player is local")
+	# Fall damage: jump off one story = 5, sprint jump = 8, scales with height, below a story = none.
+	p._report_fall(2.9, false)
+	_check(p.health.hp == 100.0, "no damage below one story")
+	p._report_fall(3.0, false)
+	_check(is_equal_approx(p.health.hp, 95.0), "one-story jump = 5")
+	p._report_fall(3.0, true)
+	_check(is_equal_approx(p.health.hp, 87.0), "one-story sprint jump = 8")
+	p._report_fall(6.0, false)
+	_check(is_equal_approx(p.health.hp, 77.0), "two stories = 10")
 	p.health.kill(0, &"test")
 	await get_tree().physics_frame
 	_check(not p.is_alive, "player dead")
 	_check(mgr.is_spectating, "spectating after death")
 	_check(p.collision_layer == 0, "corpse has no collision layer")
+	_check(mgr.get_child_count() > 0 and mgr._ghost_anim != null, "ghost uses the player's villager model")
 	_check(mgr.camera.current, "spectator camera current")
 	_check(mgr.camera.global_position.y > mgr.tuning.camera_height, "camera above the glass layer")
 	_check(is_equal_approx(mgr.focus.y, mgr.tuning.camera_height), "ghost on glass layer")
