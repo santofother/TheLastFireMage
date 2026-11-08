@@ -68,7 +68,9 @@ var tuning: PlayerTuning
 @onready var _spring: SpringArm3D = $CameraRig/SpringArm
 @onready var _nameplate: Label3D = $Nameplate
 @onready var _speaking_icon: Label3D = $Speaking
+# WHY: the capsule is still the mage's body. Villagers hide it and show $VillagerVisual instead.
 @onready var _body_mesh: MeshInstance3D = $Body
+@onready var _villager_visual: VillagerVisual = $VillagerVisual
 @onready var _collision: CollisionShape3D = $Collision
 
 ## Replicated stance flag; remote peers resize their own collision and visuals.
@@ -79,6 +81,8 @@ var is_mantling := false
 var is_tumbling := false
 ## Replicated sprint animation state.
 var is_sprinting := false
+## Replicated: the owner's controller is off the floor. Remote peers cannot ask is_on_floor() themselves.
+var is_airborne := false
 
 var _coyote_left := 0.0
 var _jump_buffer_left := 0.0
@@ -114,6 +118,7 @@ func _ready() -> void:
 	mat.albedo_color = Color.from_hsv(fmod(absf(peer_id * 0.618034), 1.0), 0.55, 0.9)
 	_body_mesh.material_override = mat
 	_apply_tuning(VILLAGER_TUNING, "villager")
+	_update_role_visual()
 	health.damaged.connect(func(a: float, src: int, c: StringName) -> void:
 		GameEvents.player_damaged.emit(peer_id, a, src, c))
 	health.died.connect(_on_died)
@@ -154,6 +159,7 @@ func set_role(new_role: int) -> void:
 		_apply_tuning(MAGE_TUNING, "mage")
 	else:
 		_apply_tuning(VILLAGER_TUNING, "villager")
+	_update_role_visual()
 	for c in abilities.get_children():
 		abilities.remove_child(c)
 		c.queue_free()
@@ -365,6 +371,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var approach := velocity
 	move_and_slide()
+	is_airborne = not is_on_floor()
 	_bump_players(approach)
 	if is_on_floor() and not grounded and velocity.y <= 0.0:
 		if is_alive and _fall_peak_y - global_position.y >= tuning.fall_tumble_height:
@@ -455,6 +462,13 @@ func _tick_mantle(delta: float) -> void:
 	if hit != null or t >= 1.0:
 		is_mantling = false
 		_fall_peak_y = global_position.y
+
+
+func _update_role_visual() -> void:
+	var mage := role == Enums.Role.MAGE
+	_villager_visual.visible = not mage
+	_body_mesh.visible = mage
+	$Nose.visible = mage
 
 
 func _ray(from: Vector3, to: Vector3) -> Dictionary:
@@ -560,6 +574,7 @@ func _reset_movement() -> void:
 	is_mantling = false
 	is_tumbling = false
 	is_sprinting = false
+	is_airborne = false
 	_tumble_left = 0.0
 	_fall_peak_y = global_position.y
 	_takeoff_y = global_position.y

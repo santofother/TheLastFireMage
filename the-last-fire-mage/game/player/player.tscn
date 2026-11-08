@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://game/player/player.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://game/common/health.tscn" id="2_health"]
+[ext_resource type="Script" path="res://game/player/villager/villager_visual.gd" id="3_visual"]
+[ext_resource type="PackedScene" path="res://game/player/villager/red-villager-animations.glb" id="4_model"]
 
 [sub_resource type="CapsuleShape3D" id="shape"]
 radius = 0.4
@@ -34,6 +36,9 @@ properties/4/replication_mode = 1
 properties/5/path = NodePath(".:is_sprinting")
 properties/5/spawn = true
 properties/5/replication_mode = 1
+properties/6/path = NodePath(".:is_airborne")
+properties/6/spawn = true
+properties/6/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D" groups=["players"]]
 collision_layer = 2
@@ -51,6 +56,12 @@ mesh = SubResource("mesh")
 [node name="Nose" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -0.45)
 mesh = SubResource("nose")
+
+[node name="VillagerVisual" type="Node3D" parent="."]
+script = ExtResource("3_visual")
+
+[node name="Model" parent="VillagerVisual" instance=ExtResource("4_model")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0, 0)
 
 [node name="Nameplate" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
