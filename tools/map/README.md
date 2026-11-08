@@ -19,12 +19,17 @@ Shared meshes/shapes keep the greybox scene small; smooth collision wedges under
 risers let CharacterBody3D walk to roofs. All solid geometry is on world layer 1. Lighting lives in main.
 Navigation uses the default world's 0.25 m voxels, a 0.5 m radius and 1 m height for chickens.
 
-The 150 x 150 m footprint includes the harbour mole. There are 52 one-room houses, each with two
-2.4 x 2.6 m open doorways and a 2 m wide staircase to a 3.6 m roof. Alleys are 3–4 m wide; a broad
-cross street and quay join all districts. Each district has a small landmark plaza plus several street
-exits. North/south roof alleys have planks; east/west routes alternate planks and 3 m running jumps.
-Stairs provide an alternate route to every roof for the mage. Four 1.6 m ledges, four dead-end nooks
-and 20 S10 hide-spot instances provide chase choices without relying on wall climbing.
+The 104 x 104 m footprint includes the harbour mole (52% less area than the original 150 m map).
+There are 32 one-room houses in four eight-house districts, with two 2.4 x 2.6 m open doorways each.
+Roof terraces descend through 4.8, 4.2 and 3.6 m elevations; 2 m wide stairs reach every height.
+Mixed plaster colours, low pitched roof sections, shutters and purple banners echo the village-purple
+references at greybox detail. Narrow alleys, landmark plazas, a central cross street and quay remain.
+North/south sloping planks connect roof levels; east/west routes bridge upper rows and keep 3 m running jumps on the lowest row.
+Four 1.6 m ledges, four dead-end nooks and 20 S10 hide spots remain available for chase choices.
+
+Roof slabs sit above wall tops, wall corners meet edge-to-edge, bridge tops stand clear of roofs,
+and stair treads stop at landing edges. Do not restore coplanar overlaps: the headless map test checks
+flat box tops for overlapping area, alongside navigation and capsule traversal at every roof height.
 
 Placeholder landmarks are named Church, Windmill, MarketStall, HarbourStore and Mole for later art swaps.
 No materials use textures. Keep `test_arena.tscn` unchanged: network/match tests depend on that small map.

@@ -31,9 +31,9 @@ func _run() -> void:
 		var minimum: int = {"villager_spawn": 8, "mage_spawn": 2, "chicken_spawn": 10, "item_spawn": 10, "hide_spot": 15}[group]
 		_check(get_tree().get_nodes_in_group(group).size() >= minimum, "marker count %s" % group)
 	_check(get_tree().get_nodes_in_group("mage_spawn").size() == 2, "exactly two mage starts")
-	_check(_town.get_meta("footprint") == Vector2(150, 150), "150 m footprint")
+	_check(_town.get_meta("footprint") == Vector2(104, 104), "compact 104 m footprint")
 	_check(get_tree().get_nodes_in_group("map_district").size() == 4, "four districts")
-	_check(get_tree().get_nodes_in_group("map_house").size() >= 48, "dense neighbourhood")
+	_check(get_tree().get_nodes_in_group("map_house").size() == 32, "32 houses across four compact districts")
 	_check(get_tree().get_nodes_in_group("map_nook").size() >= 4, "dead-end hiding nooks")
 	_check(get_tree().get_nodes_in_group("map_landmark").size() >= 3, "landmark placeholders")
 	var all_nodes := _town.find_children("*", "", true, false)
@@ -101,13 +101,19 @@ func _run() -> void:
 		var shape: BoxShape3D = ledge.get_node("Collision").shape
 		ledges_ok = ledges_ok and shape.size.y <= 2
 	_check(ledges_ok, "mantle ledges at most 2 m")
-	await _walk_stairs()
+	_check_surfaces()
+	var heights: Dictionary = {}
+	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
+		var top: float = house.get_meta("roof_height")
+		if not heights.has(top):
+			heights[top] = true
+			await _walk_stairs(house)
+	_check(heights.size() >= 3, "at least three traversable roof elevations")
 	print("[TEST] MAP PASSED" if _fails == 0 else "[TEST] MAP FAILED (%d)" % _fails)
 	get_tree().quit(0 if _fails == 0 else 1)
 
 
-func _walk_stairs() -> void:
-	var house := get_tree().get_first_node_in_group("map_house") as Node3D
+func _walk_stairs(house: Node3D) -> void:
 	var body := CharacterBody3D.new()
 	body.collision_layer = 2
 	body.collision_mask = 1
@@ -128,7 +134,7 @@ func _walk_stairs() -> void:
 		if body.global_position.z > house.global_position.z + 3.4:
 			break
 	print("[Map] Walk end ", body.global_position - house.global_position)
-	_check(body.global_position.y > 3.4, "mage capsule walks staircase without jumping or snagging")
+	_check(body.global_position.y >= float(house.get_meta("roof_height")) - 0.2, "mage capsule walks staircase without jumping or snagging")
 	body.queue_free()
 
 
@@ -166,3 +172,23 @@ func _check(ok: bool, label: String) -> void:
 	print("[TEST] %s %s" % ["ok" if ok else "FAIL", label])
 	if not ok:
 		_fails += 1
+
+
+func _check_surfaces() -> void:
+	# Flat exposed tops must not share area: this catches wall/roof, landing/tread,
+	# quay/foundation and horizontal plank/roof z-fighting without a renderer.
+	var bounds: Array[AABB] = []
+	var labels: Array[String] = []
+	var clean := true
+	for mesh: MeshInstance3D in _town.find_children("*", "MeshInstance3D", true, false):
+		if not mesh.mesh is BoxMesh or not mesh.global_basis.is_equal_approx(Basis.IDENTITY):
+			continue
+		var box := mesh.global_transform * mesh.get_aabb()
+		for i in bounds.size():
+			var other := bounds[i]
+			if absf(box.end.y - other.end.y) < 0.001 and minf(box.end.x, other.end.x) - maxf(box.position.x, other.position.x) > 0.001 and minf(box.end.z, other.end.z) - maxf(box.position.z, other.position.z) > 0.001:
+				print("[Map] Coplanar tops: ", mesh.get_path(), " / ", labels[i])
+				clean = false
+		bounds.append(box)
+		labels.append(str(mesh.get_path()))
+	_check(clean, "no overlapping coplanar box tops")
