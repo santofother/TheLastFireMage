@@ -23,3 +23,4 @@ extends Tuning
 @export var hidden_cluck_db := -10.0 ## TUNE: dB while hidden (muffled)
 @export var carry_speed_mult := 0.85 ## TUNE: carrier speed while carrying
 @export var respawn_time := 0.0 ## TUNE: s, 0 = no respawn; >0 = a dead chicken is replaced after this
+@export var debug_beacons := true ## TUNE: tall pink pillar + "CHICKEN" label (seen through walls) on every chicken. Debug; turn off for real playtests

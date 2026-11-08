@@ -52,6 +52,7 @@ var _path_i := 0
 @onready var cluck: AudioStreamPlayer3D = $Cluck
 @onready var body: Node3D = $Body
 @onready var collision: CollisionShape3D = $Collision
+@onready var beacon: Node3D = $DebugBeacon
 
 static var _cluck_stream: AudioStreamWAV
 
@@ -257,6 +258,7 @@ func _update_cluck(delta: float) -> void:
 
 ## Cosmetic pecking bob while idle (every peer).
 func _update_look(delta: float) -> void:
+	beacon.visible = tuning.debug_beacons and carrier_id == 0
 	if state == State.IDLE and carrier_id == 0:
 		_peck_t += delta * 6.0
 		body.rotation.x = maxf(0.0, sin(_peck_t)) * 0.6

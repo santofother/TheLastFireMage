@@ -46,7 +46,9 @@ func spawn_chickens(count: int) -> void:
 			else FALLBACK_SPAWN
 		var jitter := Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)) if i >= spawns.size() \
 			else Vector3.ZERO
-		spawner.spawn({"name": "Chicken%d" % _next_id, "pos": base + jitter + Vector3(0, 0.2, 0)})
+		var pos := base + jitter + Vector3(0, 0.2, 0)
+		spawner.spawn({"name": "Chicken%d" % _next_id, "pos": pos})
+		print("[Chicken] Chicken%d at (%.0f, %.0f, %.0f)" % [_next_id, pos.x, pos.y, pos.z])
 		_next_id += 1
 	print("[Chicken] Spawned %d (alive %d)" % [count, alive_count()])
 
