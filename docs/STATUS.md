@@ -20,7 +20,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S05 | Greybox town map v1 | 1 | READY | |
 | S06 | Chickens | 1 | DONE (2026-11-07) | s06-chickens |
 | S07 | Headless bots + test runner v2 | 1 | DONE (2026-11-07) | s07-bots |
-| S08 | HUD shell | 1 | DONE (2026-11-07) | s08-hud |
+| S08 | HUD shell | 1 | DONE (2026-11-07) | s08-hud; fix-hud-voice (playtest HUD/voice fix) |
 | S09 | Mage combat | 2 | READY | |
 | S10 | Carry, hide, interact | 2 | READY | |
 | S11 | Death + basic spectator | 2 | READY | |
