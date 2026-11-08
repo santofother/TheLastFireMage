@@ -26,7 +26,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S11 | Death + basic spectator | 2 | DONE (2026-11-08) | s11-death |
 | S12 | Voice v2 (bandwidth, mage distortion, dead routing) | 2 | DONE (2026-11-08) | s12-voice |
 | S13 | Mage power + decay | 3 | DONE (2026-11-08) | codex/fix-voice-health-power; kill rewards, tiers, decay + sync |
-| S14 | Firestorm | 3 | READY | S13 power threshold now implemented |
+| S14 | Firestorm | 3 | DONE (2026-11-08) | s14-firestorm |
 | S15 | Villager stuns / counterplay | 3 | DONE (2026-11-08) | s15-counterplay |
 | S16 | Scoring + Mage rotation | 3 | READY | |
 | P1 | Playtest 1 (user + friends) | — | TODO | after wave 3 |
