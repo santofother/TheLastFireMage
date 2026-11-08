@@ -16,6 +16,7 @@ var _mage_died := false
 var _round_won := false
 var _finished := false
 var _closed := false
+var _saw_plan := false
 var _late := false
 var _hosting := false
 var _previous_radius := INF
@@ -52,7 +53,12 @@ func _start_round() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not _storm or _storm.stage == 0:
+	if not _storm:
+		return
+	if not _saw_plan and _storm.final_zone_radius > 0.0:
+		_saw_plan = true
+		_check_plan()
+	if _storm.stage == 0:
 		_previous_radius = INF
 		return
 	var radius := _storm.zone_radius
@@ -63,12 +69,10 @@ func _process(_delta: float) -> void:
 
 
 func _on_phase(phase: int, _duration: float) -> void:
-	if phase == Enums.Phase.HUNT:
-		_check_plan.call_deferred()
-		if _hosting:
-			var bot := Players.get_player(_BOT_ID) as Player
-			bot.set_physics_process(false)
-			bot.global_position = Vector3(30.0, 1.0, 0.0)
+	if phase == Enums.Phase.HUNT and _hosting:
+		var bot := Players.get_player(_BOT_ID) as Player
+		bot.set_physics_process(false)
+		bot.global_position = Vector3(30.0, 1.0, 0.0)
 	elif phase == Enums.Phase.LOBBY and _round_won and not _finished:
 		_finish.call_deferred()
 
@@ -124,7 +128,7 @@ func _finish() -> void:
 	_finished = true
 	_check(_stages == [1, 2, 3, 4], "all stages delivered including current stage for late client")
 	_check(_warnings == ([2, 3, 4] if _late else [1, 2, 3, 4]), "all applicable warnings delivered")
-	_check(_damaged and _mage_died, "health events reached this peer")
+	_check(_saw_plan and _damaged and _mage_died, "plan and health events reached this peer")
 	_check(_storm.stage == 0 and _storm.required_power() == 0.0 and _storm.final_zone_radius == 0.0,
 		"storm state cleared on return to lobby")
 	print("[TEST] FIRESTORM PASSED" if not _failed else "[TEST] FAIL FIRESTORM")
