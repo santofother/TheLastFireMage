@@ -32,6 +32,19 @@ func _ready() -> void:
 	p.health.hp = 100.0
 	p._report_fall(6.2, false, true)
 	_check(is_equal_approx(p.health.hp, 100.0 - 10.0 * 2.7), "two stories scale linearly")
+	# Lethal fall: first one downs (alive, hp 1, no control), a villager revive gives 80%, the second one kills.
+	p.health.hp = 10.0
+	p._report_fall(6.2, false, true)
+	_check(p.is_alive and p.health.is_downed and p.health.hp == p.tuning.downed_hp and not p.can_control(),
+		"lethal fall downs instead of killing")
+	p.health.recover(p.health.max_hp * p.tuning.revive_hp_fraction)
+	_check(not p.health.is_downed and is_equal_approx(p.health.hp, 80.0) and p.can_control(), "revive = 80% hp")
+	p.health.hp = 10.0
+	p._report_fall(6.2, false, true)
+	_check(not p.is_alive and not p.health.is_downed, "second lethal fall (downs_allowed = 1) kills")
+	p.health.revive()
+	await get_tree().physics_frame
+	_check(p.is_alive and p.health.downs_used == 0, "round reset restores downs")
 	p.health.kill(0, &"test")
 	await get_tree().physics_frame
 	_check(not p.is_alive, "player dead")

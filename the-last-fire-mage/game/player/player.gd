@@ -125,6 +125,9 @@ func _ready() -> void:
 		GameEvents.player_damaged.emit(peer_id, a, src, c))
 	health.died.connect(_on_died)
 	health.revived.connect(_on_revived)
+	health.downed.connect(_on_downed)
+	health.recovered.connect(_on_recovered)
+	_add_revive_interactable()
 	if is_local():
 		camera.current = true
 		_nameplate.visible = false
@@ -145,7 +148,7 @@ func is_local() -> bool:
 
 ## True when movement/abilities may act: alive, not stunned/tumbling, no input lock.
 func can_control() -> bool:
-	return is_alive and _stun_left <= 0.0 and _locks.is_empty() and not is_tumbling
+	return is_alive and not health.is_downed and _stun_left <= 0.0 and _locks.is_empty() and not is_tumbling
 
 
 ## Shows the speaking icon (called every frame for the local player; remote via VoiceManager).
@@ -273,6 +276,37 @@ func _on_died(killer_id: int, cause: StringName) -> void:
 	_nameplate.visible = false
 	died.emit(killer_id, cause)
 	GameEvents.player_died.emit(peer_id, killer_id, cause)
+
+
+func _on_downed() -> void:
+	_reset_movement()
+	is_crouching = false
+	_update_stance()
+	_body_mesh.rotation.x = -PI / 2.0
+	_body_mesh.position.y = tuning.radius
+
+
+func _on_recovered() -> void:
+	_reset_movement()
+	_body_mesh.rotation.x = 0.0
+	_body_mesh.position.y = tuning.height / 2.0
+
+
+## Lets living villagers revive this player with E while they are downed. Server validates via InteractManager.
+func _add_revive_interactable() -> void:
+	var node := Interactable.new()
+	node.name = "Interactable"
+	node.collision_layer = 8
+	node.collision_mask = 0
+	node.kind = &"revive"
+	node.max_distance = 2.5
+	node.condition = func(who: Node) -> bool:
+		return who != self and health.is_downed and health.is_alive and who.is_alive \
+			and who.role == Enums.Role.VILLAGER
+	node.prompt_provider = func(_who: Node) -> String: return "Revive %s" % display_name
+	node.interacted.connect(func(_who: Node) -> void:
+		health.recover(health.max_hp * tuning.revive_hp_fraction))
+	add_child(node)
 
 
 func _on_revived() -> void:
@@ -411,12 +445,17 @@ func _rpc_fall(fall_height: float, sprinted: bool, jumped: bool) -> void:
 
 
 func _apply_fall_damage(fall_height: float, sprinted: bool, jumped: bool) -> void:
-	if not is_alive or fall_height < tuning.fall_story_height:
+	if not is_alive or health.is_downed or fall_height < tuning.fall_story_height:
 		return
 	var base := tuning.fall_damage_walk_off
 	if jumped:
 		base = tuning.fall_damage_sprint_jump if sprinted else tuning.fall_damage_jump
-	health.apply_damage(base * tuning.fall_damage_scale * minf(fall_height, 60.0) / tuning.fall_story_height, 0, &"fall")
+	var damage := base * tuning.fall_damage_scale * minf(fall_height, 60.0) / tuning.fall_story_height
+	# WHY: a lethal fall downs the player (revivable by a villager) a limited number of times per round.
+	if damage >= health.hp and not health.invulnerable and health.downs_used < tuning.fall_downs_allowed:
+		health.down(tuning.downed_hp)
+		return
+	health.apply_damage(damage, 0, &"fall")
 
 
 # FIX(S02, Codex): the shipped stub ignored Space in the air; probe a ledge on a fresh press.

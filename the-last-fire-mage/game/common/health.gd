@@ -16,6 +16,10 @@ signal damaged(amount: float, source_id: int, cause: StringName)
 signal died(killer_id: int, cause: StringName)
 ## Back alive with full hp. Fires on all peers.
 signal revived
+## Knocked down but not out (still alive; any further damage kills). Fires on all peers.
+signal downed
+## Got back up from downed. Fires on all peers.
+signal recovered
 ## hp changed for any reason (damage, heal, revive, sync). Fires on all peers.
 signal hp_changed(hp: float)
 
@@ -29,6 +33,10 @@ signal hp_changed(hp: float)
 			hp_changed.emit(hp)
 ## False after death until `revive()` (synced).
 @export var is_alive := true
+## True while downed: alive, but cannot act until a villager revives them (synced).
+@export var is_downed := false
+## Server only: how many times this player has been downed since the last full `revive()`.
+var downs_used := 0
 ## Server-side switch: when true, damage is ignored (e.g. lobby). Not synced.
 var invulnerable := false
 
@@ -58,10 +66,25 @@ func heal(amount: float) -> void:
 		_broadcast(minf(max_hp, hp + amount), 0.0, 0, &"heal", false)
 
 
+## NET: server only. Knocks an alive player down at `down_hp` instead of killing them.
+func down(down_hp: float) -> void:
+	if not Net.is_server(self) or not is_alive or is_downed:
+		return
+	downs_used += 1
+	Net.broadcast(self, &"_rpc_down", [down_hp])
+
+
+## NET: server only. Gets a downed player back up at `new_hp`.
+func recover(new_hp: float) -> void:
+	if Net.is_server(self) and is_alive and is_downed:
+		Net.broadcast(self, &"_rpc_recover", [new_hp])
+
+
 ## NET: server only. Full hp and alive again (round reset).
 func revive() -> void:
 	if not Net.is_server(self):
 		return
+	downs_used = 0
 	Net.broadcast(self, &"_rpc_revive")
 
 
@@ -88,12 +111,28 @@ func _rpc_event(new_hp: float, amount: float, source_id: int, cause: StringName,
 		damaged.emit(amount, source_id, cause)
 	if dead and is_alive:
 		is_alive = false
+		is_downed = false
 		died.emit(source_id, cause)
+
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_down(down_hp: float) -> void:
+	hp = down_hp
+	is_downed = true
+	downed.emit()
+
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_recover(new_hp: float) -> void:
+	hp = new_hp
+	is_downed = false
+	recovered.emit()
 
 
 @rpc("authority", "call_local", "reliable")
 func _rpc_revive() -> void:
 	hp = max_hp
+	is_downed = false
 	if not is_alive:
 		is_alive = true
 		revived.emit()

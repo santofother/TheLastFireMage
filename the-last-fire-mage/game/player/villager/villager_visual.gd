@@ -141,7 +141,7 @@ func _start_timed(timed: StringName, rate: float, from_time := 0.0) -> void:
 
 
 func _select_clip() -> void:
-	if not _player.is_alive:
+	if not _player.is_alive or _player.health.is_downed:
 		_timed_left = 0.0
 		_play(DEATH, 1.0)
 	elif _player.is_tumbling:

@@ -84,6 +84,15 @@ extends Tuning
 ## TUNE: Damage for a sprinting jump off exactly one story; scales linearly with height.
 @export var fall_damage_sprint_jump := 8.0
 
+## TUNE: How many times per round a lethal fall leaves a player downed (revivable) instead of dead. 0 = falls kill.
+@export var fall_downs_allowed := 1
+
+## TUNE: hp fraction of max a player gets back when a villager revives them.
+@export var revive_hp_fraction := 0.8
+
+## TUNE: hp while downed (any damage kills).
+@export var downed_hp := 1.0
+
 ## TUNE: Loss of control after a big landing, seconds.
 @export var tumble_duration := 0.65
 
