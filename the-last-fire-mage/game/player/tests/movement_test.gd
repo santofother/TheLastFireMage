@@ -26,7 +26,7 @@ var _driver := Driver.new()
 
 
 func _ready() -> void:
-	get_tree().create_timer(90.0).timeout.connect(func() -> void:
+	get_tree().create_timer(110.0).timeout.connect(func() -> void:
 		print("[TEST] FAIL movement timeout"); get_tree().quit(1))
 	_box(Vector3(0, -0.5, 0), Vector3(100, 1, 100))
 	_run.call_deferred()
@@ -298,6 +298,34 @@ func _jump_peak(tuck_near_apex: bool, tuck_at_takeoff: bool) -> float:
 	return peak
 
 
+# Notches must neither catch the player nor make crossing them faster than a flat run.
+func _notched_distance(notch: float) -> float:
+	var boxes: Array[StaticBody3D] = []
+	if notch > 0.0:
+		for i in 24:
+			boxes.append(_box(Vector3(60, notch * (i + 1) / 2.0, -4.0 - 0.5 * i), Vector3(6, notch * (i + 1), 0.5)))
+	await _reset(Vector3(60, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	await _ticks(45)
+	var start := _player.position.z
+	await _ticks(60)
+	var distance := absf(_player.position.z - start)
+	_driver.move = Vector2.ZERO
+	for b in boxes:
+		b.queue_free()
+	await _ticks(2)
+	return distance
+
+
+func _check_notched_slope() -> void:
+	var flat: float = await _notched_distance(0.0)
+	for notch: float in [0.03, 0.06, 0.1, 0.2]:
+		var distance: float = await _notched_distance(notch)
+		print("[TEST] 60-tick distance flat=%.2f notch %.2f m=%.2f" % [flat, notch, distance])
+		_check(distance <= flat * 1.03, "%.2f m notches give no speed boost" % notch)
+		_check(distance >= flat * 0.85, "%.2f m notches do not catch the player" % notch)
+
+
 func _check_step_and_tuck() -> void:
 	var curb := _box(Vector3(30, 0.15, -6), Vector3(4, 0.3, 9))
 	await _reset(Vector3(30, 0.04, 0))
@@ -312,6 +340,7 @@ func _check_step_and_tuck() -> void:
 	_check(_player.position.y < 0.1 and _player.position.z > -1.6, "a 0.6 m ledge still needs a jump")
 	wall.queue_free()
 	await _reset(Vector3(30, 0.04, 0))
+	await _check_notched_slope()
 	var plain: float = await _jump_peak(false, false)
 	var timed: float = await _jump_peak(true, false)
 	var early: float = await _jump_peak(false, true)

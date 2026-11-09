@@ -1,5 +1,5 @@
 ## Short-lived hit flash, procedural sound and victim camera shake / wave arc.
-## Owner: S09. Public API: hit(point, victim), wave(origin, aim, reach, angle), locator(points). Cosmetic on each peer.
+## Owner: S09. Public API: hit(point, victim), wave(origin, aim, reach, angle), locator(points, origin, reach, show_time). Cosmetic on each peer.
 extends Node3D
 
 ## Displays confirmed damage at the target; shakes only the victim's local camera.
@@ -46,20 +46,32 @@ func wave(origin: Vector3, aim: Vector3, reach: float, angle: float) -> void:
 		tween.parallel().tween_property(spark, "scale", Vector3.ONE * 0.1, 0.3)
 	get_tree().create_timer(0.35).timeout.connect(queue_free)
 
-## FIX(S14, Codex): Briefly marks the sensed positions through walls for the local mage.
-func locator(points: PackedVector3Array) -> void:
+## Locate: a ring sweeps out to `reach` so the cast always shows, then marks each villager through walls.
+## WHY: the old fixed-size label rendered only a few pixels wide, too small to notice in play.
+func locator(points: PackedVector3Array, origin: Vector3, reach: float, show_time: float) -> void:
+	global_position = origin + Vector3.UP * 0.3
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.97
+	torus.outer_radius = 1.0
+	var ring := _mesh(torus)
+	(ring.material_override as StandardMaterial3D).no_depth_test = true
+	ring.scale = Vector3.ONE * 0.1
+	var sweep := create_tween()
+	sweep.tween_property(ring, "scale", Vector3(reach, 1.0, reach), 0.5)
+	sweep.tween_callback(ring.queue_free)
 	for point in points:
-		var marker := Label3D.new()
-		marker.text = "◇"
-		marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		marker.no_depth_test = true
-		marker.fixed_size = true
-		marker.font_size = 32
-		marker.pixel_size = 0.001
-		marker.modulate = Color(1.0, 0.56, 0.2)
-		add_child(marker)
+		var diamond := SphereMesh.new()
+		diamond.radius = 0.28
+		diamond.height = 0.8
+		diamond.radial_segments = 4
+		diamond.rings = 1
+		var marker := _mesh(diamond)
+		(marker.material_override as StandardMaterial3D).no_depth_test = true
 		marker.global_position = point
-	get_tree().create_timer(0.8).timeout.connect(queue_free)
+		var pulse := create_tween().set_loops(int(ceil(show_time / 0.5)))
+		pulse.tween_property(marker, "scale", Vector3.ONE * 1.35, 0.25)
+		pulse.tween_property(marker, "scale", Vector3.ONE, 0.25)
+	get_tree().create_timer(show_time).timeout.connect(queue_free)
 
 func _mesh(shape: Mesh) -> MeshInstance3D:
 	var node := MeshInstance3D.new()

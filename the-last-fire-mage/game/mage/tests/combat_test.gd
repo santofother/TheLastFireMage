@@ -55,13 +55,38 @@ func _cast(ability: StringName) -> void:
 	if ability == &"knife": mage.input.primary_pressed = true
 	if ability == &"ignite": mage.input.ability_1_pressed = true
 	if ability == &"fire_wave": mage.input.ability_2_pressed = true
+	if ability == &"locate": mage.input.ability_3_pressed = true
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	mage.input.clear()
 
+# The real binding, through PlayerInput, to the server's answer on the owning peer.
+func _check_locate_key() -> void:
+	_check(InputMap.has_action(&"ability_3"), "locate has an input action")
+	var key := InputMap.action_get_events(&"ability_3")[0] as InputEventKey
+	_check(key != null and key.physical_keycode == KEY_R, "locate is bound to R")
+	var input := PlayerInput.new()
+	Input.action_press(&"ability_3") # WHY: "just pressed" only holds within the frame of the press.
+	input.fill_from_devices()
+	Input.action_release(&"ability_3")
+	_check(input.ability_3_pressed, "pressing the key reaches PlayerInput")
+	mage.is_bot = false # is_local() must be true so the host mage receives its own result
+	victim.position = Vector3(0, 0, -5)
+	combat.last_locator_points = PackedVector3Array()
+	await _cast(&"locate")
+	_check(combat.last_locator_points.size() == 1, "pressing locate marks the nearby villager")
+	_check(combat.cooldown_left(&"locate") > 0.0, "locate starts its cooldown")
+	combat.last_locator_points = PackedVector3Array()
+	await _cast(&"locate")
+	_check(combat.last_locator_points.is_empty(), "locate is rejected during cooldown")
+	mage.is_bot = true
+
+
 # FIX(S14, Codex): Cover Wave balance, chicken hits, and the locator range in the combat harness.
 func _run() -> void:
 	await get_tree().create_timer(0.4).timeout
+	await _check_locate_key()
+	victim.position = Vector3(0, 0, -1.2)
 	combat.tuning.knife_cooldown = 0.15
 	combat.tuning.wave_cooldown = 0.15
 	combat.tuning.ignite_duration = 0.4

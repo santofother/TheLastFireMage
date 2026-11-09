@@ -73,7 +73,6 @@ var tuning: PlayerTuning
 ## Positional voice playback node.
 @onready var voice: AudioStreamPlayer3D = $Voice
 @onready var _spring: SpringArm3D = $CameraRig/SpringArm
-@onready var _nameplate: Label3D = $Nameplate
 @onready var _speaking_icon: Label3D = $Speaking
 # WHY: the capsule is still the mage's body. Villagers hide it and show $VillagerVisual instead.
 @onready var _body_mesh: MeshInstance3D = $Body
@@ -100,6 +99,7 @@ var air_tuck_lift := 0.0
 var visual_y_offset := 0.0
 
 var _step_offset := 0.0
+var _step_distance_debt := 0.0
 var _coyote_left := 0.0
 var _jump_buffer_left := 0.0
 var _mantle_armed := false
@@ -131,7 +131,6 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	add_to_group(&"players")
-	_nameplate.text = display_name
 	_spring.add_excluded_object(get_rid())
 	_default_layer = collision_layer
 	var mat := StandardMaterial3D.new()
@@ -151,7 +150,6 @@ func _ready() -> void:
 	_add_revive_interactable()
 	if is_local():
 		camera.current = true
-		_nameplate.visible = false
 		VoiceManager.listener = self
 		GameEvents.local_player_ready.emit(self)
 	else:
@@ -295,7 +293,6 @@ func _on_died(killer_id: int, cause: StringName) -> void:
 	collision_layer = 0 # CONTRACT: dead bodies don't block or get hit; they still rest on the floor
 	_body_mesh.rotation.x = -PI / 2.0
 	_body_mesh.position.y = tuning.radius
-	_nameplate.visible = false
 	died.emit(killer_id, cause)
 	GameEvents.player_died.emit(peer_id, killer_id, cause)
 
@@ -337,7 +334,6 @@ func _on_revived() -> void:
 	_reset_movement()
 	_body_mesh.rotation.x = 0.0
 	_body_mesh.position.y = tuning.height / 2.0
-	_nameplate.visible = not is_local()
 	revived.emit()
 	GameEvents.player_revived.emit(peer_id)
 
@@ -454,8 +450,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if grounded and can_control():
 		_try_step_up(delta)
+	else:
+		_step_distance_debt = 0.0
 	var approach := velocity
-	move_and_slide()
+	_move_paying_step_debt(delta)
 	is_airborne = not is_on_floor()
 	_bump_players(approach)
 	_smash_furniture(approach)
@@ -686,15 +684,34 @@ func _try_step_up(delta: float) -> void:
 	if not test_move(above, Vector3.DOWN * (up.length() + 0.05), down):
 		return
 	var rise: float = above.origin.y - down.get_travel().length() - global_position.y
-	if rise < 0.03 or rise > tuning.step_max_height:
+	if rise < tuning.step_min_height or rise > tuning.step_max_height:
 		return
 	var point := down.get_position() + direction * 0.03
 	var top := _ray(point + Vector3.UP * 0.3, point + Vector3.DOWN * 0.3)
 	if top.is_empty() or (top.normal as Vector3).dot(Vector3.UP) < cos(floor_max_angle):
 		return
 	global_position += nudge + Vector3.UP * (rise + 0.005)
+	_step_distance_debt += nudge.length()
 	_step_offset -= rise
 	camera_rig.position.y -= rise
+
+
+# WHY: a step-up nudges the player forward. Those metres come out of the next ticks of normal movement,
+# otherwise every notch on a ramp adds distance on top of the run speed.
+func _move_paying_step_debt(delta: float) -> void:
+	var planar := Vector2(velocity.x, velocity.z)
+	var travel := planar.length() * delta
+	if _step_distance_debt <= 0.0 or travel <= 0.0:
+		move_and_slide()
+		return
+	var paid := minf(_step_distance_debt, travel)
+	_step_distance_debt -= paid
+	var scaled := planar * (1.0 - paid / travel)
+	velocity.x = scaled.x
+	velocity.z = scaled.y
+	move_and_slide()
+	velocity.x = planar.x
+	velocity.z = planar.y
 
 
 func _update_stance() -> void:
@@ -796,6 +813,7 @@ func _reset_movement() -> void:
 	_jump_sprinted = false
 	air_tuck_lift = 0.0
 	_step_offset = 0.0
+	_step_distance_debt = 0.0
 	velocity = Vector3.ZERO
 	_knockback = Vector3.ZERO
 	_coyote_left = 0.0
@@ -863,7 +881,6 @@ func _apply_tuning(path: String, section: String) -> void:
 	_body_mesh.position.y = tuning.height / 2.0
 	$Nose.position = Vector3(0, tuning.height * 0.8, -tuning.radius - 0.05)
 	camera_rig.position.y = tuning.camera_height
-	_nameplate.position.y = tuning.height + 0.35
 	_speaking_icon.position.y = tuning.height + 0.7
 	voice.position.y = tuning.height * 0.85
 	carry_socket.position = Vector3(0, tuning.height * 0.6, -tuning.radius - 0.25)

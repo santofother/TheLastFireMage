@@ -8,8 +8,6 @@ var _failed := false
 class FakeMage extends Node:
 	func cooldown_left(ability: StringName) -> float:
 		return 4.5 if ability == &"fire_wave" else 0.0
-	func locator_left() -> float:
-		return 2.5
 
 class FakePlayer extends Node:
 	var peer_id := 1
@@ -68,7 +66,7 @@ func _ready() -> void:
 	add_child(fake_player)
 	GameEvents.local_player_ready.emit(fake_player)
 	_check(_label("Cooldowns").text.contains("Fire Wave · 4.5s"), "live cooldown API")
-	_check(_label("Cooldowns").text.contains("[AUTO] Locate · 2.5s"), "locator pulse on the HUD")
+	_check(_label("Cooldowns").text.contains("[R] Locate · READY"), "locate keybind and cooldown on the HUD")
 	_check(_label("Health").text == "HEALTH 100 / 100", "initial health")
 	health.apply_damage(35, 2, &"test")
 	_hud.call("_refresh")

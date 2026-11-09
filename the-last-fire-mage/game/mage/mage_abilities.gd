@@ -8,12 +8,12 @@ var power_multiplier := 1.0
 ## Private tuning copy; mage_combat CLI overrides are supported.
 var tuning: MageCombatTuning
 var _player: Player
-var _cooldowns := {&"knife": 0.0, &"ignite": 0.0, &"fire_wave": 0.0}
+var _cooldowns := {&"knife": 0.0, &"ignite": 0.0, &"fire_wave": 0.0, &"locate": 0.0}
 var _ignite_left := 0.0
 var _power_tier := 0
-var _locator_left := 0.0
-var _locator_display := 0.0 # owner: seconds to the next pulse, reset by each server pulse
 var _flame: MeshInstance3D
+## Positions from the latest Locate this owner received (tests and debug read it).
+var last_locator_points := PackedVector3Array()
 
 func _ready() -> void:
 	_player = get_parent().get_parent() as Player
@@ -26,13 +26,10 @@ func _physics_process(delta: float) -> void:
 	for key in _cooldowns:
 		_cooldowns[key] = maxf(0.0, float(_cooldowns[key]) - delta)
 	_ignite_left = maxf(0.0, _ignite_left - delta)
-	_locator_display = maxf(0.0, _locator_display - delta)
 	_flame.visible = is_ignited()
 	$Knife.visible = false
 	if _flame.visible: # FIX(mage model): burn on the held blade instead of in front of the capsule.
 		_flame.global_position = (_player.get_node("MageVisual") as MageVisual).hand_position() + Vector3.UP * 0.1
-	if Net.is_server(self) and not _player.is_bot:
-		_tick_locator(delta)
 	if not _player.is_multiplayer_authority() or not _player.can_control():
 		return
 	var aim := -_player.camera_rig.global_basis.z
@@ -42,6 +39,8 @@ func _physics_process(delta: float) -> void:
 		_request(&"knife", aim)
 	if _player.input.ability_2_pressed:
 		_request(&"fire_wave", aim)
+	if _player.input.ability_3_pressed:
+		_request(&"locate", aim)
 
 func _request(ability: StringName, aim: Vector3) -> void:
 	if cooldown_left(ability) > 0.0:
@@ -72,8 +71,12 @@ func _rpc_request(ability: StringName, aim: Vector3) -> void:
 	elif ability == &"fire_wave":
 		# FIX(S14, Codex): Use the server's unlocked tier at the time of the cast.
 		cooldown = tuning.wave_cooldown * pow(tuning.wave_cooldown_per_tier, _power_tier)
+	elif ability == &"locate":
+		cooldown = tuning.locator_cooldown
 	Net.broadcast(self, &"_rpc_cast", [ability, cooldown, tuning.ignite_duration])
-	if ability != &"ignite":
+	if ability == &"locate":
+		_send_locator()
+	elif ability != &"ignite":
 		_attack(ability, aim)
 
 @rpc("any_peer", "call_local", "reliable")
@@ -154,20 +157,13 @@ func _on_power_changed(mage_id: int, _power: float, tier: int, multiplier: float
 		power_multiplier = multiplier
 		_power_tier = tier
 
-# FIX(S14, Codex): Sense nearby villagers periodically during the hunt. Only the mage gets the pulse.
-func _tick_locator(delta: float) -> void:
-	var match_system := GameEvents.system(&"match") as MatchManager
-	if not match_system or match_system.phase != Enums.Phase.HUNT or not _player.can_control():
-		return
-	_locator_left -= delta
-	if _locator_left > 0.0:
-		return
-	_locator_left = maxf(0.1, tuning.locator_interval)
-	# WHY: sent even when nobody is near, because each pulse also restarts the HUD countdown.
+# NET: server only. Only the mage who pressed Locate is told where the villagers are.
+func _send_locator() -> void:
 	var points := _nearby_villager_positions()
+	print("[Mage] Locate by %d found %d villagers" % [_player.peer_id, points.size()])
 	if _player.is_local():
 		_rpc_locator(points)
-	elif Net.is_online(self):
+	elif not _player.is_bot and Net.is_online(self):
 		_rpc_locator.rpc_id(_player.get_multiplayer_authority(), points)
 
 
@@ -185,13 +181,13 @@ func _nearby_villager_positions() -> PackedVector3Array:
 func _rpc_locator(points: PackedVector3Array) -> void:
 	if not Net.from_server(self) or not _player.is_local():
 		return
-	_locator_display = maxf(0.1, tuning.locator_interval)
-	if points.is_empty() or DisplayServer.get_name() == "headless":
+	last_locator_points = points
+	if DisplayServer.get_name() == "headless":
 		return
 	var effect := preload("res://game/mage/mage_feedback.gd").new()
 	effect.top_level = true
 	add_child(effect)
-	effect.locator(points)
+	effect.locator(points, _player.global_position, tuning.locator_range, tuning.locator_show_time)
 
 
 ## FIX(S15, Claude): NET: server only. Puts out Ignite (water bucket hit). Fires on every peer.
@@ -207,11 +203,6 @@ func _rpc_extinguish() -> void:
 ## True while the knife burns, on every peer.
 func is_ignited() -> bool:
 	return _ignite_left > 0.0
-
-## Seconds until the next automatic locator pulse (owner peer; HUD reads it).
-func locator_left() -> float:
-	return _locator_display
-
 
 ## Seconds until an ability is ready; HUD countdown mirrors server-approved casts.
 func cooldown_left(ability: StringName) -> float:

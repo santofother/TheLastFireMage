@@ -346,14 +346,10 @@ func _refresh() -> void:
 	var cooldowns := PackedStringArray()
 	var abilities: Node = _local.call("get_ability", &"MageAbilities") if is_instance_valid(_local) and _local.has_method("get_ability") else null
 	# S13: each ability shows its keybind (read from the InputMap so rebinding stays correct).
-	var binds := {&"knife": &"primary", &"ignite": &"ability_1", &"fire_wave": &"ability_2"}
-	for ability in [&"knife", &"ignite", &"fire_wave"]:
+	var binds := {&"knife": &"primary", &"ignite": &"ability_1", &"fire_wave": &"ability_2", &"locate": &"ability_3"}
+	for ability in [&"knife", &"ignite", &"fire_wave", &"locate"]:
 		var left := float(abilities.call("cooldown_left", ability)) if abilities else 0.0
 		cooldowns.append("[%s] %s · %s" % [_key_names(binds[ability]), String(ability).replace("_", " ").capitalize(), "READY" if left <= 0 else "%.1fs" % left])
-	# The locator is a passive pulse with no key, so it is labelled AUTO rather than a keybind.
-	if abilities and abilities.has_method("locator_left"):
-		var pulse := float(abilities.call("locator_left"))
-		cooldowns.append("[AUTO] Locate · %s" % ("READY" if pulse <= 0 else "%.1fs" % pulse))
 	_labels.Cooldowns.text = "   ".join(cooldowns)
 	_labels.Warning.text = "FIRESTORM %d IN %d s" % [_warning_stage, ceili(_warning_left)] if _warning_left > 0 else ("FIRESTORM · STAGE %d" % _warning_stage if _required > 0 else "")
 	var feed := PackedStringArray()

@@ -69,6 +69,8 @@ extends Tuning
 @export var crouch_jump_lift_max := 0.3
 ## TUNE: Tallest ledge the player runs over without jumping, metres.
 @export var step_max_height := 0.42
+## TUNE: Rises below this are too small to catch the capsule. Keep low so small notches never snag players.
+@export var step_min_height := 0.02
 ## TUNE: Slowest ground speed that steps up, m/s.
 @export var step_min_speed := 0.3
 ## TUNE: How fast the model and camera catch up after a step, per second.

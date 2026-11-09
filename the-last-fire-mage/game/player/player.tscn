@@ -78,18 +78,10 @@ script = ExtResource("5_mage")
 [node name="Model" parent="MageVisual" instance=ExtResource("6_mage")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="Nameplate" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
-billboard = 1
-no_depth_test = true
-font_size = 48
-outline_size = 10
-
 [node name="Speaking" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
 visible = false
 billboard = 1
-no_depth_test = true
 modulate = Color(0.3, 1, 0.4, 1)
 text = "SPEAKING"
 font_size = 36

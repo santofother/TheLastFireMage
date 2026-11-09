@@ -22,6 +22,7 @@ var drop_pressed := false
 var primary_pressed := false
 var ability_1_pressed := false
 var ability_2_pressed := false
+var ability_3_pressed := false
 
 
 ## Clears everything (used while input is locked or the menu is open).
@@ -45,6 +46,7 @@ func clear_edges() -> void:
 	primary_pressed = false
 	ability_1_pressed = false
 	ability_2_pressed = false
+	ability_3_pressed = false
 
 
 ## Reads the InputMap actions (local human). Call once per physics tick. Mouse look is set separately
@@ -62,3 +64,4 @@ func fill_from_devices() -> void:
 	primary_pressed = Input.is_action_just_pressed(&"primary")
 	ability_1_pressed = Input.is_action_just_pressed(&"ability_1")
 	ability_2_pressed = Input.is_action_just_pressed(&"ability_2")
+	ability_3_pressed = Input.is_action_just_pressed(&"ability_3")
