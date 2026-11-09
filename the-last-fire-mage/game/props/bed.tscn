@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Bed_Twin1.gltf" id="1_fmg4f"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2c5r2"]
+size = Vector3(1.0732205, 0.50070745, 1.38)
+
+[node name="Bed" type="StaticBody3D" unique_id=2002255934]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(1.166544, 1.5)
+metadata/height = 0.50070745
+
+[node name="Model" type="Node3D" parent="." unique_id=1378930257 instance=ExtResource("1_fmg4f")]
+transform = Transform3D(0.62191683, 0, 0, 0, 0.62191683, 0, 0, 0, 0.62191683, 0, -0.00028192936, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1629121022]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25035372, 0)
+shape = SubResource("BoxShape3D_2c5r2")

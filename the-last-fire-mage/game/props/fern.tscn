@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Fern_1.gltf" id="1_lcjm0"]
+
+[node name="Fern" type="Node3D" unique_id=295454254]
+metadata/footprint = Vector2(1.4130578, 1.3257761)
+metadata/height = 0.42000002
+
+[node name="Model" type="Node3D" parent="." unique_id=745759209 instance=ExtResource("1_lcjm0")]
+transform = Transform3D(0.49985528, 0, 0, 0, 0.49985528, 0, 0, 0, 0.49985528, -0.016107678, 0.038656026, -0.023805022)

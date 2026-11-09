@@ -24,7 +24,15 @@ python3 tools/map/draw_plan.py ../village-brainstorm/layout-a-v7.svg
 
 The map regression uses the real character controller for street, door, stair and jump traversal. Both roles test the roof jumps, and the mage checks the new window approaches and the waterfront paving seams. The test also covers spawn and navigation connectivity, camera retraction, water recovery and Fire Wave damage. A live chase is still the right test for corner visibility, pace and the feel of the two differently sized characters.
 
-## After layout approval
+## Furnishing
 
-- Furnish rooms at villager scale: chairs, tables, barrels and beds; add torches and lanterns. The imported [prop library](../../the-last-fire-mage/game/map/props/third_party/ASSET_SOURCES.md) already has several starting models.
-- Dress the designated courts and street edges with pots, flowers, bushes and trees. Leave the authored door and stair clearances free.
+`tools/map/build_props.gd` turns the CC0 models into `game/props/*.tscn`: size, footprint and collision. Run it after changing the catalogue, then import.
+`tools/map/furnish.gd` runs inside the generator after the walls exist. It picks a room type per storey (from the four interior templates), then places each item against real collision, floor support and the door, stair and route markers. Change `RECIPES` to re-dress rooms; furniture never needs placing by hand.
+
+```sh
+"$GODOT" --headless --path the-last-fire-mage --script ../tools/map/build_props.gd -- --no-steam
+"$GODOT" --headless --path the-last-fire-mage --import
+"$GODOT" --headless --path the-last-fire-mage --script ../tools/map/generate.gd -- --no-steam
+```
+
+Wooden furniture is `BreakableProp`. Sprinting into it (or falling on it) breaks it, as do Fire Wave and ignited swings. A new round restores it.

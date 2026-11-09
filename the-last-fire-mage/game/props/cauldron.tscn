@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Cauldron.gltf" id="1_cevt6"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_h0e5p"]
+size = Vector3(0.6136909, 0.5500001, 0.58568156)
+
+[node name="Cauldron" type="StaticBody3D" unique_id=1724975600]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(0.66705537, 0.6366104)
+metadata/height = 0.5500001
+
+[node name="Model" type="Node3D" parent="." unique_id=1447227369 instance=ExtResource("1_cevt6")]
+transform = Transform3D(0.6744057, 0, 0, 0, 0.6744057, 0, 0, 0, 0.6744057, 2.9802322e-08, 0.0019098886, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=2057327861]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.27500004, 0)
+shape = SubResource("BoxShape3D_h0e5p")

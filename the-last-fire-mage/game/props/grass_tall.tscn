@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Grass_Common_Tall.gltf" id="1_5pvqf"]
+
+[node name="GrassTall" type="Node3D" unique_id=86002685]
+metadata/footprint = Vector2(0.17206864, 0.19091214)
+metadata/height = 0.35999998
+
+[node name="Model" type="Node3D" parent="." unique_id=1961821488 instance=ExtResource("1_5pvqf")]
+transform = Transform3D(0.19223629, 0, 0, 0, 0.19223629, 0, 0, 0, 0.19223629, -0.008453965, 0.006028963, -0.0033684745)

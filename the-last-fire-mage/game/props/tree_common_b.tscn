@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/CommonTree_2.gltf" id="1_x44vu"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_p1q60"]
+height = 2.4
+radius = 0.21930328
+
+[node name="TreeCommonB" type="StaticBody3D" unique_id=1231842983]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(3.2709804, 3.132904)
+metadata/height = 5.6000004
+
+[node name="Model" type="Node3D" parent="." unique_id=1090423226 instance=ExtResource("1_x44vu")]
+transform = Transform3D(0.732697, 0, 0, 0, 0.732697, 0, 0, 0, 0.732697, -0.0066946745, 0.17787834, -0.20988572)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=940400586]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("CylinderShape3D_p1q60")

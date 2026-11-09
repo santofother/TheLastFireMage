@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/props/breakable_prop.gd" id="1_odipe"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Stool.gltf" id="2_qn8qa"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hn0u7"]
+size = Vector3(0.29666886, 0.4, 0.29666886)
+
+[node name="Stool" type="StaticBody3D" unique_id=410266889]
+collision_layer = 256
+collision_mask = 0
+script = ExtResource("1_odipe")
+metadata/footprint = Vector2(0.32246614, 0.32246614)
+metadata/height = 0.4
+
+[node name="Model" type="Node3D" parent="." unique_id=69083604 instance=ExtResource("2_qn8qa")]
+transform = Transform3D(0.6794367, 0, 0, 0, 0.6794367, 0, 0, 0, 0.6794367, 0.00020824373, 0.0043813745, 0.00020825863)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1339957157]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+shape = SubResource("BoxShape3D_hn0u7")

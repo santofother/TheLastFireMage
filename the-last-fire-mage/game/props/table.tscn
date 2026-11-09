@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/props/breakable_prop.gd" id="1_62olt"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Table_Large.gltf" id="2_xwtmo"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_in0aq"]
+size = Vector3(1.242, 0.53972894, 0.47816682)
+
+[node name="Table" type="StaticBody3D" unique_id=1887363314]
+collision_layer = 256
+collision_mask = 0
+script = ExtResource("1_62olt")
+metadata/footprint = Vector2(1.35, 0.51974654)
+metadata/height = 0.53972894
+
+[node name="Model" type="Node3D" parent="." unique_id=984889077 instance=ExtResource("2_xwtmo")]
+transform = Transform3D(0.47393483, 0, 0, 0, 0.6635088, 0, 0, 0, 0.47393483, 0, -0.0008379226, -0.0030074418)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1234219841]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.26986447, 0)
+shape = SubResource("BoxShape3D_in0aq")

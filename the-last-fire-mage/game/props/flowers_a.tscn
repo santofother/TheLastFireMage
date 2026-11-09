@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Flower_3_Group.gltf" id="1_lynyd"]
+
+[node name="FlowersA" type="Node3D" unique_id=479876736]
+metadata/footprint = Vector2(0.24628839, 0.2632733)
+metadata/height = 0.34
+
+[node name="Model" type="Node3D" parent="." unique_id=186632466 instance=ExtResource("1_lynyd")]
+transform = Transform3D(0.1654634, 0, 0, 0, 0.1654634, 0, 0, 0, 0.1654634, -0.021615632, 0.005722319, 0.0010255724)

@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Clover_1.gltf" id="1_dwfgf"]
+
+[node name="Clover" type="Node3D" unique_id=1370010707]
+metadata/footprint = Vector2(0.08347341, 0.080076605)
+metadata/height = 0.11999999
+
+[node name="Model" type="Node3D" parent="." unique_id=838709921 instance=ExtResource("1_dwfgf")]
+transform = Transform3D(0.104827985, 0, 0, 0, 0.104827985, 0, 0, 0, 0.104827985, 0.0109182075, 0.0013409797, 0.0018469729)

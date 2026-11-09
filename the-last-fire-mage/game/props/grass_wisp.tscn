@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Grass_Wispy_Tall.gltf" id="1_e5dta"]
+
+[node name="GrassWisp" type="Node3D" unique_id=319112545]
+metadata/footprint = Vector2(0.3869061, 0.40038264)
+metadata/height = 0.41999996
+
+[node name="Model" type="Node3D" parent="." unique_id=805192950 instance=ExtResource("1_e5dta")]
+transform = Transform3D(0.25122586, 0, 0, 0, 0.25122586, 0, 0, 0, 0.25122586, -0.0077356547, 0.009057148, 0.0054598153)

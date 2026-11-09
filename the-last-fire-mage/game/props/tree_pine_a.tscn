@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Pine_1.gltf" id="1_23efp"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_yx1op"]
+height = 2.4
+radius = 0.26
+
+[node name="TreePineA" type="StaticBody3D" unique_id=1458218721]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(4.1898966, 3.845622)
+metadata/height = 6.2
+
+[node name="Model" type="Node3D" parent="." unique_id=1449200561 instance=ExtResource("1_23efp")]
+transform = Transform3D(0.8473513, 0, 0, 0, 0.8473513, 0, 0, 0, 0.8473513, -0.01993823, 0.19920264, 0.1760211)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=250677521]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("CylinderShape3D_yx1op")

@@ -9,6 +9,9 @@ extends Tuning
 ## TUNE: Capsule radius, metres.
 @export var radius := 0.3
 
+## TUNE: Relative body mass. Mass x impact speed is the momentum that breaks furniture.
+@export var body_mass := 1.0
+
 ## TUNE: Ground running speed, m/s.
 @export var walk_speed := 4.0
 

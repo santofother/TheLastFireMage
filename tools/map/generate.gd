@@ -20,6 +20,8 @@ const SHELL_BOTTOM := -3.1
 var _plan: Node3D
 var _houses: Dictionary = {}
 var _knots: Array[float] = []
+## One entry per storey, consumed by furnish.gd.
+var _rooms: Array[Dictionary] = []
 
 
 func _initialize() -> void:
@@ -59,11 +61,16 @@ func _generate() -> void:
 	# Wait for instanced CSG hide crates to build before parsing source geometry.
 	for i in 4:
 		await physics_frame
+	# Furniture checks clearance against the finished collision, so it runs after the walls settle.
+	load("res://../tools/map/furnish.gd").new().run(self)
+	for i in 3:
+		await physics_frame
 	var nav := NavigationMesh.new()
 	for key: String in _layout.navigation:
 		nav.set(key, _layout.navigation[key])
 	nav.agent_max_slope = 45
-	nav.geometry_collision_mask = 1
+	# WHY: furniture carves the navmesh (layer 9) so chickens and bots route around it.
+	nav.geometry_collision_mask = 1 | 256
 	# WHY: collision ramps make stairs walkable; bake those instead of decorative treads.
 	nav.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
 	var source := NavigationMeshSourceGeometryData3D.new()
@@ -569,6 +576,8 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 			var aisle := split + 0.55
 			_walk_link("PortersRearRoom", _plot_point(band, 0.64, y, aisle), _plot_point(band, 0.046, y, aisle))
 		var top := y + spacing
+		_rooms.append({"house": String(spec[0]), "floor": floor, "band": band, "z0": z0, "z1": z1, "y": y, "level": level,
+			"levels": levels, "split": split, "covered": covered, "entry_z": entry_z, "template": String(spec[5]), "loft": loft})
 		if stairs:
 			_lot_stair(floor, band, stair_z, z0, z1, y, spacing, roof, roof_colour, split, spec[5] in ["court", "chapel"])
 		else:

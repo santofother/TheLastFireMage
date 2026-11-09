@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Shelf_Simple.gltf" id="1_fq5b4"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gmsd4"]
+size = Vector3(0.874, 0.24773756, 0.21578504)
+
+[node name="Shelf" type="StaticBody3D" unique_id=1166976121]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(0.95, 0.23454896)
+metadata/height = 0.24773756
+
+[node name="Model" type="Node3D" parent="." unique_id=229891319 instance=ExtResource("1_fq5b4")]
+transform = Transform3D(0.8024639, 0, 0, 0, 0.8024639, 0, 0, 0, 0.8024639, 0.00046366453, 0.16135083, -0.1522068)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=947927285]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12386878, 0)
+shape = SubResource("BoxShape3D_gmsd4")

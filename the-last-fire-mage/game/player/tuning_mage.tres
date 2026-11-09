@@ -6,6 +6,7 @@
 script = ExtResource("1")
 height = 1.4
 radius = 0.35
+body_mass = 1.05
 walk_speed = 4.5
 sprint_speed = 6.0
 ground_acceleration = 24.0

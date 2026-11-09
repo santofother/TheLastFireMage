@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Bush_Common_Flowers.gltf" id="1_j8luk"]
+
+[node name="BushFlowers" type="Node3D" unique_id=1917503877]
+metadata/footprint = Vector2(1.028975, 1.0560025)
+metadata/height = 0.84999996
+
+[node name="Model" type="Node3D" parent="." unique_id=29559460 instance=ExtResource("1_j8luk")]
+transform = Transform3D(0.53736734, 0, 0, 0, 0.53736734, 0, 0, 0, 0.53736734, -0.018241584, 0.12611727, -0.0043963194)

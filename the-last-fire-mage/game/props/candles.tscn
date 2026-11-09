@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/CandleStick_Triple.gltf" id="1_c1fpy"]
+
+[node name="Candles" type="Node3D" unique_id=1429907648]
+metadata/footprint = Vector2(0.2864498, 0.08830477)
+metadata/height = 0.29999998
+
+[node name="Model" type="Node3D" parent="." unique_id=1461986755 instance=ExtResource("1_c1fpy")]
+transform = Transform3D(0.64759386, 0, 0, 0, 0.64759386, 0, 0, 0, 0.64759386, -0.0019247234, 0.0005472111, -0.001424171)

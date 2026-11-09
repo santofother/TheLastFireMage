@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Book_Stack_1.gltf" id="1_qjj22"]
+
+[node name="Books" type="Node3D" unique_id=1860766984]
+metadata/footprint = Vector2(0.18665421, 0.14823723)
+metadata/height = 0.14
+
+[node name="Model" type="Node3D" parent="." unique_id=1013870901 instance=ExtResource("1_qjj22")]
+transform = Transform3D(0.6550852, 0, 0, 0, 0.6550852, 0, 0, 0, 0.6550852, 0.0021842867, -0.0007568032, -0.0039768666)

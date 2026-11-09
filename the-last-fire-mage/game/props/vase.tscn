@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Vase_2.gltf" id="1_iumbp"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_nk231"]
+size = Vector3(0.6189147, 0.5, 0.6189147)
+
+[node name="Vase" type="StaticBody3D" unique_id=1434235090]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(0.6727334, 0.67273337)
+metadata/height = 0.5
+
+[node name="Model" type="Node3D" parent="." unique_id=458039057 instance=ExtResource("1_iumbp")]
+transform = Transform3D(0.9684039, 0, 0, 0, 0.9684039, 0, 0, 0, 0.9684039, -2.9802322e-08, 0.00086618774, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=997090165]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("BoxShape3D_nk231")

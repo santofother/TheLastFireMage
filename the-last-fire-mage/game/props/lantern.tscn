@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Lantern_Wall.gltf" id="1_pt3ga"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6i1ii"]
+albedo_color = Color(1, 0.62, 0.2, 1)
+emission_enabled = true
+emission = Color(1, 0.5, 0.12, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="SphereMesh" id="SphereMesh_xdxcp"]
+material = SubResource("StandardMaterial3D_6i1ii")
+radius = 0.055
+height = 0.16
+radial_segments = 6
+rings = 3
+
+[node name="Lantern" type="Node3D" unique_id=767858624]
+metadata/footprint = Vector2(0.13898018, 0.50650686)
+metadata/height = 0.52
+
+[node name="Model" type="Node3D" parent="." unique_id=1032402753 instance=ExtResource("1_pt3ga")]
+transform = Transform3D(0.3889282, 0, 0, 0, 0.3889282, 0, 0, 0, 0.3889282, -7.450581e-09, -0.031828932, -0.23342693)
+
+[node name="Glow" type="OmniLight3D" parent="." unique_id=300996113]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0.15)
+light_color = Color(1, 0.62, 0.32, 1)
+light_energy = 1.3
+distance_fade_enabled = true
+distance_fade_begin = 16.0
+distance_fade_length = 6.0
+omni_range = 4.6
+omni_attenuation = 1.4
+
+[node name="Flame" type="MeshInstance3D" parent="." unique_id=2024590342]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0.15)
+mesh = SubResource("SphereMesh_xdxcp")

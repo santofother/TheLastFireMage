@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Vase_2.gltf" id="1_hhwi5"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Plant_1.gltf" id="2_hjtc0"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_mt6w3"]
+size = Vector3(0.51988846, 0.42000002, 0.5198884)
+
+[node name="PotPlantTall" type="StaticBody3D" unique_id=47670529]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(0.56509614, 0.5650961)
+metadata/height = 1.0643999826908113
+
+[node name="Model" type="Node3D" parent="." unique_id=458039057 instance=ExtResource("1_hhwi5")]
+transform = Transform3D(0.8134593, 0, 0, 0, 0.8134593, 0, 0, 0, 0.8134593, -2.9802322e-08, 0.0007275977, 0)
+
+[node name="Plant" type="Node3D" parent="." unique_id=541970603 instance=ExtResource("2_hjtc0")]
+transform = Transform3D(0.7103603, 0, 0, 0, 0.7103603, 0, 0, 0, 0.7103603, 0.052586734, 0.36927968, 0.05013603)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1233252647]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.21000001, 0)
+shape = SubResource("BoxShape3D_mt6w3")
