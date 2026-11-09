@@ -1,35 +1,30 @@
-# Hillside village greybox
+# Salmara: Party walls
 
-Open `the-last-fire-mage/project.godot` and run the game. Host LAN and choose **Explore town** in the lobby to walk the map solo. Use WASD, Space to jump or mantle, Shift to sprint, and Esc for the menu. A LAN match with a second player lets you try the mage and Fire Wave (F).
+Run the Godot project, host LAN, and choose **Explore town** in the lobby. Use WASD, Space to jump or mantle, Shift to sprint, and Esc for the menu. Start a LAN round with a second player to try the 1.4 m mage and Fire Wave (F).
 
-## Routes to try
+- Start on the quay. Take the middle street through the attached houses; it climbs, dips and bends back toward the chapel. Try reversing direction around its tightest corners.
+- Cross from the middle street to the lower lane via **Limekiln Stair**, or to the upper lane via **Potters Cut**. Their stairs run beside the stone cuts. All three streets meet again at the quay and the chapel court.
+- Try a house entrance and its stairs. Each storey has at least two rooms. The roof access stairs and the two lofts' teal window sills make the route network visible from both heights.
+- On the arched pier, the small timber tide landing is the way onto Gull. Jump toward its broadside, then sprint and jump from Gull's stern to Otter. Sandpiper and Evening Star sit apart from that route. If you miss, the shallow shelf leads back to the east quay steps or up the sandy crescent.
 
-- From Fish Market on the quay, follow the pale street up to Market Terrace. It doubles back and drops into the Low Ward before the climb to Chapel Square. The Weavers and Potters arcades connect side lanes beneath occupied rooms. Courtyard gardens and walled dead ends break up the blocks.
-- For Salt Loft, take the Fishers stairs up to the roof and jump east through the teal second-storey window. For Bell Loft, take the Roof Walk house stairs to the roof, head to the teal window across the balcony, and sprint-jump toward the sill to mantle. Reverse each entry with a jump through the same window. Both lofts have solid floors and roofs with a separate exterior route to the roof.
-- From the T-dock, walk-jump east through Gull, Otter and Evening Star. The west route runs from the dock via Sandpiper to the crescent beach and up the broad steps to the quay. The four stationary boat decks are solid from gunwale to gunwale. Sprinting can carry you past a small deck.
-- A missed jump drops onto a shelf about 0.5 m below the water surface. Walk up the sand or use the east recovery steps. The greybox uses normal movement and existing fall damage, with no swimming or drowning. Beyond the shelf, the existing out-of-bounds fallback returns players to the arcade near the origin. Boats and water are static.
+## Authoring and verification
 
-## Authoring
+`layout.json` gives each lane independent (z, x, elevation, width) stations in metres. Four parcel bands occupy the ground between those lanes and the uneven cliff edges. A lot has z limits, storey count, street-facing side, room arrangement, facade colour, and roof style. Adjacent lots share a boundary; the generator samples the same bends for the street and the adjoining facade. Blank lots in that fabric are green courts. The two gaps in the middle bands are the rock cuts. The quay and chapel courts close the street loops.
 
-`layout.json` defines metre-scale terrain cross-sections, street bends, lanes, house placements, templates, roof links, spawns, the crescent profile, arch-supported quay and pier, and boats. House rows specify name, template, x, z, storeys, yaw, colour and optional overrides. The four template footprints are **row** (front and rear rooms), **court** (open-air garden and roofed wing), **through** (lower and upper street doors connected by stairs), and **passage** (public arcade between two shop bays with rooms above). Use `window_floor` (zero-based), `window_z` and `sill` to author a loft; update its approach and its traversal record together. Doors are usually 1.48 m wide and 2.02 m tall. Solid shutters are brown; traversable window openings have teal jambs and sills.
+Openings and terrain use world collision layer 1. Doors are 1.14 m wide and 1.76 m tall. Visible stone treads have smooth collision underneath. The hulls were built in Blender with `tools/map/build_fishing_boats.py`; Godot uses a separate collision shape for each working deck. The generator packs the collision and navigation into `town_geometry.scn` for faster loading; the game still loads `town.tscn`. The baked chicken routes are connected to the public streets.
 
-`generate.gd` writes the production `game/map/town.tscn` and bakes chicken navigation from collision. Static bodies use world layer 1. Doors are clear thresholds. Visible steps have smooth collision wedges. The main scene supplies lighting. A separate [prop library](../../the-last-fire-mage/game/map/props/third_party/ASSET_SOURCES.md) contains imported village building references, furniture, torches and an optional warm torch fixture.
-
-From the repository root:
+From the village checkout:
 
 ```sh
 GODOT="${GODOT:-/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot}"
 "$GODOT" --headless --path the-last-fire-mage --script ../tools/map/generate.gd -- --no-steam
 bash tools/run_tests.sh
+python3 tools/map/draw_plan.py ../village-brainstorm/layout-a-v7.svg
 ```
 
-The map test feeds the real Player controller. It covers the main street, doors, stairs, two-way loft and boat traversal, water recovery, and the centre of the camera's near plane along those routes. It exercises Fire Wave damage on the boats and in the lofts, and checks sampled walkable and crouchable collision at 0.55 m spacing with the real 6 m range, aim cone and blocker layers. Grid samples are a regression check. In a manual match, check live camera angles and fast reversals around jambs, readability of both window routes, chase balance, and how players discover the water exits.
+The map regression uses the real character controller for street, door, stair and jump traversal. It checks spawn and navigation connectivity, camera retraction, water recovery, Fire Wave damage and sampled collision. A live chase is still the right test for corner visibility, pace and the feel of the two differently sized characters.
 
-For the graphical solo-input check or a small preview:
+## After layout approval
 
-```sh
-"$GODOT" --path the-last-fire-mage --rendering-method gl_compatibility \
-  res://game/map/tests/lobby_explore_test.tscn -- --no-steam
-"$GODOT" --path the-last-fire-mage --rendering-method gl_compatibility \
-  --script ../tools/map/overview.gd -- --no-steam
-```
+- Furnish rooms at villager scale: chairs, tables, barrels and beds; add torches and lanterns. The imported [prop library](../../the-last-fire-mage/game/map/props/third_party/ASSET_SOURCES.md) already has several starting models.
+- Dress the designated courts and street edges with pots, flowers, bushes and trees. Leave the authored door and stair clearances free.

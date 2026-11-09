@@ -39,6 +39,9 @@ func _run() -> void:
 	for i in 3:
 		await get_tree().process_frame
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "Esc opens menu and releases cursor")
+	# Let the movement controller finish braking before testing fresh menu input.
+	for i in 12:
+		await get_tree().physics_frame
 	Input.action_press("move_forward")
 	start = player.global_position
 	for i in 12:

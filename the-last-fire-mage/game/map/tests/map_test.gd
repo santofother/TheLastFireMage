@@ -5,6 +5,7 @@ extends Node3D
 
 const PLAYER := preload("res://game/player/player.tscn")
 const COVERAGE := preload("res://game/map/tests/flame_coverage.gd")
+const ANCHOR := Vector3(-5, 0, 34)
 
 class Driver extends RefCounted:
 	var moving := false
@@ -48,26 +49,30 @@ func _run() -> void:
 	_space = get_world_3d().direct_space_state
 	NavigationServer3D.map_force_update(_nav)
 	_contracts()
-	_player = _spawn(Vector3(-6, 0.1, 34), Enums.Role.MAGE, false)
+	_player = _spawn(ANCHOR + Vector3.UP * 0.08, Enums.Role.MAGE, false)
 	_player.input_driver = _driver
-	var spine := get_tree().get_nodes_in_group("map_main_street")
-	var spine_ok := true
-	for i in range(1, spine.size()):
-		var start: Vector3 = spine[i - 1].position
-		var finish: Vector3 = spine[i].position
-		var walked := await _walk(start, finish)
-		if walked:
-			_links.append(PackedVector3Array([start, finish]))
-		spine_ok = spine_ok and walked
-	_check(spine_ok, "real player walks the entire winding street from quay to chapel")
+	for name: String in ["WindingSpine", "LimekilnLane", "RoccaLane"]:
+		var lane: Node3D = _town.find_child(name, true, false)
+		var bends := lane.find_children("Bend*", "Marker3D", false, false)
+		var walked := true
+		for i in range(1, bends.size()):
+			var start: Vector3 = bends[i - 1].global_position
+			var finish: Vector3 = bends[i].global_position
+			var passed := await _walk(start, finish)
+			if passed:
+				_links.append(PackedVector3Array([start, finish]))
+			walked = walked and passed
+		_check(walked, "standing mage walks all of " + name)
 	var doors_ok := true
 	var doors := get_tree().get_nodes_in_group("map_house_exit") + get_tree().get_nodes_in_group("map_room_opening")
 	for door: Marker3D in doors:
 		var outward := door.global_basis.z
 		var edge := door.global_position
-		var passed := await _walk(edge + outward, edge - outward)
+		var passed := await _walk(edge + outward * 0.52, edge - outward * 0.52)
+		if not passed:
+			print("[Map] Door ", door.get_parent().get_path())
 		if passed:
-			_links.append(PackedVector3Array([edge + outward, edge - outward]))
+			_links.append(PackedVector3Array([edge + outward * 0.52, edge - outward * 0.52]))
 		doors_ok = doors_ok and passed
 	_check(doors_ok, "mage walks all exterior and interior doorways")
 	var stairs_ok := true
@@ -78,12 +83,10 @@ func _run() -> void:
 		var down := await _walk(top, foot)
 		if up and down:
 			_links.append(PackedVector3Array([foot, top]))
+		if not (up and down):
+			print("[Map] Stair ", stair.get_path())
 		stairs_ok = stairs_ok and up and down
 	_check(stairs_ok, "mage walks all stairs including both waterfront returns")
-	_check(await _walk(Vector3(4.5, 1.65, -3), Vector3(4.5, 0.65, -10)),
-		"uphill journey includes a walk down into the low ward")
-	_check(await _walk(Vector3(-7.5, 0.65, -22), Vector3(-7.5, 4, -29)),
-		"mage climbs out of the low ward")
 	for link: Marker3D in get_tree().get_nodes_in_group("map_walk_link"):
 		var start := link.global_position
 		var end: Vector3 = link.get_meta("landing")
@@ -100,16 +103,19 @@ func _run() -> void:
 			var label := "%s %s" % ["mage" if role == Enums.Role.MAGE else "villager", route.name]
 			var kind: String = route.get_meta("kind")
 			var mantle := kind == "window_mantle"
-			var entered := await _jump(start, takeoff, finish, mantle)
+			var entered := await _jump(start, takeoff, finish, mantle, kind == "boat_sprint")
 			_check(entered, label)
 			var direction := _flat(finish - start).normalized()
 			var window := kind.begins_with("window")
 			var reverse_start := finish + direction * (1.5 if window else 0.48)
-			var reverse_trigger := finish + direction * (0.7 if window else -0.72)
+			var reverse_trigger := finish + direction * (0.50 if window else -0.72)
 			var reverse_finish := start + direction * (0.65 if window else 0.0)
 			var returned: bool
-			if kind == "ridge_jump":
-				returned = await _walk(finish, start)
+			if kind.begins_with("boat_"):
+				reverse_start = Vector3(8.0, -0.95, 49.5) if route.name == "DockToGull" else finish + direction * 1.38
+				reverse_trigger = Vector3(7.44, -0.95, 49.5) if route.name == "DockToGull" else finish - direction * 0.63
+				reverse_finish = Vector3(3.68, -0.64, 49.5) if route.name == "DockToGull" else Vector3(7.05, -0.95, 51.55)
+				returned = await _jump(reverse_start, reverse_trigger, reverse_finish, false, kind == "boat_sprint")
 			else:
 				returned = await _jump(reverse_start, reverse_trigger, reverse_finish, false)
 			_check(returned, label + " return")
@@ -128,7 +134,7 @@ func _run() -> void:
 
 
 func _contracts() -> void:
-	_check(_town.get_meta("layout_version") == "hillside-waterfront-v1", "new village is the production town")
+	_check(_town.get_meta("layout_version") == "salmara-party-walls-v2", "new village is the production town")
 	_check(get_tree().get_nodes_in_group("map_district").size() == 4, "four connected wards")
 	_check(get_tree().get_nodes_in_group("map_nook").size() >= 3, "dead ends")
 	_check(get_tree().get_nodes_in_group("map_landmark").size() >= 4, "plazas and waterfront")
@@ -138,7 +144,7 @@ func _contracts() -> void:
 	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
 		templates[house.get_meta("template")] = true
 		heights[house.get_meta("storeys")] = true
-	_check(templates.size() == 4 and heights.size() == 3, "four interior templates and one to three storeys")
+	_check(templates.size() == 4 and heights.size() == 3, "four interior layouts and one to three storeys")
 	for node in _town.find_children("*", "StaticBody3D", true, false):
 		if node.collision_layer != 1:
 			_check(false, "world collision layer " + str(node.get_path()))
@@ -170,12 +176,16 @@ func _contracts() -> void:
 		var level := int(house.get_meta("storeys")) - 1
 		var top := house.get_node("Storey%d" % level) as Node3D
 		var below := house.get_node("Storey%d" % (level - 1))
-		var z := (_town.get_node(name + "Window") as Marker3D).position.z - house.position.z
-		var outside := house.to_global(Vector3(-5.5, top.position.y + 1.0, z))
-		var inside := house.to_global(Vector3(-4.15, top.position.y + 1.0, z))
+		var route: Marker3D = _town.get_node(name + "Window")
+		var inside: Vector3 = route.get_meta("landing")
+		var outside := route.global_position
 		_check(below.has_node("Ceiling") and not below.has_node("Stairs") and
-			top.has_node("Ceiling") and top.find_children("*Door", "Marker3D", false, false).is_empty() and _ray(outside, inside).is_empty(),
+			top.has_node("Ceiling") and top.find_children("StreetDoor", "Marker3D", false, false).is_empty() and
+			_ray(Vector3(outside.x, inside.y + 0.87, inside.z), inside + Vector3.UP * 0.87).is_empty(),
 			name + " has a real window and a continuous floor with no stair or door entrance")
+	_check(get_tree().get_nodes_in_group("map_rock_cut").size() == 2, "two traversable rock cuts")
+	_check(get_tree().get_nodes_in_group("map_court").size() >= 6, "pocket courts provide green ground")
+
 
 
 func _spawn(at: Vector3, role: int, bot: bool) -> Player:
@@ -213,14 +223,14 @@ func _walk(start: Vector3, finish: Vector3) -> bool:
 	return ok
 
 
-func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool) -> bool:
+func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool, sprint := false) -> bool:
 	var direction := _flat(finish - start).normalized()
 	await _place(start, direction)
 	if not _player.is_on_floor():
 		print("[Map] No takeoff footing at ", start, " settled at ", _player.global_position)
 		return false
 	_driver.moving = true
-	_driver.sprint = needs_mantle
+	_driver.sprint = needs_mantle or sprint
 	var jumped := false
 	var was_airborne := false
 	var pulled := false
@@ -273,17 +283,28 @@ func _coverage() -> void:
 		var crate := spot.get_node("Crate") as CSGBox3D
 		crates.append(crate.global_transform * AABB(-crate.size / 2, crate.size))
 	var tuning := preload("res://game/mage/tuning_mage_combat.tres") as MageCombatTuning
-	var missing := COVERAGE.new().audit(_space, Vector3(-5.8, 0, 33), _links, crates, tuning)
-	for i in mini(missing.size(), 40):
-		print("[Map] Uncovered feet ", missing[i])
+	var missing := COVERAGE.new().audit(_space, ANCHOR, _links, crates, tuning)
+	var zones: Dictionary = {}
+	for point in missing:
+		var hit := _ray(point + Vector3.UP * 0.04, point - Vector3.UP * 0.04)
+		var node: Node = hit.get("collider")
+		if is_instance_valid(node):
+			while node != _town and node.get_parent() != _town and not node.is_in_group("map_house") and not node.is_in_group("map_court") and not node.is_in_group("map_landmark"):
+				node = node.get_parent()
+			var key := "%s @%.1f" % [node.name, snappedf(point.y, 0.5)]
+			zones[key] = int(zones.get(key, 0)) + 1
+	if not zones.is_empty():
+		print("[Map] Uncovered samples by area: ", zones)
+		for i in mini(8, missing.size()):
+			print("[Map] Uncovered feet ", missing[i])
 	_check(missing.is_empty(), "sampled street, floor, roof, deck and recovery shelf positions have Fire Wave coverage")
 
 
 func _water_return() -> void:
-	await _place(Vector3(12.45, -0.52, 53), Vector3.RIGHT)
+	await _place(Vector3(14.8, -1.21, 55), Vector3.RIGHT)
 	_driver.moving = true
 	for i in 160:
-		if _player.global_position.x >= 16.6:
+		if _player.global_position.x >= 17.5:
 			break
 		await get_tree().physics_frame
 	_driver.moving = false
@@ -298,31 +319,28 @@ func _water_return() -> void:
 func _fire_wave() -> void:
 	_player.set_role(Enums.Role.MAGE)
 	var ability := _player.abilities.get_child(0) as MageAbilities
-	var samples: Array[Vector3] = []
 	for boat: Node3D in get_tree().get_nodes_in_group("map_boat"):
-		var size: Vector2 = boat.get_meta("deck_size")
-		for x: float in [-size.x * 0.31, 0.0, size.x * 0.31]:
-			for z: float in [-size.y * 0.36, 0.0, size.y * 0.36]:
-				samples.append(boat.global_position + Vector3(x, 0, z))
+		var samples: Array[Vector3] = []
+		for x: float in [-0.52, 0.0, 0.52]:
+			for z: float in [-1.52, 0.0, 1.55]:
+				samples.append(boat.to_global(Vector3(x, 0, z)))
 		await _wave_samples(ability, boat.global_position, samples, boat.name)
-		samples.clear()
-	for entry: Array in [["SaltLoft", Vector3(9.7, 2.7, 25)], ["BellLoft", Vector3(8.65, 9.4, -32.8)]]:
-		var house := _town.find_child(entry[0], true, false) as Node3D
-		var origin: Vector3 = entry[1]
-		for z in [-3.8, -2.8, -1.0, 0.9, 3.6]:
-			for x in [-4.2, 0.0, 4.2]:
-				samples.append(house.to_global(Vector3(x, origin.y - house.position.y, z)))
-		await _wave_samples(ability, origin, samples, entry[0])
-		samples.clear()
-	await _wave_samples(ability, Vector3(8.95, 3.23, 25), [Vector3(10.22, 2.7, 25)], "Salt Loft open window")
-	# A closed shutter is a solid wall even though the attack is in range.
-	var outside := Vector3(6.8, 0, 22.9)
-	var behind_wall := Vector3(8.55 + 1.0, 0, 22.9)
+	for label: String in ["SaltLoft", "BellLoft"]:
+		var route: Marker3D = _town.get_node(label + "Window")
+		var entry: Vector3 = route.get_meta("landing")
+		var samples: Array[Vector3] = [entry + Vector3.RIGHT * 1.05, entry + Vector3.RIGHT * 2.1, entry + Vector3.RIGHT * 2.95]
+		await _wave_samples(ability, entry, samples, label)
+	# Aim directly at a target through the solid shutter adjacent to the window.
+	var route: Marker3D = _town.get_node("SaltLoftWindow")
+	var inside: Vector3 = route.get_meta("landing")
+	var outside := route.global_position
+	outside.z += 1.35
+	inside.z += 1.35
 	await _place(outside, Vector3.RIGHT)
-	var target := _spawn(behind_wall + Vector3.UP * 0.05, Enums.Role.VILLAGER, true)
+	var target := _spawn(inside + Vector3.UP * 0.05, Enums.Role.VILLAGER, true)
 	await get_tree().physics_frame
 	var hp := target.health.hp
-	ability._attack(&"fire_wave", Vector3.RIGHT)
+	ability._attack(&"fire_wave", (target.global_position - _player.global_position + Vector3.DOWN * 0.25).normalized())
 	_check(is_equal_approx(target.health.hp, hp), "closed wall blocks the actual Fire Wave")
 	target.queue_free()
 
@@ -371,7 +389,7 @@ func _reachable(point: Vector3) -> bool:
 	var end := NavigationServer3D.map_get_closest_point(_nav, point)
 	if end.distance_to(point) > 0.96:
 		return false
-	var path := NavigationServer3D.map_get_path(_nav, Vector3(-5.8, 0, 33), end, true)
+	var path := NavigationServer3D.map_get_path(_nav, ANCHOR, end, true)
 	return not path.is_empty() and path[-1].distance_to(end) < 0.1
 
 

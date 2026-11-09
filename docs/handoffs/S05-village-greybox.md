@@ -1,11 +1,11 @@
-# S05 follow-up · Hillside village and waterfront
+# S05 follow-up · Salmara: Party walls
 
-- Built on S16 scoring in the separate `s05-village-greybox` checkout.
-- Production town now follows a 6.7 m climb with a downhill stretch, four wards and four reusable interiors.
-- Salt Loft and Bell Loft have teal, two-way window-only entrances. Their roofs have separate access.
-- The waterfront has stone arcades, a T-quay and dock, a partial crescent beach and four static boats.
-- Misses land on a shallow recovery shelf connected to beach and quay stairs. The existing void fallback serves the outer edge.
-- Edit `tools/map/layout.json` and regenerate with `tools/map/generate.gd`. The baked navigation, existing marker groups and normal town loading path remain compatible.
-- KayKit building references, furniture and torches are available in `game/map/props/third_party`, with CC0 licenses and an optional warm light fixture.
-- The map regression uses the real Player and Fire Wave for authored routes and special areas, plus a collision coverage grid.
-- Manual playtest with two people for camera angle extremes, window and water exit readability, and chase pacing. See `tools/map/README.md` for a solo walkthrough.
+- Local review build on `s05-village-greybox`; uses the existing production town path.
+- Three narrow winding lanes define attached parcels with mixed room plans, storeys and roof shapes. The broad foot of the hill and the chapel court connect the lanes at either end.
+- Two staggered rock cuts give direct, steep ways between streets; the middle lane climbs more gently and dips locally.
+- Multi-room floors, open stairwells, and two-way Salt Loft/Bell Loft window entrances. The loft roofs are connected separately to neighbouring roofs.
+- The arched quay and pier stay. A larger crescent grades down through wet sand and into shallows, and original Blender fishing boats replace the blocks.
+- Regenerate from `tools/map/layout.json` using `tools/map/generate.gd`. See `tools/map/README.md` for routes, the generated review plan, and verification commands.
+- Playtest the tight bends and the cuts with both roles before dressing interiors or planting the courts. Furniture, torches, lanterns, pots, flowers, shrubs and trees are the next pass.
+- Outside S05 ownership: the ENet sync test uses the stable test arena for its fixed coordinates. The separate lobby check still loads the real village.
+- Map and graphical lobby checks pass. The mage walks all lanes, stairs and room doors; the Fire Wave audit covered all 41,504 sampled positions.

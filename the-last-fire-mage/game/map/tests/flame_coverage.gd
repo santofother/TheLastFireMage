@@ -5,9 +5,9 @@ extends RefCounted
 
 # The spacing is smaller than the clearance left by the narrowest intended doorway.
 const STEP := 0.55
-const COLUMNS := 122
-const ROWS := 236
-const CORNER := Vector3(-33.25, 0, -62.35)
+const COLUMNS := 134
+const ROWS := 260
+const CORNER := Vector3(-36.55, 0, -66.20)
 const BLOCKERS := 1 | 16
 
 var _space: PhysicsDirectSpaceState3D
@@ -75,28 +75,41 @@ func _inside_crate(feet: Vector3) -> bool:
 	return false
 
 
-func _nearby(anchor: Vector3) -> PackedInt32Array:
+func _nearby(anchor: Vector3, mage: CapsuleShape3D) -> PackedInt32Array:
 	var nearby := PackedInt32Array()
 	var column := roundi((anchor.x - CORNER.x) / STEP)
 	var row := roundi((anchor.z - CORNER.z) / STEP)
-	for z in range(maxi(row - 1, 0), mini(row + 2, ROWS)):
-		for x in range(maxi(column - 1, 0), mini(column + 2, COLUMNS)):
+	for z in range(maxi(row - 2, 0), mini(row + 3, ROWS)):
+		for x in range(maxi(column - 2, 0), mini(column + 3, COLUMNS)):
 			for id in _cells[z * COLUMNS + x]:
-				if _walkable[id] and _positions[id].distance_to(anchor) < 0.75:
+				if _walkable[id] and _positions[id].distance_to(anchor) < 1.20 and _joins(anchor, _positions[id], mage):
 					nearby.append(id)
 	return nearby
+
+
+func _joins(a: Vector3, b: Vector3, mage: CapsuleShape3D) -> bool:
+	if absf(a.y - b.y) > _flat_length(a - b) * 1.02 + 0.08:
+		return false
+	var steps := maxi(2, ceili(a.distance_to(b) / 0.19))
+	for j in range(1, steps):
+		var p := a.lerp(b, float(j) / steps)
+		var floor := _space.intersect_ray(PhysicsRayQueryParameters3D.create(
+			p + Vector3.UP * 0.16, p - Vector3.UP * 0.16, BLOCKERS))
+		if floor.is_empty() or (floor.normal as Vector3).y < 0.69 or not _clear(floor.position, mage):
+			return false
+	return true
 
 
 func _flood(anchor: Vector3, links: Array[PackedVector3Array], mage: CapsuleShape3D) -> void:
 	var explicit: Dictionary[int, PackedInt32Array] = {}
 	for link in links:
-		var ends := [_nearby(link[0]), _nearby(link[1])]
+		var ends := [_nearby(link[0], mage), _nearby(link[1], mage)]
 		for side in 2:
 			for id: int in ends[side]:
 				if not explicit.has(id):
 					explicit[id] = PackedInt32Array()
 				explicit[id].append_array(ends[1 - side])
-	var queue := _nearby(anchor)
+	var queue := _nearby(anchor, mage)
 	for id in queue:
 		_reachable[id] = 1
 	var cursor := 0
@@ -109,14 +122,17 @@ func _flood(anchor: Vector3, links: Array[PackedVector3Array], mage: CapsuleShap
 				if not _reachable[dest]:
 					_reachable[dest] = 1
 					queue.append(dest)
-		for side: int in [-COLUMNS, COLUMNS, -1, 1]:
-			var neighbour := cell + side
-			if neighbour < 0 or neighbour >= _cells.size():
+		for step: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
+				Vector2i(-1, -1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(1, 1)]:
+			var column := cell % COLUMNS + step.x
+			var row := cell / COLUMNS + step.y
+			if column < 0 or column >= COLUMNS or row < 0 or row >= ROWS:
 				continue
+			var neighbour := row * COLUMNS + column
 			for dest in _cells[neighbour]:
 				var a := _positions[source]
 				var b := _positions[dest]
-				if not _walkable[dest] or _reachable[dest] or a.distance_to(b) > STEP + 0.16:
+				if not _walkable[dest] or _reachable[dest] or absf(a.y - b.y) > _flat_length(a - b) * 0.94:
 					continue
 				var midpoint := a.lerp(b, 0.5)
 				var floor := _space.intersect_ray(PhysicsRayQueryParameters3D.create(
@@ -125,6 +141,7 @@ func _flood(anchor: Vector3, links: Array[PackedVector3Array], mage: CapsuleShap
 					continue
 				_reachable[dest] = 1
 				queue.append(dest)
+
 
 
 func _can_hit(feet: Vector3, cell: int, reach: float, min_pitch: float, max_pitch: float) -> bool:
