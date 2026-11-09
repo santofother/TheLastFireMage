@@ -25,6 +25,7 @@ var _reason := ""
 var _autostart_used := false
 var _session_closed := false
 var _roster_key := "uninitialized"
+var _mage_count: SpinBox
 
 @onready var _lobby: PanelContainer = $UI/Lobby
 @onready var _pick: OptionButton = $UI/Lobby/Content/MagePick
@@ -49,6 +50,21 @@ func _ready() -> void:
 	_start.pressed.connect(func() -> void: start_round(mage_id))
 	$UI/Lobby/Content/Explore.pressed.connect(_on_explore_town)
 	_pick.item_selected.connect(_on_mage_picked)
+	_mage_count = SpinBox.new()
+	_mage_count.min_value = 1
+	_mage_count.max_value = 5
+	_mage_count.step = 1
+	_mage_count.value = clampi(int(NetworkManager.args.get("mages", 1)), 1, 5)
+	_mage_count.value_changed.connect(func(value: float):
+		if Net.is_server(self) and phase == Enums.Phase.LOBBY:
+			NetworkManager.args["mages"] = int(value))
+	var count_label := Label.new()
+	count_label.text = "MAGES"
+	$UI/Lobby/Content.add_child(count_label)
+	$UI/Lobby/Content.add_child(_mage_count)
+	$UI/Lobby/Content.move_child(count_label, 3)
+	$UI/Lobby/Content.move_child(_mage_count, 4)
+	_style_lobby()
 
 
 func _process(delta: float) -> void:
@@ -75,7 +91,7 @@ func start_round(selected_mage: int = 0) -> void:
 	if _session_closed or not Net.is_server(self) or phase != Enums.Phase.LOBBY:
 		return
 	var roster := Players.all()
-	if roster.size() < maxi(2, tuning.min_players):
+	if roster.size() < maxi(maxi(2, tuning.min_players), int(NetworkManager.args.get("mages", 1)) + 1):
 		return
 	var chosen := selected_mage if selected_mage != 0 else mage_id
 	if chosen == 0:
@@ -86,10 +102,19 @@ func start_round(selected_mage: int = 0) -> void:
 	_reason = ""
 	_living_villagers.clear()
 	var assigned := {}
+	var mage_ids: Array = [chosen]
+	var candidates := roster.duplicate()
+	candidates.shuffle()
+	var count := clampi(int(NetworkManager.args.get("mages", 1)), 1, roster.size() - 1)
+	for candidate in candidates:
+		if mage_ids.size() >= count:
+			break
+		if candidate.peer_id != chosen:
+			mage_ids.append(candidate.peer_id)
 	for p in roster:
-		assigned[p.peer_id] = Enums.Role.MAGE if p.peer_id == chosen else Enums.Role.VILLAGER
+		assigned[p.peer_id] = Enums.Role.MAGE if mage_ids.has(p.peer_id) else Enums.Role.VILLAGER
 		_known[p.peer_id] = true
-		if p.peer_id != chosen:
+		if not mage_ids.has(p.peer_id):
 			_living_villagers[p.peer_id] = true
 			if not p.health.downed.is_connected(_check_villagers):
 				p.health.downed.connect(_check_villagers)
@@ -148,7 +173,7 @@ func _configure_player(p: Node, next: int) -> void:
 	var spectator := get_role(p.peer_id) == Enums.Role.SPECTATOR
 	p.health.invulnerable = spectator or next != Enums.Phase.HUNT and next != Enums.Phase.LOBBY
 	p.set_input_lock(&"match", spectator or next == Enums.Phase.ROLE_REVEAL \
-		or next == Enums.Phase.RESULTS or next == Enums.Phase.HEAD_START and p.peer_id == mage_id)
+		or next == Enums.Phase.RESULTS or next == Enums.Phase.HEAD_START and get_role(p.peer_id) == Enums.Role.MAGE)
 
 
 func _spawn_round() -> void:
@@ -201,11 +226,18 @@ func _return_to_lobby() -> void:
 func _on_player_died(id: int, _killer: int, _cause: StringName) -> void:
 	if not Net.is_server(self) or not _round_started():
 		return
-	if id == mage_id:
-		end_round(Enums.Winner.VILLAGERS, "mage_died")
+	if get_role(id) == Enums.Role.MAGE:
+		_check_mages(id, "mage_died")
 	elif get_role(id) == Enums.Role.VILLAGER:
 		_living_villagers.erase(id)
 		_check_villagers()
+
+
+func _check_mages(excluded: int, reason: String) -> void:
+	for p in Players.all():
+		if p.peer_id != excluded and get_role(p.peer_id) == Enums.Role.MAGE and p.health.is_alive:
+			return
+	end_round(Enums.Winner.VILLAGERS, reason)
 
 
 ## Mage wins when no villager is left standing: dead, or downed with nobody free to revive them.
@@ -225,8 +257,8 @@ func _on_peer_left(id: int) -> void:
 	if not Net.is_server(self):
 		return
 	if _round_started():
-		if id == mage_id:
-			end_round(Enums.Winner.VILLAGERS, "mage_left")
+		if get_role(id) == Enums.Role.MAGE:
+			_check_mages(id, "mage_left")
 		elif get_role(id) == Enums.Role.VILLAGER:
 			_living_villagers.erase(id)
 			_check_villagers()
@@ -264,6 +296,8 @@ func _send_snapshots() -> void:
 
 func _on_session_started() -> void:
 	_session_closed = false
+	if _mage_count:
+		_mage_count.value = clampi(int(NetworkManager.args.get("mages", 1)), 1, 5)
 
 
 func _on_session_ended(_message: String) -> void:
@@ -384,5 +418,37 @@ func _update_ui() -> void:
 			_pick.add_item(p.display_name, p.peer_id)
 	_pick.select(maxi(0, _pick.get_item_index(mage_id)))
 	_pick.disabled = not Net.is_server(self)
-	_start.disabled = not Net.is_server(self) or roster.size() < maxi(2, tuning.min_players)
-	_status.text = "%d players — %s" % [roster.size(), "Choose the Mage and start" if Net.is_server(self) else "Waiting for host"]
+	_mage_count.editable = Net.is_server(self)
+	var required := maxi(maxi(2, tuning.min_players), int(NetworkManager.args.get("mages", 1)) + 1)
+	_start.disabled = not Net.is_server(self) or roster.size() < required
+	var message := "Choose the Mage and start" if Net.is_server(self) else "Waiting for host"
+	if Net.is_server(self) and roster.size() < required:
+		message = "Need %d players (including at least one villager)" % required
+	_status.text = "%d players — %s" % [roster.size(), message]
+
+
+func _style_lobby() -> void:
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color("391b2bec")
+	panel.border_color = Color("d1994f")
+	panel.set_border_width_all(2)
+	panel.set_corner_radius_all(5)
+	panel.content_margin_left = 18
+	panel.content_margin_right = 18
+	panel.content_margin_top = 14
+	panel.content_margin_bottom = 14
+	_lobby.add_theme_stylebox_override("panel", panel)
+	for button in [_start, $UI/Lobby/Content/Explore]:
+		var normal := StyleBoxFlat.new()
+		normal.bg_color = Color("67362f")
+		normal.border_color = Color("c6904e")
+		normal.set_border_width_all(2)
+		normal.set_content_margin_all(8)
+		var hover := normal.duplicate() as StyleBoxFlat
+		hover.bg_color = Color("a84c1f")
+		hover.border_color = Color("ffcc67")
+		hover.shadow_color = Color("ff8a2388")
+		hover.shadow_size = 8
+		button.add_theme_stylebox_override("normal", normal)
+		button.add_theme_stylebox_override("hover", hover)
+		button.add_theme_color_override("font_color", Color("ffe5b1"))

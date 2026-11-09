@@ -8,6 +8,7 @@ var tuning: PowerTuning
 var _power := 0.0
 var _tier := 0
 var _mage_id := 0
+var _mage_ids: Array[int] = []
 var _phase := Enums.Phase.LOBBY
 var _decay_left := 0.0
 
@@ -60,6 +61,10 @@ func _process(delta: float) -> void:
 		_publish()
 
 func _on_role(id: int, role: int) -> void:
+	if role == Enums.Role.MAGE and not _mage_ids.has(id):
+		_mage_ids.append(id)
+	elif role != Enums.Role.MAGE:
+		_mage_ids.erase(id)
 	if Net.is_server(self) and role == Enums.Role.MAGE:
 		_mage_id = id
 		_publish()
@@ -73,19 +78,23 @@ func _on_phase(phase: int, _duration: float) -> void:
 		_tier = 0
 		if phase == Enums.Phase.LOBBY:
 			_mage_id = 0
+			_mage_ids.clear()
 		_publish()
 	_decay_left = tuning.decay_interval
 
 func _on_chicken(killer: int, _position: Vector3) -> void:
-	if killer == _mage_id and _phase == Enums.Phase.HUNT:
+	if _is_mage(killer) and _phase == Enums.Phase.HUNT:
 		add_power(tuning.per_chicken, &"chicken")
 
 func _on_death(victim: int, killer: int, _cause: StringName) -> void:
 	# WHY: Match handles the last villager's death first and enters RESULTS during the same signal.
-	if killer == _mage_id and victim != killer and _phase in [Enums.Phase.HUNT, Enums.Phase.RESULTS]:
+	if _is_mage(killer) and victim != killer and _phase in [Enums.Phase.HUNT, Enums.Phase.RESULTS]:
 		var match_system := GameEvents.system(&"match")
 		if match_system and match_system.get_role(victim) == Enums.Role.VILLAGER:
 			add_power(tuning.per_villager, &"villager")
+
+func _is_mage(id: int) -> bool:
+	return _mage_ids.has(id)
 
 func _publish() -> void:
 	Net.broadcast(self, &"_rpc_state", [_mage_id, _power, _tier])
@@ -104,7 +113,11 @@ func _rpc_state(mage_id: int, power: float, tier: int) -> void:
 	_mage_id = mage_id
 	_power = power
 	_tier = tier
-	GameEvents.power_changed.emit(_mage_id, _power, _tier, multiplier())
+	if _mage_ids.is_empty():
+		GameEvents.power_changed.emit(_mage_id, _power, _tier, multiplier())
+	else:
+		for id in _mage_ids:
+			GameEvents.power_changed.emit(id, _power, _tier, multiplier())
 	if _mage_id != 0:
 		# FIX(S12, Claude): mage voice distortion grows with power (0.35 at start -> 1.0 at the top threshold).
 		var top := maxf(0.001, tuning.tier_thresholds[tuning.tier_thresholds.size() - 1])

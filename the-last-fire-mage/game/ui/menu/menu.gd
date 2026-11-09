@@ -7,6 +7,7 @@ var _root: CenterContainer
 var _name_edit: LineEdit
 # FIX(S07, Codex): expose server bots for editor playtests without CLI arguments.
 var _bot_count: SpinBox
+var _mage_count: SpinBox
 var _steam_label: Label
 var _host_steam_btn: Button
 var _invite_btn: Button
@@ -76,6 +77,7 @@ func _apply_name() -> void:
 func _on_host_steam() -> void:
 	_apply_name()
 	NetworkManager.args["bots"] = int(_bot_count.value)
+	NetworkManager.args["mages"] = int(_mage_count.value)
 	SteamManager.host_lobby()
 
 
@@ -91,6 +93,7 @@ func _on_join_lobby() -> void:
 func _on_host_lan() -> void:
 	_apply_name()
 	NetworkManager.args["bots"] = int(_bot_count.value)
+	NetworkManager.args["mages"] = int(_mage_count.value)
 	NetworkManager.host_enet(int(_port_edit.text))
 
 
@@ -115,7 +118,7 @@ func _on_session_ended(reason: String) -> void:
 func _on_lobby_list(lobbies: Array) -> void:
 	_lobby_list.clear()
 	for l in lobbies:
-		var i := _lobby_list.add_item("%s  (%d/%d)" % [l["name"], l["members"], NetworkManager.MAX_PLAYERS])
+		var i := _lobby_list.add_item("%s  (%d players)" % [l["name"], l["members"]])
 		_lobby_list.set_item_metadata(i, l["id"])
 
 
@@ -136,6 +139,7 @@ func _refresh_buttons() -> void:
 	_join_ip_btn.disabled = in_s
 	_name_edit.editable = not in_s
 	_bot_count.editable = not in_s
+	_mage_count.editable = not in_s
 	_invite_btn.disabled = not (steam and SteamManager.lobby_id != 0)
 	_leave_btn.visible = in_s
 
@@ -176,6 +180,7 @@ func _build_ui() -> void:
 	add_child(_root)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(520, 0)
+	panel.add_theme_stylebox_override("panel", _panel_style(Color("351c2aeF"), Color("c78b42"), 2))
 	_root.add_child(panel)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -186,7 +191,8 @@ func _build_ui() -> void:
 	margin.add_child(v)
 
 	var title := Label.new()
-	title.text = "The Last Fire Mage — net/voice test"
+	title.text = "THE LAST FIRE MAGE"
+	title.add_theme_color_override("font_color", Color("ffd081"))
 	title.add_theme_font_size_override("font_size", 22)
 	v.add_child(title)
 
@@ -195,7 +201,19 @@ func _build_ui() -> void:
 	_name_edit.max_length = 20
 	v.add_child(_row("Name", _name_edit))
 
-	# FIX(S07, Codex): shared by Steam and LAN hosting; CLI automation keeps its supplied count.
+	var host_title := _label("HOST GAME  ·  Choose Steam or Local below")
+	host_title.add_theme_color_override("font_color", Color("f6bd69"))
+	v.add_child(host_title)
+	_mage_count = SpinBox.new()
+	_mage_count.name = "MageCount"
+	_mage_count.min_value = 1
+	_mage_count.max_value = 5
+	_mage_count.step = 1
+	_mage_count.value = 1
+	_mage_count.tooltip_text = "Number of mages; at least one villager is required."
+	v.add_child(_row("Mages", _mage_count))
+
+	# Shared by Steam and LAN hosting; CLI automation keeps its supplied count.
 	_bot_count = SpinBox.new()
 	_bot_count.name = "BotCount"
 	_bot_count.min_value = 0
@@ -209,8 +227,12 @@ func _build_ui() -> void:
 	_steam_label = Label.new()
 	v.add_child(_steam_label)
 	_host_steam_btn = _button("Host Steam lobby", _on_host_steam)
+	_host_lan_btn = _button("Host LAN", _on_host_lan)
+	_host_steam_btn.tooltip_text = "Host online through Steam and invite friends."
+	_host_lan_btn.tooltip_text = "Host locally or on a LAN using the port below."
+	v.add_child(_hbox([_host_steam_btn, _host_lan_btn]))
 	_invite_btn = _button("Invite Steam friends", SteamManager.invite_friends)
-	v.add_child(_hbox([_host_steam_btn, _invite_btn]))
+	v.add_child(_invite_btn)
 	_refresh_btn = _button("Refresh lobby list", SteamManager.request_lobby_list)
 	_join_lobby_btn = _button("Join selected lobby", _on_join_lobby)
 	v.add_child(_hbox([_refresh_btn, _join_lobby_btn]))
@@ -223,8 +245,7 @@ func _build_ui() -> void:
 	_port_edit = LineEdit.new()
 	_port_edit.text = str(NetworkManager.DEFAULT_PORT)
 	_port_edit.custom_minimum_size = Vector2(80, 0)
-	_host_lan_btn = _button("Host LAN", _on_host_lan)
-	v.add_child(_hbox([_host_lan_btn, _label("Port"), _port_edit]))
+	v.add_child(_row("LAN port", _port_edit))
 	_ip_edit = LineEdit.new()
 	_ip_edit.text = "127.0.0.1"
 	_ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -265,6 +286,11 @@ func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_stylebox_override("normal", _panel_style(Color("68372f"), Color("c69250"), 2))
+	b.add_theme_stylebox_override("hover", _panel_style(Color("b7541c"), Color("ffca64"), 3))
+	b.add_theme_stylebox_override("pressed", _panel_style(Color("8a3d19"), Color("ffe4a0"), 2))
+	b.add_theme_color_override("font_color", Color("ffe5b1"))
+	b.add_theme_color_override("font_hover_color", Color("fff4d5"))
 	b.pressed.connect(cb)
 	return b
 
@@ -287,3 +313,19 @@ func _row(caption: String, control: Control) -> HBoxContainer:
 	l.custom_minimum_size = Vector2(80, 0)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return _hbox([l, control])
+
+
+func _panel_style(bg: Color, border: Color, width: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg
+	style.border_color = border
+	style.set_border_width_all(width)
+	style.set_corner_radius_all(4)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 5
+	style.content_margin_bottom = 5
+	if width == 3:
+		style.shadow_color = Color("ff821b99")
+		style.shadow_size = 8
+	return style
