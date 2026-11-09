@@ -34,15 +34,17 @@ func audit(space: PhysicsDirectSpaceState3D, anchor: Vector3, links: Array[Packe
 	for row in ROWS:
 		for column in COLUMNS:
 			_sample(row, column, mage_shape, villager_shape)
+	var sample_count := _positions.size()
+	_sample_link_ends(links, mage_shape)
 	_reachable.resize(_positions.size())
 	_flood(anchor, links, mage_shape)
 	var missing := PackedVector3Array()
 	var half_cone := deg_to_rad(tuning.wave_angle_deg / 2.0)
-	for i in _positions.size():
+	for i in sample_count:
 		if not _can_hit(_positions[i], _indices[i], tuning.wave_range, mage.pitch_min - half_cone, mage.pitch_max + half_cone):
 			missing.append(_positions[i])
 	print("[Map] Flame coverage at %.2f m spacing: %d villager samples, %d within Fire Wave coverage" %
-		[STEP, _positions.size(), _positions.size() - missing.size()])
+		[STEP, sample_count, sample_count - missing.size()])
 	return missing
 
 
@@ -73,6 +75,31 @@ func _inside_crate(feet: Vector3) -> bool:
 		if crate.has_point(feet + Vector3.UP * 0.1):
 			return true
 	return false
+
+
+func _sample_link_ends(links: Array[PackedVector3Array], mage: CapsuleShape3D) -> void:
+	# A ledge can fit the mage yet fall between grid points. Include the positions
+	# from successful physics traversals as extra vertices in the reachability graph.
+	var added: Dictionary[Vector3, bool] = {}
+	for link in links:
+		for end in link:
+			var column := roundi((end.x - CORNER.x) / STEP)
+			var row := roundi((end.z - CORNER.z) / STEP)
+			if column < 0 or column >= COLUMNS or row < 0 or row >= ROWS:
+				continue
+			var floor := _space.intersect_ray(PhysicsRayQueryParameters3D.create(
+				end + Vector3.UP * 0.12, end - Vector3.UP * 0.24, BLOCKERS))
+			if floor.is_empty() or (floor.normal as Vector3).y < 0.707:
+				continue
+			var feet: Vector3 = floor.position
+			if added.has(feet) or _inside_crate(feet) or not _clear(feet, mage):
+				continue
+			added[feet] = true
+			var cell := row * COLUMNS + column
+			_cells[cell].append(_positions.size())
+			_positions.append(feet)
+			_indices.append(cell)
+			_walkable.append(1)
 
 
 func _nearby(anchor: Vector3, mage: CapsuleShape3D) -> PackedInt32Array:
@@ -122,7 +149,7 @@ func _flood(anchor: Vector3, links: Array[PackedVector3Array], mage: CapsuleShap
 				if not _reachable[dest]:
 					_reachable[dest] = 1
 					queue.append(dest)
-		for step: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
+		for step: Vector2i in [Vector2i.ZERO, Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
 				Vector2i(-1, -1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(1, 1)]:
 			var column := cell % COLUMNS + step.x
 			var row := cell / COLUMNS + step.y

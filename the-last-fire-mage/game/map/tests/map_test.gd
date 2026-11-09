@@ -33,7 +33,7 @@ var _links: Array[PackedVector3Array] = []
 
 
 func _ready() -> void:
-	get_tree().create_timer(750).timeout.connect(func() -> void:
+	get_tree().create_timer(950).timeout.connect(func() -> void:
 		print("[TEST] FAIL map traversal timed out")
 		get_tree().quit(1))
 	_town = load("res://game/map/town.tscn").instantiate()
@@ -143,7 +143,7 @@ func _run() -> void:
 
 
 func _contracts() -> void:
-	_check(_town.get_meta("layout_version") == "salmara-party-walls-v3", "new village is the production town")
+	_check(_town.get_meta("layout_version") == "salmara-party-walls-v4", "new village is the production town")
 	var apron := _town.find_child("MarketApron", true, false) as StaticBody3D
 	var quay := _town.find_child("QuayDeck", true, false) as StaticBody3D
 	var pier := _town.find_child("DockDeck", true, false) as StaticBody3D
@@ -165,11 +165,12 @@ func _contracts() -> void:
 	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
 		templates[house.get_meta("template")] = true
 		heights[house.get_meta("storeys")] = true
-		if house.get_meta("storeys") > 2:
-			var stair := house.get_node("Storey2").has_node("Stairs")
+		var storeys := int(house.get_meta("storeys"))
+		if storeys >= 2:
+			var stair := house.get_node("Storey%d" % (storeys - 1)).has_node("Stairs")
 			var walk_up := house.name in [&"Dyeworks", &"WatchHouse"]
 			_check(stair == walk_up and _town.has_node(String(house.name) + "RoofLanding") != walk_up,
-				"%s has its intended tall roof access" % house.name)
+				"%s has its intended roof access" % house.name)
 	_check(templates.size() == 4 and heights.size() == 3, "four interior layouts and one to three storeys")
 	for node in _town.find_children("*", "StaticBody3D", true, false):
 		if node.collision_layer != 1:

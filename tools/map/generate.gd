@@ -14,6 +14,7 @@ var _coastal: Node3D
 const WALL := 0.22
 const DOOR := 1.14
 const DOOR_TOP := 1.76
+const WINDOW_HALF := 0.775
 const BEDROCK := -2.9
 const SHELL_BOTTOM := -3.1
 var _plan: Node3D
@@ -46,12 +47,12 @@ func _generate() -> void:
 	_waterfront()
 	_loft_link("SaltLoft", "Fishers", 22.5)
 	_loft_link("BellLoft", "BellWalk", -45.0)
-	_roof_step("SaltLoft", "RopeHouse", -13.2, 24.8, 1.61)
+	var rope_edge := Vector3(-13.2, _roof_height(_houses.RopeHouse), 25.83)
+	var salt_roof := Vector3(-13.2, _roof_height(_houses.SaltLoft), 24.25)
+	_jump_link("SaltLoftRoofLanding", rope_edge, rope_edge, salt_roof, "roof_landing")
 	# Jump down from Chapel instead of walking up from Bell Loft on a ramp.
-	var chapel: Dictionary = _houses.Chapel
-	var bell_loft: Dictionary = _houses.BellLoft
-	var chapel_edge := Vector3(2.45, chapel.base + chapel.spacing * chapel.spec[3], -46.85)
-	var bell_roof := Vector3(2.45, bell_loft.base + bell_loft.spacing * bell_loft.spec[3], -44.4)
+	var chapel_edge := Vector3(2.45, _roof_height(_houses.Chapel), -46.85)
+	var bell_roof := Vector3(2.45, _roof_height(_houses.BellLoft), -44.4)
 	_jump_link("BellLoftRoofLanding", chapel_edge, chapel_edge, bell_roof, "roof_landing")
 	_spawn_points()
 	_finish_surfaces()
@@ -508,7 +509,9 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 	var spacing := 2.28 + 0.08 * (String(spec[0]).length() % 4)
 	var loft: bool = spec.size() > 8 and spec[8] == "loft"
 	var passage: bool = spec[5] == "passage"
-	var parkour: bool = levels > 2 and not spec[0] in _layout.tall_roof_stairs
+	var parkour: bool = levels >= 2 and not loft and not spec[0] in _layout.tall_roof_stairs
+	# Put the window at the opposite end from the stair that serves this room.
+	var route_dir := -1.0 if levels == 2 else 1.0
 	if passage:
 		entry_z = (z0 + z1) * 0.5
 		height = _street_at(lane, entry_z).y
@@ -538,13 +541,15 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 		var floor := _container(house, "Storey%d" % level, Vector3.ZERO, "map_storey")
 		var roof := level == levels - 1
 		var covered := passage and level == 0
-		var window_z := z0 + 1.08 if parkour and roof else entry_z
+		var window_z := entry_z
+		if parkour and roof:
+			window_z = z1 - 1.08 if route_dir < 0.0 else z0 + 1.08
 		for side in 2:
 			var front := is_equal_approx(float(side), door_u)
 			var door := level == 0 and (front or covered)
 			var window := roof and front and (loft or parkour)
 			_face(floor, band, side, z0, z1, y, y + spacing - 0.14, wall_u, spec[6], window_z,
-				1.50 if covered else (1.55 if window else (DOOR if door else 0.0)),
+				1.50 if covered else (WINDOW_HALF * 2.0 if window else (DOOR if door else 0.0)),
 				(0.24 if parkour else 0.26) if window else 0.0, spacing - 0.17 if window else DOOR_TOP,
 				front or covered, window and parkour)
 			if door:
@@ -571,7 +576,7 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 		if roof:
 			_roof(house, band, z0, z1, top, spec[7], roof_colour, door_u if parkour else -1.0)
 			if parkour:
-				_facade_route(floor, band, door_u, window_z, y, top)
+				_facade_route(floor, band, door_u, window_z, route_dir, y, top)
 	if spec[0] == "Chapel":
 		var tower := _plot_point(band, 0.30, height + levels * spacing, -51.1)
 		_box(house, "BellTower", tower + Vector3.UP * 0.88, Vector3(1.65, 1.76, 1.65), "ashlar")
@@ -590,12 +595,9 @@ func _face(parent: Node3D, band: int, side: int, z0: float, z1: float, y: float,
 		_plot_box(parent, "JambSouth", band, left, right, end, z1, y, top, colour)
 		_plot_box(parent, "Lintel", band, left, right, start, end, y + header, top, "ashlar")
 		if not parkour:
-			_plot_box(parent, "Sill", band, left, right, start, end, y, y + sill, "open_window")
+			_plot_box(parent, "Sill", band, left, right, start, end, y, y + sill, "ashlar")
 	else:
 		_plot_box(parent, "Facade", band, left, right, z0, z1, y, top, colour)
-	if sill > 0 and not parkour:
-		var face := _plot_point(band, float(side), y + sill * 0.5, at)
-		_visual(parent, "LoftSill", face, Vector3(0.23, 0.09, width), "open_window")
 	if not parkour and (facing or (band == 0 and side == 0) or (band == 3 and side == 1)):
 		var span := _edges(band, at)
 		var w := span.y - span.x
@@ -746,14 +748,17 @@ func _facade_box(parent: Node3D, label: String, band: int, side: float, z: float
 			_facade_point(band, side, b, outer, top), _facade_point(band, side, b, inner, top)], bottom, colour)
 
 
-func _facade_route(parent: Node3D, band: int, side: float, z: float, y: float, roof: float) -> void:
-	var planter_z := z + 1.84
-	var plank_z := z + 3.68
+func _facade_route(parent: Node3D, band: int, side: float, z: float, direction: float, y: float, roof: float) -> void:
+	var house := String(parent.get_parent().name)
+	# The sharper bends need a little more clearance from the wall and shutters.
+	var ledge_depth := 0.95 if house in ["Chapel", "Coopers", "LanternHouse"] else 0.88
+	var planter_z := z + direction * 1.84
+	var plank_z := z + direction * 3.68
 	var sill := y + 0.24
 	var planter := y + 1.07
 	var plank := maxf(roof - 0.74, y + 1.94)
 	# Follow facade bends so the ramp meets the sill without a lip, even at a street knot.
-	var sections := _intervals(z - 0.775, z + 0.775)
+	var sections := _intervals(z - WINDOW_HALF, z + WINDOW_HALF)
 	for i in range(1, sections.size()):
 		var a := sections[i - 1]
 		var b := sections[i]
@@ -762,20 +767,19 @@ func _facade_route(parent: Node3D, band: int, side: float, z: float, y: float, r
 			_facade_point(band, side, a, -0.55, sill),
 			_facade_point(band, side, b, -0.55, sill),
 			_facade_point(band, side, b, -1.20, y + 0.006)], y - 0.07, "wood")
-	_facade_box(parent, "WindowLedge", band, side, z, 0.775, -0.55, 1.04, y, sill, "open_window")
-	_facade_box(parent, "FlowerBox", band, side, planter_z, 0.64, 0.0, 1.13, planter - 0.25, planter, "tile_sienna")
+	_facade_box(parent, "WindowLedge", band, side, z, WINDOW_HALF, -0.55, 0.82, y, sill, "ashlar")
+	_facade_box(parent, "FlowerBox", band, side, planter_z, 0.64, 0.0, ledge_depth, planter - 0.25, planter, "tile_sienna")
 	_facade_box(parent, "ClosedShutter", band, side, planter_z, 0.42, -0.02, 0.09, planter + 0.09, planter + 0.86, "shutter")
 	for offset: float in [-0.40, 0.0, 0.40]:
 		var leaves := _facade_point(band, side, planter_z + offset, 0.15, planter + 0.09)
 		_visual(parent, "Leaves", leaves, Vector3(0.18, 0.18, 0.22), "garden")
 		_visual(parent, "Blossom", leaves + Vector3.UP * 0.12, Vector3(0.13, 0.09, 0.13), "rose")
-	_facade_box(parent, "EavesPlank", band, side, plank_z, 0.70, 0.0, 1.12, plank - 0.12, plank, "wood")
+	_facade_box(parent, "EavesPlank", band, side, plank_z, 0.70, 0.0, ledge_depth, plank - 0.12, plank, "wood")
 	_facade_box(parent, "ClosedShutter", band, side, plank_z, 0.38, -0.02, 0.09, plank - 0.94, plank - 0.23, "shutter")
-	var window := _facade_point(band, side, z, 0.62, sill)
-	var flowers := _facade_point(band, side, planter_z, 0.68, planter)
-	var board := _facade_point(band, side, plank_z, 0.66, plank)
+	var window := _facade_point(band, side, z, 0.52, sill)
+	var flowers := _facade_point(band, side, planter_z, ledge_depth - 0.30, planter)
+	var board := _facade_point(band, side, plank_z, ledge_depth - 0.31, plank)
 	var landing := _facade_point(band, side, plank_z, -0.55, roof)
-	var house := String(parent.get_parent().name)
 	_walk_link(house + "OpenWindow", _facade_point(band, side, z, -1.22, y), window)
 	_jump_link(house + "FlowerBox", window, window, flowers, "roof_parkour")
 	_jump_link(house + "EavesPlank", flowers, flowers, board, "roof_parkour")
@@ -917,15 +921,8 @@ func _bluff(parent: Node3D, band: int, z0: float, z1: float, y: float, seed: int
 		_quad(parent, "LimestoneFace", [middle, d, c], BEDROCK - 0.2, "rock_light")
 
 
-func _roof_step(top: String, bottom: String, x: float, edge_z: float, run: float) -> void:
-	var lower: Dictionary = _houses[bottom]
-	var higher: Dictionary = _houses[top]
-	var y0: float = lower.base + lower.spacing * lower.spec[3]
-	var y1: float = higher.base + higher.spacing * higher.spec[3]
-	var frame := _container(_plan, top + "RoofSteps", Vector3(x, y0, edge_z + run))
-	frame.rotation.y = PI
-	_stairs(frame, "RoofSteps", Vector3.ZERO, 1.18, run, y1 - y0)
-
+func _roof_height(house: Dictionary) -> float:
+	return house.base + house.spacing * house.spec[3]
 
 
 func _loft_link(label: String, neighbour: String, z: float) -> void:

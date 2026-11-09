@@ -1,5 +1,5 @@
 {
-  "version": "salmara-party-walls-v3",
+  "version": "salmara-party-walls-v4",
   "tall_roof_stairs": ["Dyeworks", "WatchHouse"],
   "footprint": [74, 142],
   "palette": {
@@ -12,7 +12,6 @@
     "interior": [0.66, 0.61, 0.53],
     "roof": [0.59, 0.31, 0.22],
     "shutter": [0.27, 0.19, 0.18],
-    "open_window": [0.1, 0.64, 0.62],
     "stone": [0.55, 0.53, 0.49],
     "ashlar": [0.6, 0.57, 0.51],
     "garden": [0.42, 0.54, 0.31],
