@@ -1,5 +1,5 @@
 ## Short-lived hit flash, procedural sound and victim camera shake / wave arc.
-## Owner: S09. Public API: hit(point, victim), wave(origin, aim, reach, angle). Cosmetic on each peer.
+## Owner: S09. Public API: hit(point, victim), wave(origin, aim, reach, angle), locator(points). Cosmetic on each peer.
 extends Node3D
 
 ## Displays confirmed damage at the target; shakes only the victim's local camera.
@@ -45,6 +45,21 @@ func wave(origin: Vector3, aim: Vector3, reach: float, angle: float) -> void:
 		tween.tween_property(spark, "position", direction * reach, 0.3)
 		tween.parallel().tween_property(spark, "scale", Vector3.ONE * 0.1, 0.3)
 	get_tree().create_timer(0.35).timeout.connect(queue_free)
+
+## FIX(S14, Codex): Briefly marks the sensed positions through walls for the local mage.
+func locator(points: PackedVector3Array) -> void:
+	for point in points:
+		var marker := Label3D.new()
+		marker.text = "◇"
+		marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		marker.no_depth_test = true
+		marker.fixed_size = true
+		marker.font_size = 32
+		marker.pixel_size = 0.001
+		marker.modulate = Color(1.0, 0.56, 0.2)
+		add_child(marker)
+		marker.global_position = point
+	get_tree().create_timer(0.8).timeout.connect(queue_free)
 
 func _mesh(shape: Mesh) -> MeshInstance3D:
 	var node := MeshInstance3D.new()

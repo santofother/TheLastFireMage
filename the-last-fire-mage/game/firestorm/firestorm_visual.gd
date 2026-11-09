@@ -51,7 +51,7 @@ func set_zone(center: Vector3, radius: float, stage: int) -> void:
 		_set_environment_stage(stage)
 
 
-## Show a distant marker for the pre-announced final safe area.
+## Show a distant marker for the active shrink target.
 func set_destination(center: Vector3, radius: float) -> void:
 	if _beacon == null:
 		return
@@ -164,7 +164,7 @@ func _build_beacon() -> void:
 	_destination_ring.material_override = material
 	_beacon.add_child(_destination_ring)
 	var label := Label3D.new()
-	label.text = "FINAL SAFE ZONE"
+	label.text = "SAFE ZONE"
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.modulate = Color(1.0, 0.81, 0.47)
 	label.font_size = 36

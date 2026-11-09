@@ -4,15 +4,17 @@ extends Tuning
 ## Instance: tuning_firestorm.tres. CLI overrides: --tune=firestorm.<property>=<value>.
 
 ## TUNE: Seconds into HUNT before the storm activates.
-@export var start_time := 120.0
-## TUNE: Number of stages over the remaining HUNT.
-@export var stage_count := 4
+@export var start_time := 30.0
+## TUNE: Seconds from the first shrink to the second.
+@export var second_stage_delay := 60.0
+## TUNE: Seconds spent in the closed final circle, also used for its closing time.
+@export var final_hold_time := 30.0
 ## TUNE: Seconds of HUD warning before a stage starts.
 @export var warning_time := 15.0
 ## TUNE: Initial safe-zone radius in meters.
-@export var start_radius := 90.0
-## TUNE: Final safe-zone radius in meters.
-@export var final_radius := 12.0
+@export var start_radius := 107.0
+## TUNE: Reference area in square meters (the town is roughly 150 m by 150 m).
+@export var map_area := 22500.0
 ## TUNE: HP lost per second outside the zone for a villager.
 @export var damage_per_second := 10.0
 ## TUNE: Consecutive seconds below the threshold before the storm kills the mage.
