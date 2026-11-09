@@ -21,7 +21,9 @@ wait_log blue 'Villager skin 1 -> Blue BV_' 8
 wait_log red 'Villager skin 1 -> Blue BV_' 8
 wait_peers 25
 # WHY: not assert_clean_logs; clients quit before the host here, and it treats any disconnect as a failure.
-if grep -En 'SCRIPT ERROR|Parse Error|ERROR:|Failed to load|\[TEST\] FAIL' "${logs[@]}"; then exit 1; fi
+# WHY: two clients quitting together make the host broadcast to a peer already leaving; ENet logs this harmlessly.
+if grep -En 'SCRIPT ERROR|Parse Error|ERROR:|Failed to load|\[TEST\] FAIL' "${logs[@]}" \
+    | grep -v 'Unable to send packet on channel'; then exit 1; fi
 # Host's own body and BlueClient's; RedClient stays on the default body, so it logs no swap.
 [ "$(grep -c 'Villager skin' "$OUT/host.log")" -eq 2 ] || { echo "Expected 2 skin swaps on host ($OUT)"; exit 1; }
 echo "VILLAGER PICKER TEST PASSED ($OUT)"
