@@ -214,8 +214,6 @@ func _rpc_stage(next: int, threshold: float, origin: Vector3, radius: float,
 	if stage == _FINAL_STAGE:
 		final_zone_center = target
 		final_zone_radius = target_radius
-	if _visual:
-		_visual.set_destination(target, target_radius)
 	set_process(true)
 	_update_zone()
 	var until_next := maxf(0.0, shrink_time - elapsed) if stage < _FINAL_STAGE else 0.0

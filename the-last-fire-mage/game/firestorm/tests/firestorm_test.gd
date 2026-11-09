@@ -69,6 +69,9 @@ func _process(_delta: float) -> void:
 
 
 func _on_phase(phase: int, _duration: float) -> void:
+	if phase == Enums.Phase.HUNT and not _late:
+		_check(_storm.stage == 0 and _storm.final_zone_radius == 0.0,
+			"hunt starts without a storm boundary or final target")
 	if phase == Enums.Phase.HUNT and _hosting:
 		var bot := Players.get_player(_BOT_ID) as Player
 		bot.set_physics_process(false)
@@ -90,7 +93,9 @@ func _on_stage(number: int, target: Vector3, radius: float, required: float, tim
 		_check(target.is_equal_approx(_storm.final_zone_center) and radius == _storm.final_zone_radius,
 			"final target is revealed when its shrink starts")
 	else:
-		_check(_storm.final_zone_radius == 0.0, "final target is hidden in earlier stages")
+		var map: Node3D = GameEvents.system(&"main").get_map()
+		_check(_storm.final_zone_radius == 0.0 and target.is_equal_approx(map.global_position),
+			"early stages stay centered on the map without revealing the final target")
 	if _hosting and number == 2:
 		# Let the mage recover from a brief deficit, then fail the final threshold.
 		get_tree().create_timer(0.45).timeout.connect(func() -> void: _power.add_power(3.0, &"test"))
