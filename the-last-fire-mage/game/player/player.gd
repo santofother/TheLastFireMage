@@ -13,7 +13,7 @@ extends CharacterBody3D
 ## Public API:
 ## - vars: `peer_id`, `display_name`, `is_bot`, `role` (Enums.Role), `is_alive`, `velocity` (built-in),
 ##   `input` (PlayerInput), `input_driver`, `tuning` (PlayerTuning), `health`, `carry_socket`, `abilities`,
-##   `camera_rig`, `camera`, `voice`
+##   `camera_rig`, `camera`, `voice`, `stamina` (owner only)
 ## - local (call on every peer): `set_role(role)`, `is_local()`, `can_control()`, `get_ability(name)`
 ## - server only: `stun(s)`, `set_input_lock(reason, on)`, `teleport(pos)`, `apply_knockback(v)`,
 ##   `set_speed_modifier(source, mult)`
@@ -81,6 +81,8 @@ var is_mantling := false
 var is_tumbling := false
 ## Replicated sprint animation state.
 var is_sprinting := false
+## Owner's remaining movement stamina; read locally by the HUD.
+var stamina := 0.0
 ## Replicated: the owner's controller is off the floor. Remote peers cannot ask is_on_floor() themselves.
 var is_airborne := false
 
@@ -92,6 +94,8 @@ var _takeoff_y := 0.0
 var _fall_peak_y := 0.0
 var _jumped_in_air := false ## FIX(S11, Claude): true only if airborne from a jump (walking off = no damage)
 var _jump_sprinted := false
+var _stamina_delay := 0.0
+var _sprint_exhausted := false
 var _tumble_left := 0.0
 var _tumble_angle := 0.0
 var _mantle_elapsed := 0.0
@@ -246,6 +250,7 @@ func _rpc_teleport(pos: Vector3) -> void:
 		platform_floor_layers &= ~2
 		global_position = pos
 		_reset_movement()
+		_refill_stamina()
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -375,19 +380,33 @@ func _physics_process(delta: float) -> void:
 
 	is_crouching = input.crouch or (is_crouching and not _has_standing_room())
 	_update_stance()
-	if input.jump_pressed and not grounded and can_control() and not is_crouching and not _mantled_in_air:
+	var can_jump := can_control() and not is_crouching and stamina >= tuning.jump_stamina_cost
+	var mantle_cost := 0.0 if _jumped_in_air else tuning.jump_stamina_cost
+	if input.jump_pressed and not grounded and can_control() and not is_crouching and not _mantled_in_air and stamina >= mantle_cost:
 		if _try_space_mantle():
+			if mantle_cost > 0.0:
+				_spend_stamina(mantle_cost)
+			is_sprinting = false
 			return
-	if _jump_buffer_left > 0.0 and _coyote_left > 0.0 and can_control() and not is_crouching:
+	is_sprinting = can_control() and input.sprint and not is_crouching \
+		and not input.move.is_zero_approx() and not _sprint_exhausted and stamina > 0.0
+	_stamina_delay = maxf(0.0, _stamina_delay - delta)
+	if _jump_buffer_left > 0.0 and _coyote_left > 0.0 and can_jump:
+		_spend_stamina(tuning.jump_stamina_cost)
 		velocity.y = tuning.jump_velocity
 		_jumped_in_air = true
-		_jump_sprinted = input.sprint and not input.move.is_zero_approx()
+		_jump_sprinted = is_sprinting
 		_jump_buffer_left = 0.0
 		_coyote_left = 0.0
 		_mantle_armed = true
 		grounded = false
+	elif is_sprinting and grounded:
+		_spend_stamina(tuning.sprint_stamina_per_second * delta)
+	elif grounded and _stamina_delay <= 0.0 and is_alive and not health.is_downed:
+		stamina = minf(tuning.max_stamina, stamina + tuning.stamina_recovery_per_second * delta)
+		if stamina >= minf(tuning.sprint_recovery_stamina, tuning.max_stamina):
+			_sprint_exhausted = false
 
-	is_sprinting = can_control() and input.sprint and not is_crouching and not input.move.is_zero_approx()
 	var speed := tuning.crouch_speed if is_crouching else (
 		tuning.sprint_speed if is_sprinting else tuning.walk_speed)
 	var wish := global_basis * Vector3(input.move.x, 0.0, input.move.y).limit_length()
@@ -407,6 +426,7 @@ func _physics_process(delta: float) -> void:
 	velocity += _knockback
 	_knockback = Vector3.ZERO
 	if _mantle_armed and can_control() and not is_crouching and not grounded and _try_mantle(wish):
+		is_sprinting = false
 		return
 	var approach := velocity
 	move_and_slide()
@@ -649,6 +669,8 @@ func _rpc_bump(other_name: StringName) -> void:
 
 func _reset_movement() -> void:
 	_mantled_in_air = false
+	_jumped_in_air = false
+	_jump_sprinted = false
 	velocity = Vector3.ZERO
 	_knockback = Vector3.ZERO
 	_coyote_left = 0.0
@@ -661,6 +683,21 @@ func _reset_movement() -> void:
 	_tumble_left = 0.0
 	_fall_peak_y = global_position.y
 	_takeoff_y = global_position.y
+
+
+func _spend_stamina(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	stamina = maxf(0.0, stamina - amount)
+	_stamina_delay = tuning.stamina_recovery_delay
+	if stamina <= 0.0:
+		_sprint_exhausted = true
+
+
+func _refill_stamina() -> void:
+	stamina = tuning.max_stamina
+	_stamina_delay = 0.0
+	_sprint_exhausted = false
 
 
 func _read_input(delta: float) -> void:
@@ -679,6 +716,7 @@ func _read_input(delta: float) -> void:
 
 func _apply_tuning(path: String, section: String) -> void:
 	tuning = Tuning.load_tuning(path, section) as PlayerTuning
+	_refill_stamina()
 	health.max_hp = tuning.max_hp
 	_standing_height = 0.0
 	floor_snap_length = tuning.floor_snap

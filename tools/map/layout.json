@@ -1,967 +1,235 @@
 {
-  "version": 3,
-  "footprint": [
-    104,
-    104
-  ],
+  "version": "salmara-party-walls-v4",
+  "tall_roof_stairs": ["Dyeworks", "WatchHouse"],
+  "footprint": [74, 142],
   "palette": {
-    "cream": [
-      0.88,
-      0.8,
-      0.63
+    "cliff": [0.39, 0.39, 0.39],
+    "paving": [0.67, 0.64, 0.58],
+    "square": [0.64, 0.58, 0.49],
+    "cream": [0.79, 0.74, 0.64],
+    "peach": [0.7, 0.53, 0.46],
+    "ochre": [0.73, 0.63, 0.45],
+    "interior": [0.66, 0.61, 0.53],
+    "roof": [0.59, 0.31, 0.22],
+    "shutter": [0.27, 0.19, 0.18],
+    "stone": [0.55, 0.53, 0.49],
+    "ashlar": [0.6, 0.57, 0.51],
+    "garden": [0.42, 0.54, 0.31],
+    "sand": [0.8, 0.72, 0.55],
+    "sea": [0.2, 0.51, 0.62],
+    "wood": [0.57, 0.43, 0.29],
+    "indigo": [0.37, 0.31, 0.53],
+    "lime": [0.88, 0.78, 0.62],
+    "rose": [0.69, 0.42, 0.35],
+    "honey": [0.8, 0.58, 0.34],
+    "tile_sienna": [0.69, 0.39, 0.27],
+    "tile_dusk": [0.44, 0.27, 0.27],
+    "wet_sand": [0.64, 0.57, 0.43],
+    "shallows": [0.54, 0.57, 0.44],
+    "foam": [0.8, 0.9, 0.84],
+    "deep_stone": [0.46, 0.43, 0.38],
+    "rock_light": [0.56, 0.52, 0.45]
+  },
+  "streets": [
+    [
+      [-53, -13, 8.2, 2.35],
+      [-48, -13, 8.2, 2.2],
+      [-41, -19, 7.9, 2.65],
+      [-35, -21, 7.55, 1.8],
+      [-29, -20, 7.55, 2.0],
+      [-23, -16, 6.65, 2.1],
+      [-17, -14, 6.25, 1.65],
+      [-12, -16, 6.05, 2.1],
+      [-5, -22, 4.7, 2.3],
+      [2, -22, 3.7, 1.65],
+      [9, -16, 2.8, 2.15],
+      [15, -15.5, 1.7, 2.0],
+      [21, -18, 0.6, 1.65],
+      [27, -21, 0, 2.2],
+      [32, -20, 0, 2.2]
     ],
-    "peach": [
-      0.82,
-      0.57,
-      0.43
+    [
+      [-53, -4, 8.2, 2.3],
+      [-48, -3, 8.2, 2.2],
+      [-44, -6, 7.55, 2.15],
+      [-39, -10, 6.7, 2.45],
+      [-34, -10, 5.65, 1.55],
+      [-30, -6, 4.9, 2.35],
+      [-25, -2, 4.5, 2.25],
+      [-19, -2, 3.35, 1.65],
+      [-14, -5, 2.8, 2.2],
+      [-9, -10, 1.65, 2.25],
+      [-5, -10, 1.5, 1.65],
+      [-1, -6, 1.88, 2.35],
+      [4, -3, 2.6, 2.1],
+      [9, -3, 2.45, 1.65],
+      [14, -6, 1.65, 2.1],
+      [19, -10, 0.8, 2.35],
+      [24, -9, 0.3, 1.7],
+      [29, -5, 0, 2.35],
+      [32, -5, 0, 2.1]
     ],
-    "ochre": [
-      0.76,
-      0.61,
-      0.34
-    ],
-    "roof": [
-      0.59,
-      0.28,
-      0.19
-    ],
-    "stone": [
-      0.49,
-      0.51,
-      0.48
-    ],
-    "paving": [
-      0.65,
-      0.62,
-      0.53
-    ],
-    "wood": [
-      0.39,
-      0.27,
-      0.17
-    ],
-    "sea": [
-      0.19,
-      0.43,
-      0.51
-    ],
-    "purple": [
-      0.43,
-      0.22,
-      0.58
+    [
+      [-53, 12, 8.2, 2.3],
+      [-48, 12, 8.2, 2.15],
+      [-43, 16, 9.0, 2.1],
+      [-36, 18, 9.3, 1.65],
+      [-29, 13, 9.2, 2.1],
+      [-23, 10, 8.6, 1.75],
+      [-16, 12, 7.4, 1.8],
+      [-11, 16, 6.8, 2.15],
+      [-7, 18, 5.75, 1.8],
+      [0, 16, 5, 1.7],
+      [7, 10, 4.25, 2.5],
+      [12, 8, 3.6, 1.65],
+      [17, 10, 2.75, 2.05],
+      [23, 15, 1.6, 2.45],
+      [29, 13, 0.1, 2.1],
+      [32, 12, 0, 2.1]
     ]
-  },
-  "house": {
-    "width": 11,
-    "depth": 10,
-    "door_width": 2.4,
-    "door_height": 2.6,
-    "stair_width": 2,
-    "stair_rise": 0.2
-  },
+  ],
+  "edges": [
+    [
+      [-53, -24],
+      [-47, -25],
+      [-41, -30],
+      [-34, -31],
+      [-29, -31],
+      [-20, -27],
+      [-12, -28],
+      [-5, -33],
+      [4, -32],
+      [10, -29],
+      [17, -23],
+      [23, -26],
+      [29, -29],
+      [32, -28]
+    ],
+    [
+      [-53, 25],
+      [-48, 27],
+      [-40, 29],
+      [-36, 30],
+      [-30, 26],
+      [-23, 22],
+      [-16, 22],
+      [-10, 27],
+      [-3, 29],
+      [3, 25],
+      [9, 23],
+      [16, 21],
+      [23, 25],
+      [28, 28],
+      [32, 28]
+    ]
+  ],
   "districts": [
     {
-      "name": "ChapelQuarter",
-      "buildings": [
-        {
-          "name": "House0",
-          "position": [
-            -39,
-            0,
-            -39
-          ],
-          "width": 10,
-          "depth": 11,
-          "yaw": 90,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "peach"
-        },
-        {
-          "name": "House1",
-          "position": [
-            -24,
-            0,
-            -38
-          ],
-          "width": 11,
-          "depth": 10,
-          "yaw": 90,
-          "storeys": 3,
-          "parkour_only": true,
-          "colour": "ochre"
-        },
-        {
-          "name": "House2",
-          "position": [
-            -9,
-            0,
-            -35
-          ],
-          "width": 8.5,
-          "depth": 11,
-          "yaw": 0,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "cream"
-        },
-        {
-          "name": "House3",
-          "position": [
-            -39,
-            0,
-            -22
-          ],
-          "width": 9,
-          "depth": 10,
-          "yaw": 0,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "peach"
-        },
-        {
-          "name": "House4",
-          "position": [
-            -34,
-            0,
-            -8
-          ],
-          "width": 12,
-          "depth": 10,
-          "yaw": 180,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "ochre"
-        },
-        {
-          "name": "House5",
-          "position": [
-            -15,
-            0,
-            -11
-          ],
-          "width": 10,
-          "depth": 12,
-          "yaw": 270,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "cream"
-        }
-      ],
-      "parkour_routes": [
-        {
-          "source": "House0",
-          "target": "House1",
-          "gap": 2.0
-        }
+      "name": "LimekilnRow",
+      "lots": [
+        ["PigeonHouse", -53, -45, 2, "east", "row", "rose", "gable"],
+        ["LimeHouse", -45, -38.5, 3, "east", "row", "lime", "shed"],
+        ["CuttersYard", -38.5, -34, 0, "east", "garden", "garden", "flat"],
+        ["UpperKiln", -34, -27.5, 2, "east", "row", "honey", "hip"],
+        ["Tilers", -27.5, -19, 3, "east", "row", "ochre", "gable"],
+        ["LimeKiln", -19, -12.5, 1, "east", "court", "lime", "shed"],
+        ["Stonecarvers", -12.5, -6, 2, "east", "row", "peach", "hip"],
+        ["FigStepsHouse", -6, 0.5, 3, "east", "row", "cream", "gable"],
+        ["IndigoCourt", 0.5, 5.7, 0, "east", "garden", "garden", "flat"],
+        ["Dryers", 5.7, 13, 2, "east", "row", "rose", "shed"],
+        ["Menders", 13, 19.5, 3, "east", "row", "cream", "hip"],
+        ["Fishers", 19.5, 25.8, 1, "east", "row", "honey", "flat"],
+        ["Netmakers", 25.8, 32, 2, "east", "row", "peach", "gable"]
       ]
     },
     {
-      "name": "WindmillQuarter",
-      "buildings": [
-        {
-          "name": "House0",
-          "position": [
-            11,
-            0,
-            -40
-          ],
-          "width": 9,
-          "depth": 10,
-          "yaw": 90,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "cream"
-        },
-        {
-          "name": "House1",
-          "position": [
-            26,
-            0,
-            -39
-          ],
-          "width": 10,
-          "depth": 11,
-          "yaw": 90,
-          "storeys": 2,
-          "parkour_only": true,
-          "colour": "peach"
-        },
-        {
-          "name": "House2",
-          "position": [
-            41,
-            0,
-            -34
-          ],
-          "width": 8,
-          "depth": 10,
-          "yaw": 180,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "ochre"
-        },
-        {
-          "name": "House3",
-          "position": [
-            9,
-            0,
-            -22
-          ],
-          "width": 10,
-          "depth": 12,
-          "yaw": 270,
-          "storeys": 3,
-          "parkour_only": false,
-          "colour": "cream"
-        },
-        {
-          "name": "House4",
-          "position": [
-            37,
-            0,
-            -17
-          ],
-          "width": 11,
-          "depth": 10,
-          "yaw": 0,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "peach"
-        },
-        {
-          "name": "House5",
-          "position": [
-            22,
-            0,
-            -8
-          ],
-          "width": 12,
-          "depth": 10,
-          "yaw": 90,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "ochre"
-        }
-      ],
-      "parkour_routes": [
-        {
-          "source": "House0",
-          "target": "House1",
-          "gap": 2.0
-        }
+      "name": "CisternWard",
+      "lots": [
+        ["BellWalk", -53, -44, 1, "east", "row", "lime", "flat"],
+        ["Cantors", -44, -38.5, 2, "west", "row", "peach", "shed"],
+        ["Dyeworks", -38.5, -33, 3, "east", "row", "rose", "hip"],
+        ["DyersGarden", -33, -27.5, 0, "east", "garden", "garden", "flat"],
+        ["WeaversArcade", -27.5, -19, 2, "east", "row", "honey", "gable"],
+        ["Coopers", -16.5, -10, 3, "east", "row", "cream", "shed"],
+        ["ClothHall", -10, -3, 2, "west", "row", "peach", "gable"],
+        ["CisternYard", -3, 2.4, 0, "east", "garden", "garden", "flat"],
+        ["WoolHouse", 2.4, 9.1, 2, "east", "row", "honey", "hip"],
+        ["PressHouse", 9.1, 15.2, 1, "west", "court", "rose", "shed"],
+        ["SaltLoft", 15.2, 24.8, 2, "west", "row", "lime", "flat", "loft"],
+        ["RopeHouse", 24.8, 32, 2, "east", "passage", "ochre", "flat"]
       ]
     },
     {
-      "name": "MarketQuarter",
-      "buildings": [
-        {
-          "name": "House0",
-          "position": [
-            -40,
-            0,
-            11
-          ],
-          "width": 10,
-          "depth": 10,
-          "yaw": 90,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "peach"
-        },
-        {
-          "name": "House1",
-          "position": [
-            -25,
-            0,
-            12
-          ],
-          "width": 9,
-          "depth": 11,
-          "yaw": 90,
-          "storeys": 2,
-          "parkour_only": true,
-          "colour": "ochre"
-        },
-        {
-          "name": "House2",
-          "position": [
-            -8,
-            0,
-            17
-          ],
-          "width": 9,
-          "depth": 12,
-          "yaw": 0,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "cream"
-        },
-        {
-          "name": "House3",
-          "position": [
-            -40,
-            0,
-            29
-          ],
-          "width": 10,
-          "depth": 12,
-          "yaw": 180,
-          "storeys": 3,
-          "parkour_only": false,
-          "colour": "peach"
-        },
-        {
-          "name": "House4",
-          "position": [
-            -29,
-            0,
-            41
-          ],
-          "width": 10,
-          "depth": 10,
-          "yaw": 90,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "ochre"
-        },
-        {
-          "name": "House5",
-          "position": [
-            -12,
-            0,
-            38
-          ],
-          "width": 11,
-          "depth": 10,
-          "yaw": 270,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "cream"
-        }
-      ],
-      "parkour_routes": [
-        {
-          "source": "House0",
-          "target": "House1",
-          "gap": 2.0
-        }
+      "name": "ChapelWard",
+      "lots": [
+        ["Chapel", -53, -46, 3, "west", "chapel", "lime", "flat"],
+        ["BellLoft", -46, -38.5, 2, "west", "row", "honey", "flat", "loft"],
+        ["Almoners", -38.5, -32, 3, "east", "row", "peach", "hip"],
+        ["OliveYard", -32, -25, 0, "east", "garden", "garden", "flat"],
+        ["PottersArcade", -25, -16, 2, "west", "row", "cream", "shed"],
+        ["Potters", -13.4, -6.5, 3, "east", "row", "rose", "hip"],
+        ["LanternHouse", -6.5, -0.8, 2, "west", "row", "lime", "flat"],
+        ["JuniperCourt", -0.8, 5.3, 0, "west", "garden", "garden", "flat"],
+        ["Bakers", 5.3, 11.7, 2, "east", "row", "honey", "gable"],
+        ["TerraceHouse", 11.7, 19.5, 3, "west", "row", "cream", "shed"],
+        ["Porters", 19.5, 25.5, 1, "east", "court", "ochre", "flat"],
+        ["FishHall", 25.5, 32, 2, "west", "row", "peach", "hip"]
       ]
     },
     {
-      "name": "HarbourQuarter",
-      "buildings": [
-        {
-          "name": "House0",
-          "position": [
-            10,
-            0,
-            10
-          ],
-          "width": 10,
-          "depth": 11,
-          "yaw": 90,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "ochre"
-        },
-        {
-          "name": "House1",
-          "position": [
-            25,
-            0,
-            11
-          ],
-          "width": 11,
-          "depth": 10,
-          "yaw": 90,
-          "storeys": 3,
-          "parkour_only": true,
-          "colour": "cream"
-        },
-        {
-          "name": "House2",
-          "position": [
-            41,
-            0,
-            18
-          ],
-          "width": 8,
-          "depth": 10,
-          "yaw": 0,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "peach"
-        },
-        {
-          "name": "House3",
-          "position": [
-            9,
-            0,
-            30
-          ],
-          "width": 9,
-          "depth": 12,
-          "yaw": 180,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "ochre"
-        },
-        {
-          "name": "House4",
-          "position": [
-            25,
-            0,
-            39
-          ],
-          "width": 12,
-          "depth": 10,
-          "yaw": 270,
-          "storeys": 1,
-          "parkour_only": false,
-          "colour": "cream"
-        },
-        {
-          "name": "House5",
-          "position": [
-            40,
-            0,
-            37
-          ],
-          "width": 9,
-          "depth": 11,
-          "yaw": 0,
-          "storeys": 2,
-          "parkour_only": false,
-          "colour": "peach"
-        }
-      ],
-      "parkour_routes": [
-        {
-          "source": "House0",
-          "target": "House1",
-          "gap": 2.0
-        }
+      "name": "UpperRocca",
+      "lots": [
+        ["WatchHouse", -53, -45.7, 3, "west", "row", "ochre", "hip"],
+        ["RoccaHouse", -45.7, -39, 2, "west", "row", "lime", "gable"],
+        ["CandleCourt", -39, -33, 0, "west", "garden", "garden", "flat"],
+        ["Tanners", -33, -25.6, 2, "west", "row", "rose", "shed"],
+        ["Scribes", -25.6, -20, 3, "west", "row", "cream", "gable"],
+        ["PannierHouse", -20, -12.1, 2, "west", "row", "honey", "hip"],
+        ["LaurelYard", -12.1, -6, 0, "west", "garden", "garden", "flat"],
+        ["UpperOven", -6, 1.7, 3, "west", "row", "peach", "gable"],
+        ["KilnAnnex", 1.7, 8, 1, "west", "court", "lime", "flat"],
+        ["SpiceHouse", 8, 14, 2, "west", "row", "rose", "shed"],
+        ["Sailmakers", 14, 21.2, 3, "west", "row", "ochre", "gable"],
+        ["SailYard", 21.2, 26.1, 0, "west", "garden", "garden", "flat"],
+        ["SeaGate", 26.1, 32, 2, "west", "row", "cream", "hip"]
       ]
     }
   ],
-  "landmarks": [
-    {
-      "name": "Church",
-      "position": [
-        -24,
-        0,
-        -24
-      ],
-      "size": [
-        7,
-        6,
-        7
-      ],
-      "colour": "cream"
-    },
-    {
-      "name": "Windmill",
-      "position": [
-        24,
-        0,
-        -24
-      ],
-      "size": [
-        5,
-        7,
-        5
-      ],
-      "colour": "ochre"
-    },
-    {
-      "name": "MarketStall",
-      "position": [
-        -24,
-        0,
-        24
-      ],
-      "size": [
-        4,
-        1.4,
-        2
-      ],
-      "colour": "wood"
-    },
-    {
-      "name": "HarbourStore",
-      "position": [
-        24,
-        0,
-        24
-      ],
-      "size": [
-        4,
-        1.6,
-        3
-      ],
-      "colour": "peach"
-    },
-    {
-      "name": "Mole",
-      "position": [
-        38,
-        0,
-        48
-      ],
-      "size": [
-        8,
-        0.3,
-        8
-      ],
-      "colour": "stone"
-    }
+  "cuts": [
+    ["LimekilnStair", 1, -17.75, 2.5, 4.0],
+    ["PottersCut", 2, -14.7, 2.6, 4.55]
   ],
-  "villager_spawn": [
-    [
-      -3,
-      1,
-      -43
+  "waterfront": {
+    "quay": [-30, 30, 35, 43],
+    "pier": [-3.5, 1.5, 62.2],
+    "water": -2.15,
+    "bed": -2.65,
+    "beach": [
+      [-32, 44.2, 45.1, 48.5],
+      [-31, 45.2, 48, 51],
+      [-28, 49.2, 53.9, 58.8],
+      [-24, 52.2, 57.8, 63.6],
+      [-19, 54.0, 61, 66.2],
+      [-14, 54.7, 61.4, 66.5],
+      [-10, 54.2, 59.5, 64.5],
+      [-7, 52.8, 56.4, 61.2],
+      [-5.8, 48.5, 51.9, 55.5],
+      [-5.4, 43.2, 44.5, 46.0]
     ],
-    [
-      3,
-      1,
-      -31
-    ],
-    [
-      -46,
-      1,
-      -12
-    ],
-    [
-      46,
-      1,
-      -8
-    ],
-    [
-      -3,
-      1,
-      3
-    ],
-    [
-      3,
-      1,
-      24
-    ],
-    [
-      -46,
-      1,
-      39
-    ],
-    [
-      46,
-      1,
-      39
-    ],
-    [
-      -19,
-      1,
-      46
-    ],
-    [
-      20,
-      1,
-      46
-    ],
-    [
-      -18,
-      1,
-      0
-    ],
-    [
-      30,
-      1,
-      0
+    "beach_stairs": [-19.5, 47.1],
+    "boats": [
+      ["Gull", 7.05, 49.5, -0.95, 0, "teal"],
+      ["Otter", 7.05, 57, -1.14, 0.06, "rust"],
+      ["EveningStar", 14.8, 55, -1.21, -0.26, "plum"],
+      ["Sandpiper", -6.6, 55.7, -1.15, 0.12, "teal"]
     ]
-  ],
-  "mage_spawn": [
-    [
-      0,
-      1,
-      -44
-    ],
-    [
-      0,
-      1,
-      44
-    ]
-  ],
-  "chicken_spawn": [
-    [
-      -3,
-      0.5,
-      -43
-    ],
-    [
-      3,
-      0.5,
-      -31
-    ],
-    [
-      -46,
-      0.5,
-      -12
-    ],
-    [
-      46,
-      0.5,
-      -8
-    ],
-    [
-      -3,
-      0.5,
-      3
-    ],
-    [
-      3,
-      0.5,
-      24
-    ],
-    [
-      -46,
-      0.5,
-      39
-    ],
-    [
-      46,
-      0.5,
-      39
-    ],
-    [
-      -19,
-      0.5,
-      46
-    ],
-    [
-      20,
-      0.5,
-      46
-    ],
-    [
-      -18,
-      0.5,
-      0
-    ],
-    [
-      30,
-      0.5,
-      0
-    ],
-    [
-      -6,
-      0.5,
-      -20
-    ],
-    [
-      5,
-      0.5,
-      -45
-    ],
-    [
-      -45,
-      0.5,
-      3
-    ],
-    [
-      46,
-      0.5,
-      27
-    ]
-  ],
-  "item_spawn": [
-    [
-      -39,
-      0.4,
-      -39
-    ],
-    [
-      -24,
-      0.4,
-      -38
-    ],
-    [
-      -9,
-      0.4,
-      -35
-    ],
-    [
-      -39,
-      0.4,
-      -22
-    ],
-    [
-      -34,
-      0.4,
-      -8
-    ],
-    [
-      -15,
-      0.4,
-      -11
-    ],
-    [
-      11,
-      0.4,
-      -40
-    ],
-    [
-      26,
-      0.4,
-      -39
-    ],
-    [
-      41,
-      0.4,
-      -34
-    ],
-    [
-      9,
-      0.4,
-      -22
-    ],
-    [
-      37,
-      0.4,
-      -17
-    ],
-    [
-      22,
-      0.4,
-      -8
-    ],
-    [
-      -40,
-      0.4,
-      11
-    ],
-    [
-      -25,
-      0.4,
-      12
-    ],
-    [
-      -8,
-      0.4,
-      17
-    ],
-    [
-      -40,
-      0.4,
-      29
-    ],
-    [
-      -29,
-      0.4,
-      41
-    ],
-    [
-      -12,
-      0.4,
-      38
-    ],
-    [
-      10,
-      0.4,
-      10
-    ],
-    [
-      25,
-      0.4,
-      11
-    ],
-    [
-      41,
-      0.4,
-      18
-    ],
-    [
-      9,
-      0.4,
-      30
-    ],
-    [
-      25,
-      0.4,
-      39
-    ],
-    [
-      40,
-      0.4,
-      37
-    ]
-  ],
-  "hide_spots": [
-    [
-      -38.0,
-      0,
-      -41.0
-    ],
-    [
-      -23.0,
-      0,
-      -40.0
-    ],
-    [
-      -7.0,
-      0,
-      -34.0
-    ],
-    [
-      -37.0,
-      0,
-      -21.0
-    ],
-    [
-      -36.0,
-      0,
-      -9.0
-    ],
-    [
-      12.0,
-      0,
-      -42.0
-    ],
-    [
-      27.0,
-      0,
-      -41.0
-    ],
-    [
-      39.0,
-      0,
-      -35.0
-    ],
-    [
-      8.0,
-      0,
-      -20.0
-    ],
-    [
-      39.0,
-      0,
-      -16.0
-    ],
-    [
-      -39.0,
-      0,
-      9.0
-    ],
-    [
-      -24.0,
-      0,
-      10.0
-    ],
-    [
-      -6.0,
-      0,
-      18.0
-    ],
-    [
-      -42.0,
-      0,
-      28.0
-    ],
-    [
-      -28.0,
-      0,
-      39.0
-    ],
-    [
-      11.0,
-      0,
-      8.0
-    ],
-    [
-      26.0,
-      0,
-      9.0
-    ],
-    [
-      43.0,
-      0,
-      19.0
-    ],
-    [
-      7.0,
-      0,
-      29.0
-    ],
-    [
-      24.0,
-      0,
-      41.0
-    ]
-  ],
-  "nooks": [
-    {
-      "name": "ChapelDeadEnd",
-      "position": [
-        -48,
-        0,
-        -25
-      ],
-      "opening": 1
-    },
-    {
-      "name": "MillDeadEnd",
-      "position": [
-        48,
-        0,
-        -25
-      ],
-      "opening": -1
-    },
-    {
-      "name": "MarketDeadEnd",
-      "position": [
-        -48,
-        0,
-        22
-      ],
-      "opening": 1
-    },
-    {
-      "name": "HarbourDeadEnd",
-      "position": [
-        48,
-        0,
-        14
-      ],
-      "opening": -1
-    }
-  ],
-  "mantle_ledges": [
-    [
-      -5,
-      0,
-      5
-    ],
-    [
-      5,
-      0,
-      -5
-    ],
-    [
-      -21,
-      0,
-      28
-    ],
-    [
-      30,
-      0,
-      27
-    ]
-  ],
+  },
   "navigation": {
     "cell_size": 0.25,
     "cell_height": 0.25,
-    "agent_radius": 0.5,
-    "agent_height": 1,
-    "agent_max_climb": 0.5
+    "agent_height": 1.0,
+    "agent_radius": 0.25,
+    "agent_max_climb": 0.25,
+    "region_min_size": 1
   }
 }

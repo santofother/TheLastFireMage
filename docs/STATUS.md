@@ -17,7 +17,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S02 | Architecture + contracts + stubs | 0 | DONE | merged to main |
 | S03 | Villager movement v2 | 1 | DONE (2026-11-07) | s03-movement |
 | S04 | Match flow, roles, timer, win | 1 | DONE (2026-11-07) | s04-match |
-| S05 | Greybox town map v1 | 1 | READY | |
+| S05 | Greybox town map v1 | 1 | DONE (2026-11-08) | s05-village-greybox |
 | S06 | Chickens | 1 | DONE (2026-11-07) | s06-chickens |
 | S07 | Headless bots + test runner v2 | 1 | DONE (2026-11-07) | s07-bots |
 | S08 | HUD shell | 1 | DONE (2026-11-07) | s08-hud; fix-hud-voice (playtest HUD/voice fix) |
@@ -28,7 +28,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S13 | Mage power + decay | 3 | DONE (2026-11-08) | codex/fix-voice-health-power; kill rewards, tiers, decay + sync |
 | S14 | Firestorm | 3 | DONE (2026-11-08) | fix-s14-firestorm |
 | S15 | Villager stuns / counterplay | 3 | DONE (2026-11-08) | s15-counterplay |
-| S16 | Scoring + Mage rotation | 3 | READY | |
+| S16 | Scoring + Mage rotation | 3 | DONE (2026-11-08) | s16-scoring |
 | P1 | Playtest 1 (user + friends) | — | TODO | after wave 3 |
 | S17 | Playtest triage + next plan | — | TODO | after P1 |
 

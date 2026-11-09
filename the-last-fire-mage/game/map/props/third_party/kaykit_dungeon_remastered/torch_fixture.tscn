@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Mesh" path="res://game/map/props/third_party/kaykit_dungeon_remastered/Assets/obj/torch_mounted.obj" id="1_torch"]
+
+[node name="KayKitTorchFixture" type="Node3D"]
+
+[node name="TorchMesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_torch")
+
+[node name="WarmPointLight" type="OmniLight3D" parent="."]
+position = Vector3(0, 0.55, 0)
+light_color = Color(1, 0.57, 0.28, 1)
+light_energy = 1.35
+omni_range = 4.0
+shadow_enabled = false

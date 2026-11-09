@@ -20,6 +20,8 @@ Bindings from `the-last-fire-mage/project.godot`. Movement features below requir
 | Debug overlay | F3 |
 | Menu | Escape |
 
+The stamina bar is at the lower right during play, including **Explore Town**. A full bar lasts about 5½ seconds of sprinting; a jump uses a small amount. Walking or resting on the ground refills it after a short delay. If the bar runs dry, you can still run at normal speed and sprint again once it reaches a quarter full.
+
 ## How to mantle
 
 1. Find a ledge with a flat, clear top about **1.2–2 metres above your starting feet**.

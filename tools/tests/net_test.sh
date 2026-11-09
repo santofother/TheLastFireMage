@@ -8,7 +8,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PROJ="$ROOT/the-last-fire-mage"
 OUT="${OUT:-$(mktemp -d -t lastmage_nettest)}"
 PORT="${PORT:-$(( 20000 + RANDOM % 20000 ))}" # WHY: random so parallel sessions can test at the same time
-COMMON=(--headless --path "$PROJ" --)
+# FIX(S05, Codex): Fixed teleport targets belong on the stable arena, independent of village walls.
+COMMON=(--headless --path "$PROJ" -- --map=res://game/map/test_arena.tscn)
 
 mkdir -p "$OUT"; echo "Logs: $OUT"
 "$GODOT" "${COMMON[@]}" --no-steam --host --port=$PORT --name=Host --test-target=0,8 --autotest=7 --quit-after=10 >"$OUT/host.log" 2>&1 &

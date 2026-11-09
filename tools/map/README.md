@@ -1,69 +1,30 @@
-# S05 town authoring
+# Salmara: Party walls
 
-`layout.json` is the source of truth. It describes four districts, house dimensions, stairs and
-roof height, reserved plaza cells, landmarks, mantle ledges, nooks, spawn markers and hide spots.
-Units are metres. Cream, peach, ochre, terracotta, stone and wood are flat Salmara placeholder colours.
+Run the Godot project, host LAN, and choose **Explore town** in the lobby. Use WASD, Space to jump or mantle, Shift to sprint, and Esc for the menu. Start a LAN round with a second player to try the 1.4 m mage and Fire Wave (F).
 
-From the repository root:
+- Start on the quay. Take the middle street through the attached houses; it climbs, dips and bends back toward the chapel. Try reversing direction around its tightest corners.
+- Cross from the middle street to the lower lane via **Limekiln Stair**, or to the upper lane via **Potters Cut**. Their stairs run beside the stone cuts. All three streets meet again at the quay and the chapel court.
+- Try **PigeonHouse**, **LimeHouse**, or **Chapel**. Take the stairs to the top room, step onto the stone sill, then use short jumps to the flower box, plank, and roof. Jump from **RopeHouse** to the **Salt Loft** roof or from **Chapel** down to the **Bell Loft** roof. **Dyeworks** and **WatchHouse** retain a roof flight from the third floor.
+- On the arched pier, the small timber tide landing is the way onto Gull. Jump toward its broadside, then sprint and jump from Gull's stern to Otter. Sandpiper and Evening Star sit apart from that route. If you miss, the shallow shelf leads back to the east quay steps or up the sandy crescent.
+
+## Authoring and verification
+
+`layout.json` gives each lane independent (z, x, elevation, width) stations in metres. Four parcel bands occupy the ground between those lanes and the uneven cliff edges. A lot has z limits, storey count, street-facing side, room arrangement, facade colour, and roof style. Adjacent lots share a boundary; the generator samples the same bends for the street and the adjoining facade. Blank lots in that fabric are green courts. The two gaps in the middle bands are the rock cuts. The quay and chapel courts close the street loops.
+
+Openings and terrain use world collision layer 1. Doors are 1.14 m wide and 1.76 m tall. Visible stone treads have smooth collision underneath. Two-storey roofs have exterior access. In `layout.json`, `tall_roof_stairs` lists the three-storey buildings with a roof flight. The hulls were built in Blender with `tools/map/build_fishing_boats.py`. Godot uses a separate collision shape for each working deck. The generator packs the collision and navigation into `town_geometry.scn`, which the game loads through `town.tscn`. The baked chicken routes are connected to the public streets.
+
+From the village checkout:
 
 ```sh
 GODOT="${GODOT:-/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot}"
 "$GODOT" --headless --path the-last-fire-mage --script ../tools/map/generate.gd -- --no-steam
-bash tools/tests/map_test.sh
 bash tools/run_tests.sh
+python3 tools/map/draw_plan.py ../village-brainstorm/layout-a-v7.svg
 ```
 
-The generator writes `the-last-fire-mage/game/map/town.tscn`, including a baked NavigationMesh.
-Commit both the input and generated scene. Runtime never invokes the generator or rebakes navigation.
-Shared meshes/shapes keep the greybox scene small; smooth collision wedges under the visible stair
-risers let CharacterBody3D walk to roofs. All solid geometry is on world layer 1. Lighting lives in main.
-Navigation uses the default world's 0.25 m voxels, a 0.5 m radius and 1 m height for chickens.
+The map regression uses the real character controller for street, door, stair and jump traversal. Both roles test the roof jumps, and the mage checks the new window approaches and the waterfront paving seams. The test also covers spawn and navigation connectivity, camera retraction, water recovery and Fire Wave damage. A live chase is still the right test for corner visibility, pace and the feel of the two differently sized characters.
 
-The 104 x 104 m footprint includes the harbour mole (52% less area than the original 150 m map).
-Each district now lists individually placed buildings rather than generating a mirrored row/column grid.
-There are 24 buildings with varied widths, depths, setbacks, quarter-turn orientations and one to three
-usable storeys. Each 3.6 m storey has a room and two doorways; alternating stair sides connect floors
-without placing the next flight over the previous stairwell. Roofs reach 3.6, 7.2 and 10.8 m.
+## After layout approval
 
-Four buildings deliberately have no ground-to-first-floor stairs. Enter their upper rooms by climbing
-the neighbouring one-storey building and jumping a 2 m break in a catwalk to the upper doorway.
-Inside, stairs connect the remaining floors and roof. These routes work for the mage as well as villagers;
-chickens do not need to navigate across jumps. The headless test actually jumps each gap with mage tuning,
-checks no continuous ground nav route bypasses it, and checks navigation from the landing to each roof.
-
-Mixed plaster, small pitched roof sections, shutters and purple banners echo village-purple at greybox
-detail. Four plazas, dead-end nooks, mantle ledges and 20 S10 hide spots remain. Markers have been relocated
-to the authored rooms and streets. Every ground entrance, spawn and hide spot is checked for access.
-
-Roof slabs sit above wall tops; wall corners and stair/landing edges meet without overlaps. The quay
-uses the foundation surface, and mole rails start above the deck rather than sharing its side faces.
-The regression checks all six coplanar box-face directions, including quarter-turn building rotations,
-not just roof tops. Player capsule climbs are checked at all three storey elevations.
-
-Placeholder landmarks are named Church, Windmill, MarketStall, HarbourStore and Mole for later art swaps.
-No materials use textures. Keep `test_arena.tscn` unchanged: network/match tests depend on that small map.
-Playtest running jumps, sightlines, search pressure and escape-route balance with the user; these are
-layout affordances, not a claim that chase balance has been established.
-
-One small overview (rendered by a separate tool, with its own temporary lighting):
-
-```sh
-"$GODOT" --path the-last-fire-mage --rendering-method gl_compatibility \
-  --script ../tools/map/overview.gd -- --no-steam
-```
-
-The overview saves `/tmp/s05-town-overview.png` and exits. It does not change the map or main scene.
-
-For solo playtesting, open the project, press F5 and host a LAN or Steam session. Click **Explore town**
-in the lobby to capture the mouse. WASD moves, Space jumps and Shift sprints; Esc opens/closes the menu
-and releases/recaptures the cursor. Starting a scored round still requires two players.
-
-The mouse-capture regression needs a graphical DisplayServer (headless Godot ignores capture requests):
-
-```sh
-"$GODOT" --path the-last-fire-mage --rendering-method gl_compatibility \
-  res://game/map/tests/lobby_explore_test.tscn -- --no-steam
-```
-
-It boots the real town, hosts alone on a random port, presses Explore and exercises device input plus Esc.
-Expect `[TEST] LOBBY EXPLORE PASSED`; it exits automatically without a screenshot.
+- Furnish rooms at villager scale: chairs, tables, barrels and beds; add torches and lanterns. The imported [prop library](../../the-last-fire-mage/game/map/props/third_party/ASSET_SOURCES.md) already has several starting models.
+- Dress the designated courts and street edges with pots, flowers, bushes and trees. Leave the authored door and stair clearances free.
