@@ -12,9 +12,6 @@
 - `player.gd` `_smash_furniture`, `player_tuning.gd` + `tuning_mage.tres` `body_mass`, `mage_abilities.gd` `burn_cone` call, `main.tscn` `Systems/Breakables`.
 - `map_test.gd`: town lights are now allowed (only a sun is forbidden) and layer 9 bodies are allowed. New furnishing checks added.
 
-## Open before pushing
-- The repo is public and the interior licence forbids redistribution, so its models must not reach GitHub without the user's decision. The nature pack has no licence file.
-
 ## Manual test
 - Host LAN, Explore town. Sprint at a chair in a ground-floor room: it should burst, and you keep running. Walk into one: it should stop you.
 - As mage in a round, Fire Wave a table across a room, then check another client sees the same charred pile.
