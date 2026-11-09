@@ -1,20 +1,24 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/CommonTree_3.gltf" id="1_8410u"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/normal_tree_3.res" id="1_8410u"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_xpfw7"]
 height = 2.4
-radius = 0.21122064
+radius = 0.19084343
 
-[node name="TreeCommonC" type="StaticBody3D" unique_id=1048578980]
+[node name="TreeCommonC" type="StaticBody3D" unique_id=250723752]
 collision_layer = 256
 collision_mask = 0
-metadata/footprint = Vector2(3.0174377, 3.149808)
-metadata/height = 7.0
+metadata/footprint = Vector2(4.7709184, 2.7263348)
+metadata/height = 5.0
 
-[node name="Model" type="Node3D" parent="." unique_id=1285513487 instance=ExtResource("1_8410u")]
-transform = Transform3D(0.7426906, 0, 0, 0, 0.7426906, 0, 0, 0, 0.7426906, -0.033389807, 0.1803045, -0.04424417)
+[node name="Model" type="Node3D" parent="." unique_id=1075473686]
+transform = Transform3D(0.94678354, 0, 0, 0, 0.94678354, 0, 0, 0, 0.94678354, -0.011294305, 0.009477573, 0.03127887)
 
-[node name="Collision" type="CollisionShape3D" parent="." unique_id=427320116]
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=411578801]
+transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
+mesh = ExtResource("1_8410u")
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=531803875]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 shape = SubResource("CylinderShape3D_xpfw7")

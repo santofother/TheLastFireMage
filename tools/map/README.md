@@ -26,7 +26,7 @@ The map regression uses the real character controller for street, door, stair an
 
 ## Furnishing
 
-`tools/map/build_props.gd` turns the CC0 models into `game/props/*.tscn`: size, footprint and collision. Run it after changing the catalogue, then import.
+`tools/map/build_props.gd` turns the third-party models into `game/props/*.tscn`: size, footprint and collision. Run it after changing the catalogue, then import.
 `tools/map/furnish.gd` runs inside the generator after the walls exist. It picks a room type per storey (from the four interior templates), then places each item against real collision, floor support and the door, stair and route markers. Change `RECIPES` to re-dress rooms; furniture never needs placing by hand.
 
 ```sh

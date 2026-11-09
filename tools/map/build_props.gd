@@ -1,74 +1,80 @@
 extends SceneTree
-## Turns the imported CC0 models into game-ready prop scenes. Owner: furnishing pass (S05 follow-up).
+## Turns the imported Zappy Pixel and Stylized Nature models into game-ready prop scenes. Owner: furnishing pass (S05 follow-up).
 ## Run: godot --headless --path the-last-fire-mage --script ../tools/map/build_props.gd -- --no-steam
 ## Writes game/props/<name>.tscn. Every scene has its origin at floor centre and faces +Z, with metas
 ## `footprint` (Vector2, x and z metres) and `height`. The town generator reads those metas.
 ## NET: offline authoring tool.
 
-const FANTASY := "res://game/map/props/third_party/quaternius_fantasy_props/"
-const NATURE := "res://game/map/props/third_party/quaternius_stylized_nature/"
+const INTERIOR := "res://game/map/props/third_party/zappypixel_interior/"
+const NATURE := "res://game/map/props/third_party/stylized_nature_pack/"
+## WHY: each nature FBX is a grid of many models, so a spec names one mesh as "file.fbx#Node".
+const BUSHES := NATURE + "bushes.fbx#"
+const FLOWER_BUSHES := NATURE + "flower_bushes.fbx#"
+const FLOWERS := NATURE + "flowers.fbx#"
+const GRASS := NATURE + "grass.fbx#"
+const TREES := NATURE + "normal_trees.fbx#"
+const PALMS := NATURE + "palm_trees.fbx#"
+const MESH_DIR := NATURE + "meshes/"
 const FURNITURE_LAYER := 256
 const OUT := "res://game/props/"
 
 ## TUNE: name -> model, fit axis ("h" height, otherwise longest side), metres, kind, yaw that faces +Z,
 ## and an optional y stretch for models whose proportions are too squat for the villagers.
 ## Sizes are for the 1.0 m villager and the 1.76 m doors, so furniture reads slightly oversized.
+## WHY: the interior pack has only 14 models, so one model can fill several roles (shelf_01 is really a low bench).
 const PROPS := {
-	"chair": [FANTASY + "Chair_1.gltf", "h", 0.82, "break", 0.0],
-	"stool": [FANTASY + "Stool.gltf", "h", 0.40, "break", 0.0],
-	"bench": [FANTASY + "Bench.gltf", "w", 1.10, "break", 0.0],
-	"table": [FANTASY + "Table_Large.gltf", "w", 1.35, "break", 0.0, 1.4],
-	"barrel": [FANTASY + "Barrel.gltf", "h", 0.72, "break", 0.0],
-	"barrel_apples": [FANTASY + "Barrel_Apples.gltf", "h", 0.78, "break", 0.0],
-	"crate": [FANTASY + "Crate_Wooden.gltf", "h", 0.52, "break", 0.0],
-	"crate_apples": [FANTASY + "FarmCrate_Apple.gltf", "h", 0.42, "break", 0.0],
-	"shelf": [FANTASY + "Shelf_Simple.gltf", "w", 0.95, "wall", 0.0],
-	"bookcase": [FANTASY + "Bookcase_2.gltf", "h", 1.45, "break", 0.0],
-	"cabinet": [FANTASY + "Cabinet.gltf", "w", 1.05, "break", 0.0],
-	"nightstand": [FANTASY + "Nightstand_Shelf.gltf", "h", 0.50, "break", 0.0],
-	"workbench": [FANTASY + "Workbench.gltf", "w", 1.35, "break", 0.0],
-	"chest": [FANTASY + "Chest_Wood.gltf", "w", 0.72, "break", 0.0],
-	"bed": [FANTASY + "Bed_Twin1.gltf", "l", 1.50, "solid", 0.0],
-	"bed_alt": [FANTASY + "Bed_Twin2.gltf", "l", 1.50, "solid", 0.0],
-	"cauldron": [FANTASY + "Cauldron.gltf", "h", 0.55, "solid", 0.0],
-	"bucket": [FANTASY + "Bucket_Wooden_1.gltf", "h", 0.30, "decor", 0.0],
-	"candle_stand": [FANTASY + "CandleStick_Stand.gltf", "h", 1.05, "solid", 0.0],
-	"candles": [FANTASY + "CandleStick_Triple.gltf", "h", 0.30, "decor", 0.0],
-	"books": [FANTASY + "Book_Stack_1.gltf", "h", 0.14, "decor", 0.0],
-	"vase": [FANTASY + "Vase_2.gltf", "h", 0.50, "solid", 0.0],
-	"tree_common_a": [NATURE + "CommonTree_1.gltf", "h", 6.4, "trunk", 0.0],
-	"tree_common_b": [NATURE + "CommonTree_2.gltf", "h", 5.6, "trunk", 0.0],
-	"tree_common_c": [NATURE + "CommonTree_3.gltf", "h", 7.0, "trunk", 0.0],
-	"tree_olive_a": [NATURE + "TwistedTree_1.gltf", "h", 4.2, "trunk", 0.0],
-	"tree_olive_b": [NATURE + "TwistedTree_2.gltf", "h", 3.8, "trunk", 0.0],
-	"tree_olive_c": [NATURE + "TwistedTree_3.gltf", "h", 4.6, "trunk", 0.0],
-	"tree_pine_a": [NATURE + "Pine_1.gltf", "h", 6.2, "trunk", 0.0],
-	"tree_pine_b": [NATURE + "Pine_2.gltf", "h", 5.0, "trunk", 0.0],
-	"bush": [NATURE + "Bush_Common.gltf", "h", 0.80, "decor", 0.0],
-	"bush_flowers": [NATURE + "Bush_Common_Flowers.gltf", "h", 0.85, "decor", 0.0],
-	"flowers_a": [NATURE + "Flower_3_Group.gltf", "h", 0.34, "decor", 0.0],
-	"flowers_b": [NATURE + "Flower_4_Group.gltf", "h", 0.34, "decor", 0.0],
-	"flower_a": [NATURE + "Flower_3_Single.gltf", "h", 0.30, "decor", 0.0],
-	"flower_b": [NATURE + "Flower_4_Single.gltf", "h", 0.30, "decor", 0.0],
-	"grass_short": [NATURE + "Grass_Common_Short.gltf", "h", 0.20, "decor", 0.0],
-	"grass_tall": [NATURE + "Grass_Common_Tall.gltf", "h", 0.36, "decor", 0.0],
-	"grass_wisp": [NATURE + "Grass_Wispy_Tall.gltf", "h", 0.42, "decor", 0.0],
-	"fern": [NATURE + "Fern_1.gltf", "h", 0.42, "decor", 0.0],
-	"clover": [NATURE + "Clover_1.gltf", "h", 0.12, "decor", 0.0],
+	"chair": [INTERIOR + "stool_01.glb", "h", 0.62, "break", 0.0],
+	"stool": [INTERIOR + "stool_01.glb", "h", 0.50, "break", 0.0],
+	"bench": [INTERIOR + "shelf_01.glb", "w", 1.10, "break", 0.0, 1.5],
+	"table": [INTERIOR + "table_01.glb", "w", 1.35, "break", 0.0],
+	"workbench": [INTERIOR + "table_01.glb", "w", 1.55, "break", 0.0],
+	"crate": [INTERIOR + "box_05.glb", "w", 0.85, "break", 0.0, 1.25],
+	"chest": [INTERIOR + "box_04_animation.glb", "w", 0.72, "break", 0.0],
+	"shelf": [INTERIOR + "shelf_01.glb", "w", 0.95, "wall", 0.0, 2.2],
+	"cauldron": [INTERIOR + "pot_03.glb", "h", 0.55, "solid", 0.0],
+	"vase": [INTERIOR + "bottle_02.glb", "h", 0.50, "solid", 0.0],
+	"candles": [INTERIOR + "candlestick_01.glb", "h", 0.30, "decor", 0.0],
+	"books": [INTERIOR + "paper_01.glb", "w", 0.34, "decor", 0.0],
+	"bottle": [INTERIOR + "bottle_06.glb", "h", 0.26, "decor", 0.0],
+	"bowl": [INTERIOR + "bowl_04.glb", "w", 0.30, "decor", 0.0],
+	"tree_common_a": [TREES + "NormalTree_1", "h", 6.4, "trunk", 0.0],
+	"tree_common_b": [TREES + "NormalTree_2", "h", 5.6, "trunk", 0.0],
+	"tree_common_c": [TREES + "NormalTree_3", "h", 5.0, "trunk", 0.0],
+	"tree_small_a": [TREES + "NormalTree_4", "h", 4.4, "trunk", 0.0],
+	"tree_small_b": [TREES + "NormalTree_5", "h", 3.2, "trunk", 0.0],
+	"tree_palm_a": [PALMS + "PalmTree_1", "h", 5.6, "trunk", 0.0],
+	"tree_palm_b": [PALMS + "PalmTree_2", "h", 5.0, "trunk", 0.0],
+	"tree_palm_c": [PALMS + "PalmTree_3", "h", 4.4, "trunk", 0.0],
+	"bush": [BUSHES + "Bush", "h", 0.80, "decor", 0.0],
+	"bush_flowers": [BUSHES + "Bush_Flowers", "h", 0.85, "decor", 0.0],
+	"flowers_a": [FLOWERS + "Flower_3_Clump", "h", 0.34, "decor", 0.0],
+	"flowers_b": [FLOWERS + "Flower_4_Clump", "h", 0.34, "decor", 0.0],
+	"flower_a": [FLOWERS + "Flower_1", "h", 0.30, "decor", 0.0],
+	"flower_b": [FLOWERS + "Flower_2", "h", 0.30, "decor", 0.0],
+	"grass_short": [GRASS + "Grass_Small", "h", 0.22, "decor", 0.0],
+	"grass_tall": [GRASS + "Grass_Large_Extruded", "h", 0.36, "decor", 0.0],
+	"grass_wisp": [GRASS + "Grass_Large_Extruded", "h", 0.46, "decor", 0.0],
+	"fern": [BUSHES + "Plant_1", "h", 0.34, "decor", 0.0],
+	"clover": [FLOWER_BUSHES + "Plant_2", "h", 0.14, "decor", 0.0],
 }
 
-## Wall fixtures: model, fit metres, light offset, light energy, yaw that points the mount at -Z.
+## Wall fixtures: a candlestick on a small bracket. The model has its own flame, so only a light is added.
+## Model, fit metres, light offset, light energy, yaw.
+## WHY: the interior pack has no wall light, so the bracket is shelf_01 shrunk and deepened.
+const BRACKET := INTERIOR + "shelf_01.glb"
 const LIGHTS := {
-	"torch": [FANTASY + "Torch_Metal.gltf", 0.62, Vector3(0, 0.52, 0.09), 1.5, 0.0],
-	"lantern": [FANTASY + "Lantern_Wall.gltf", 0.52, Vector3(0, 0.1, 0.15), 1.3, 0.0],
+	"torch": [INTERIOR + "candlestick_01.glb", 0.34, Vector3(0, 0.40, 0.16), 1.1, 0.0],
+	"lantern": [INTERIOR + "candlestick_01.glb", 0.28, Vector3(0, 0.34, 0.16), 0.95, 0.0],
 }
 
 ## Pot plus a plant set into it: pot model, pot height, plant model, plant height.
+## WHY: the pack's only pot is the cauldron, so planters are its brown bowl.
+const PLANT_SEAT := 0.6
 const POTS := {
-	"pot_plant_fern": [FANTASY + "Vase_4.gltf", 0.36, NATURE + "Fern_1.gltf", 0.26],
-	"pot_plant_flowers": [FANTASY + "Vase_4.gltf", 0.32, NATURE + "Flower_4_Group.gltf", 0.30],
-	"pot_plant_leafy": [FANTASY + "Vase_4.gltf", 0.34, NATURE + "Plant_1.gltf", 0.52],
-	"pot_plant_tall": [FANTASY + "Vase_2.gltf", 0.42, NATURE + "Plant_1.gltf", 0.72],
+	"pot_plant_fern": [INTERIOR + "bowl_05.glb", 0.24, BUSHES + "Plant_1", 0.34],
+	"pot_plant_flowers": [INTERIOR + "bowl_05.glb", 0.22, FLOWERS + "Flower_1_Clump", 0.36],
+	"pot_plant_leafy": [INTERIOR + "bowl_05.glb", 0.24, FLOWER_BUSHES + "Plant_2", 0.36],
+	"pot_plant_tall": [INTERIOR + "bowl_05.glb", 0.28, FLOWER_BUSHES + "Plant_Flowers", 0.62],
 }
 
 
@@ -90,6 +96,8 @@ func _build() -> void:
 
 
 func _load_model(path: String, yaw: float) -> Node3D:
+	if path.contains("#"):
+		return _extract_mesh(path, yaw)
 	var packed := load(path) as PackedScene
 	if packed == null:
 		push_error("[Props] Missing model " + path)
@@ -98,6 +106,67 @@ func _load_model(path: String, yaw: float) -> Node3D:
 	model.name = "Model"
 	model.rotation.y = yaw
 	return model
+
+
+# Pulls one named mesh out of a multi-model FBX and saves it as its own resource, so scenes reference
+# it instead of inlining thousands of vertices as text.
+func _extract_mesh(path: String, yaw: float) -> Node3D:
+	var parts := path.split("#")
+	var packed := load(parts[0]) as PackedScene
+	if packed == null:
+		push_error("[Props] Missing model " + parts[0])
+		return null
+	var source := packed.instantiate()
+	var found := source.get_node_or_null(parts[1]) as MeshInstance3D
+	if found == null:
+		push_error("[Props] No mesh %s in %s" % [parts[1], parts[0]])
+		source.free()
+		return null
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(MESH_DIR))
+	var mesh_path := MESH_DIR + parts[1].to_snake_case() + ".res"
+	if ResourceSaver.save(found.mesh, mesh_path) != OK:
+		push_error("[Props] Could not save " + mesh_path)
+		source.free()
+		return null
+	var model := Node3D.new()
+	model.name = "Model"
+	model.rotation.y = yaw
+	var mesh := MeshInstance3D.new()
+	mesh.name = "Mesh"
+	mesh.mesh = load(mesh_path) as Mesh
+	# Keep the FBX rotation and unit scale but drop its offset within the grid.
+	mesh.transform = Transform3D(found.transform.basis, Vector3.ZERO)
+	model.add_child(mesh)
+	source.free()
+	return model
+
+
+# Extracted models are plain nodes whose children must be owned to be saved; instanced ones are not.
+func _adopt(model: Node3D, body: Node3D) -> void:
+	model.owner = body
+	if model.scene_file_path.is_empty():
+		for child: Node in model.get_children():
+			child.owner = body
+
+
+# WHY: leaning palms and spreading trees have a canopy far from the trunk, so the bounds centre would
+# leave the collider and the planting point beside the trunk. Uses the bark, always surface 0.
+func _centre_on_trunk(model: Node3D) -> void:
+	var mesh_node := model.get_node("Mesh") as MeshInstance3D
+	var to_parent := model.transform * mesh_node.transform
+	var points: PackedVector3Array = mesh_node.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var lowest := INF
+	for point: Vector3 in points:
+		lowest = minf(lowest, (to_parent * point).y)
+	var sum := Vector2.ZERO
+	var count := 0
+	for point: Vector3 in points:
+		var moved := to_parent * point
+		if moved.y < lowest + 0.25:
+			sum += Vector2(moved.x, moved.z)
+			count += 1
+	var base := sum / float(count)
+	model.position -= Vector3(base.x, 0.0, base.y)
 
 
 # Bounds of every mesh under `node`, in `node`'s parent space.
@@ -190,7 +259,9 @@ func _make_prop(key: String, spec: Array) -> bool:
 		return false
 	body.add_child(model)
 	var size := _fit(model, spec[1], spec[2], float(spec[5]) if spec.size() > 5 else 1.0)
-	model.owner = body
+	if kind == "trunk":
+		_centre_on_trunk(model)
+	_adopt(model, body)
 	body.set_meta("footprint", Vector2(size.x, size.z))
 	body.set_meta("height", size.y)
 	if body is StaticBody3D:
@@ -200,12 +271,23 @@ func _make_prop(key: String, spec: Array) -> bool:
 
 func _make_light(key: String, spec: Array) -> bool:
 	var body := Node3D.new()
+	var bracket := _load_model(BRACKET, 0.0)
 	var model := _load_model(spec[0], spec[4])
-	if model == null:
+	if bracket == null or model == null:
 		return false
+	bracket.name = "Bracket"
+	body.add_child(bracket)
+	_fit(bracket, "w", 0.42, 0.5)
+	bracket.scale.z *= 2.6
+	bracket.position = Vector3.ZERO
+	var bracket_box := _bounds(bracket)
+	bracket.position = -Vector3(bracket_box.get_center().x, bracket_box.position.y, bracket_box.get_center().z)
+	_adopt(bracket, body)
 	body.add_child(model)
-	var size := _fit(model, "h", spec[1])
-	model.owner = body
+	var candle := _fit(model, "h", spec[1])
+	model.position.y += bracket_box.size.y
+	_adopt(model, body)
+	var size := Vector3(maxf(bracket_box.size.x, candle.x), bracket_box.size.y + candle.y, maxf(bracket_box.size.z, candle.z))
 	var light := OmniLight3D.new()
 	light.name = "Glow"
 	light.position = spec[2]
@@ -220,23 +302,6 @@ func _make_light(key: String, spec: Array) -> bool:
 	light.distance_fade_length = 6.0
 	body.add_child(light)
 	light.owner = body
-	var flame := MeshInstance3D.new()
-	flame.name = "Flame"
-	var shape := SphereMesh.new()
-	shape.radius = 0.055
-	shape.height = 0.16
-	shape.radial_segments = 6
-	shape.rings = 3
-	var fire := StandardMaterial3D.new()
-	fire.albedo_color = Color(1.0, 0.62, 0.2)
-	fire.emission_enabled = true
-	fire.emission = Color(1.0, 0.5, 0.12)
-	fire.emission_energy_multiplier = 3.0
-	shape.material = fire
-	flame.mesh = shape
-	flame.position = spec[2]
-	body.add_child(flame)
-	flame.owner = body
 	body.set_meta("footprint", Vector2(size.x, size.z))
 	body.set_meta("height", size.y)
 	return _save(body, key)
@@ -252,14 +317,15 @@ func _make_pot(key: String, spec: Array) -> bool:
 		return false
 	body.add_child(pot)
 	var pot_size := _fit(pot, "h", spec[1])
-	pot.owner = body
+	_adopt(pot, body)
 	plant.name = "Plant"
 	body.add_child(plant)
 	var plant_size := _fit(plant, "h", spec[3])
-	plant.owner = body
-	plant.position.y += pot_size.y * 0.82
+	_adopt(plant, body)
+	# WHY: the planter is a shallow bowl, so the plant sits just inside its rim.
+	plant.position.y += pot_size.y * PLANT_SEAT
 	var size := Vector3(pot_size.x, pot_size.y, pot_size.z)
 	_collider(body, "solid", size)
 	body.set_meta("footprint", Vector2(size.x, size.z))
-	body.set_meta("height", pot_size.y * 0.82 + plant_size.y)
+	body.set_meta("height", pot_size.y * PLANT_SEAT + plant_size.y)
 	return _save(body, key)

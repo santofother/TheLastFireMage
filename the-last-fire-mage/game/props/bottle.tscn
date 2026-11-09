@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/bottle_06.glb" id="1_2hdgh"]
+
+[node name="Bottle" type="Node3D" unique_id=801639031]
+metadata/footprint = Vector2(0.11935085, 0.12549292)
+metadata/height = 0.26000002
+
+[node name="Model" type="Node3D" parent="." unique_id=1380435125 instance=ExtResource("1_2hdgh")]
+transform = Transform3D(0.7803399, 0, 0, 0, 0.7803399, 0, 0, 0, 0.7803399, -1.4901161e-06, 2.3255941e-08, 0)

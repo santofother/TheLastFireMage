@@ -1,23 +1,27 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Vase_2.gltf" id="1_hhwi5"]
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Plant_1.gltf" id="2_hjtc0"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/bowl_05.glb" id="1_hhwi5"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/plant_flowers.res" id="2_hjtc0"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_mt6w3"]
-size = Vector3(0.51988846, 0.42000002, 0.5198884)
+size = Vector3(0.42487437, 0.28, 0.42487437)
 
-[node name="PotPlantTall" type="StaticBody3D" unique_id=47670529]
+[node name="PotPlantTall" type="StaticBody3D" unique_id=596285031]
 collision_layer = 256
 collision_mask = 0
-metadata/footprint = Vector2(0.56509614, 0.5650961)
-metadata/height = 1.0643999826908113
+metadata/footprint = Vector2(0.46181995, 0.46181995)
+metadata/height = 0.7880000650882721
 
-[node name="Model" type="Node3D" parent="." unique_id=458039057 instance=ExtResource("1_hhwi5")]
-transform = Transform3D(0.8134593, 0, 0, 0, 0.8134593, 0, 0, 0, 0.8134593, -2.9802322e-08, 0.0007275977, 0)
+[node name="Model" type="Node3D" parent="." unique_id=859293786 instance=ExtResource("1_hhwi5")]
+transform = Transform3D(1.4835718, 0, 0, 0, 1.4835718, 0, 0, 0, 1.4835718, 0, 0, 1.4901161e-08)
 
-[node name="Plant" type="Node3D" parent="." unique_id=541970603 instance=ExtResource("2_hjtc0")]
-transform = Transform3D(0.7103603, 0, 0, 0, 0.7103603, 0, 0, 0, 0.7103603, 0.052586734, 0.36927968, 0.05013603)
+[node name="Plant" type="Node3D" parent="." unique_id=535749079]
+transform = Transform3D(0.41643515, 0, 0, 0, 0.41643515, 0, 0, 0, 0.41643515, 0.0012907088, 0.2733478, -0.05189538)
 
-[node name="Collision" type="CollisionShape3D" parent="." unique_id=1233252647]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.21000001, 0)
+[node name="Mesh" type="MeshInstance3D" parent="Plant" unique_id=2137192237]
+transform = Transform3D(100, 0, 0, 0, 20.743898, 97.82478, 0, -97.82478, 20.743898, 0, 0, 0)
+mesh = ExtResource("2_hjtc0")
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1043182185]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, 0)
 shape = SubResource("BoxShape3D_mt6w3")

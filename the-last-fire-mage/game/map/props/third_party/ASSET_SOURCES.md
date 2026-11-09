@@ -10,3 +10,7 @@ The original license texts are included beside each pack. `kaykit_dungeon_remast
 - Trees, bushes, flowers, grass and ferns from Quaternius **Stylized Nature MegaKit** (Standard), CC0 1.0. [Official source](https://quaternius.com/packs/stylizednaturemegakit.html)
 
 The Quaternius copies are trimmed: base-colour textures only, downscaled, with normal and ORM maps removed so they sit with the flat greybox. The twisted-tree leaf texture was recoloured from crimson to olive. `tools/map/build_props.gd` turns these models into the scenes in `game/props/`.
+
+## Current furnishing art (replaces the Quaternius props in `game/props/`)
+- Furniture, candlesticks, bowls and bottles from zappypixel's **Interior (free)**, [itch.io](https://zappypixel.itch.io/). Not CC0: free for commercial and non-commercial use and may be modified, but may not be redistributed or resold, even if modified (`zappypixel_interior/license.txt`).
+- Normal and palm trees, bushes, flowers and grass from the **Ultimate Stylized Nature Pack**. The download has no licence file, so its terms are unconfirmed. Birch, pine, maple and dead trees are deliberately excluded.

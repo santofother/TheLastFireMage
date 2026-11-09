@@ -1,21 +1,21 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://game/props/breakable_prop.gd" id="1_4suo3"]
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Chest_Wood.gltf" id="2_48sdw"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/box_04_animation.glb" id="2_48sdw"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ag6qm"]
-size = Vector3(0.6624, 0.40356177, 0.39213628)
+size = Vector3(0.66239995, 0.5887196, 0.4231742)
 
-[node name="Chest" type="StaticBody3D" unique_id=248863372]
+[node name="Chest" type="StaticBody3D" unique_id=1561818648]
 collision_layer = 256
 collision_mask = 0
 script = ExtResource("1_4suo3")
-metadata/footprint = Vector2(0.72, 0.42623508)
-metadata/height = 0.40356177
+metadata/footprint = Vector2(0.71999997, 0.45997196)
+metadata/height = 0.5887196
 
-[node name="Model" type="Node3D" parent="." unique_id=852153789 instance=ExtResource("2_48sdw")]
-transform = Transform3D(0.5642427, 0, 0, 0, 0.5642427, 0, 0, 0, 0.5642427, 0.00023850799, 0.012806551, 0)
+[node name="Model" type="Node3D" parent="." unique_id=316347097 instance=ExtResource("2_48sdw")]
+transform = Transform3D(0.6445199, 0, 0, 0, 0.6445199, 0, 0, 0, 0.6445199, 1.0728836e-05, 0, -0.010361508)
 
-[node name="Collision" type="CollisionShape3D" parent="." unique_id=1626428424]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.20178089, 0)
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=342392891]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2943598, 0)
 shape = SubResource("BoxShape3D_ag6qm")

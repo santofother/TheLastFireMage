@@ -1,23 +1,27 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_fantasy_props/Vase_4.gltf" id="1_vgg61"]
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Fern_1.gltf" id="2_fvke2"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/bowl_05.glb" id="1_vgg61"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/plant_1.res" id="2_fvke2"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_4ufde"]
-size = Vector3(0.24535786, 0.36, 0.24535786)
+size = Vector3(0.364178, 0.24, 0.364178)
 
-[node name="PotPlantFern" type="StaticBody3D" unique_id=1063974602]
+[node name="PotPlantFern" type="StaticBody3D" unique_id=850858682]
 collision_layer = 256
 collision_mask = 0
-metadata/footprint = Vector2(0.26669332, 0.26669332)
-metadata/height = 0.5552000021934509
+metadata/footprint = Vector2(0.39584565, 0.39584565)
+metadata/height = 0.48399997055530547
 
-[node name="Model" type="Node3D" parent="." unique_id=919666651 instance=ExtResource("1_vgg61")]
-transform = Transform3D(0.7415676, 0, 0, 0, 0.7415676, 0, 0, 0, 0.7415676, 0, -0.0005802159, 0)
+[node name="Model" type="Node3D" parent="." unique_id=859293786 instance=ExtResource("1_vgg61")]
+transform = Transform3D(1.2716329, 0, 0, 0, 1.2716329, 0, 0, 0, 1.2716329, 0, 0, 1.4901161e-08)
 
-[node name="Plant" type="Node3D" parent="." unique_id=745759209 instance=ExtResource("2_fvke2")]
-transform = Transform3D(0.3094342, 0, 0, 0, 0.3094342, 0, 0, 0, 0.3094342, -0.00997141, 0.31912994, -0.014736474)
+[node name="Plant" type="Node3D" parent="." unique_id=1291410625]
+transform = Transform3D(0.3871501, 0, 0, 0, 0.3871501, 0, 0, 0, 0.3871501, -0.010950893, 0.21485429, -0.037418216)
 
-[node name="Collision" type="CollisionShape3D" parent="." unique_id=1492388992]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0)
+[node name="Mesh" type="MeshInstance3D" parent="Plant" unique_id=1883931487]
+transform = Transform3D(96.35418, -25.205795, 8.974378, -1.4901161e-06, 33.541824, 94.206924, -26.75578, -90.77231, 32.318947, 0, 0, 0)
+mesh = ExtResource("2_fvke2")
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=282576024]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
 shape = SubResource("BoxShape3D_4ufde")

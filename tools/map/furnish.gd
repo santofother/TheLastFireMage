@@ -18,27 +18,24 @@ const FIXTURE_HEIGHT := 1.02
 ## ["set", table, seat, seats] table with seats · ["wall", key...] first key that fits against a wall
 ## ["row", key...] items side by side · ["light", key] wall fixture.
 const RECIPES := {
-	"kitchen": [["set", "table", "stool", 3], ["wall", "cabinet", "shelf"], ["row", "barrel", "crate_apples", "barrel_apples"],
-		["wall", "cauldron"], ["pot"], ["light", "torch"]],
-	"living": [["set", "table", "chair", 2], ["wall", "bookcase", "shelf"], ["wall", "bench"], ["wall", "chest"],
-		["pot"], ["light", "lantern"]],
-	"bedroom": [["wall", "bed", "bed_alt"], ["top", "nightstand", "books"], ["wall", "chest"], ["pot"], ["light", "lantern"]],
-	"storage": [["row", "crate", "barrel", "crate_apples", "barrel"], ["row", "barrel_apples", "crate"], ["wall", "shelf"],
+	"kitchen": [["set", "table", "stool", 3], ["wall", "shelf"], ["row", "crate", "crate"], ["wall", "cauldron"], ["pot"],
 		["light", "torch"]],
-	"workshop": [["set", "workbench", "stool", 1], ["row", "crate", "barrel"], ["wall", "shelf", "cabinet"], ["wall", "vase"],
-		["light", "torch"]],
-	"shop": [["set", "table", "stool", 0], ["row", "crate_apples", "barrel_apples", "crate"], ["wall", "shelf"],
-		["pot"], ["light", "lantern"]],
-	"chapel": [["wall", "bench"], ["wall", "bench"], ["wall", "bench"], ["wall", "candle_stand"], ["wall", "candle_stand"],
+	"living": [["set", "table", "chair", 2], ["wall", "shelf"], ["wall", "bench"], ["wall", "chest"], ["pot"], ["light", "lantern"]],
+	# TODO(S05): the interior pack has no bed, so bedrooms have none until a matching model exists.
+	"bedroom": [["wall", "chest"], ["top", "stool", "candles"], ["wall", "bench"], ["pot"], ["light", "lantern"]],
+	"storage": [["row", "crate", "chest", "crate"], ["row", "crate", "crate"], ["wall", "shelf"], ["light", "torch"]],
+	"workshop": [["set", "workbench", "stool", 1], ["row", "crate", "crate"], ["wall", "shelf"], ["wall", "vase"], ["light", "torch"]],
+	"shop": [["set", "table", "stool", 0], ["row", "crate", "crate", "chest"], ["wall", "shelf"], ["pot"], ["light", "lantern"]],
+	"chapel": [["wall", "bench"], ["wall", "bench"], ["wall", "bench"], ["top", "stool", "candles"], ["top", "stool", "candles"],
 		["wall", "vase"], ["light", "lantern"]],
 }
 const CRAFT_NAMES := ["Dye", "Rope", "Weaver", "Tanner", "Cooper", "Potter", "Sail", "Net", "Tiler", "Carver", "Mender",
 	"Scribe", "Press", "Kiln", "Cloth", "Wool", "Oven"]
 const POTS := ["pot_plant_fern", "pot_plant_flowers", "pot_plant_leafy", "pot_plant_tall"]
 const TREES := {
-	"OliveYard": ["tree_olive_a", "tree_olive_c"], "CuttersYard": ["tree_common_b"], "DyersGarden": ["tree_common_a"],
-	"CisternYard": ["tree_olive_b"], "IndigoCourt": ["tree_olive_a"], "JuniperCourt": ["tree_pine_b"],
-	"CandleCourt": ["tree_common_c"], "LaurelYard": ["tree_common_b", "tree_olive_b"], "SailYard": ["tree_olive_c"],
+	"OliveYard": ["tree_small_a", "tree_palm_c"], "CuttersYard": ["tree_common_b"], "DyersGarden": ["tree_common_a"],
+	"CisternYard": ["tree_small_b"], "IndigoCourt": ["tree_small_a"], "JuniperCourt": ["tree_palm_b"],
+	"CandleCourt": ["tree_common_c"], "LaurelYard": ["tree_common_b", "tree_small_b"], "SailYard": ["tree_palm_c"],
 }
 const STREET_TUFTS := ["grass_short", "grass_short", "grass_tall", "grass_wisp", "clover", "fern", "flowers_a", "flowers_b",
 	"flower_a", "flower_b"]
@@ -217,7 +214,7 @@ func _table_set(room: Dictionary, low: float, high: float, table: String, seat: 
 		if not _try(room, low, high, seat, option[0], option[1], 0.02, true).is_empty():
 			added += 1
 	if table == "table":
-		_set_on_top(placed, "candles" if rng.randf() < 0.5 else "books")
+		_set_on_top(placed, ["candles", "books", "bottle", "bowl"][rng.randi() % 4])
 
 
 # A prop on a breakable parent is its child, so it disappears when the parent shatters.
@@ -381,10 +378,10 @@ func _plant_landmarks() -> void:
 	var greenery: Node3D = g._container(g._region, "SquarePlanting", Vector3.ZERO)
 	rng.seed = 11
 	var spots := [
-		["tree_pine_a", Vector3(-20, 8.2, -55.6)], ["tree_olive_a", Vector3(-13, 8.2, -58.7)], ["tree_pine_b", Vector3(13, 8.2, -58.9)],
-		["tree_olive_c", Vector3(20, 8.2, -55.4)], ["tree_olive_b", Vector3(-26.5, 0.0, 33.4)], ["tree_common_b", Vector3(-17.5, 0.0, 33.5)],
-		["tree_olive_a", Vector3(17.5, 0.0, 33.4)], ["tree_common_a", Vector3(26.5, 0.0, 33.5)],
-		["tree_olive_c", Vector3(-9.5, 0.0, 33.4)], ["tree_olive_b", Vector3(9.5, 0.0, 33.4)],
+		["tree_palm_a", Vector3(-20, 8.2, -55.6)], ["tree_small_a", Vector3(-13, 8.2, -58.7)], ["tree_palm_b", Vector3(13, 8.2, -58.9)],
+		["tree_palm_c", Vector3(20, 8.2, -55.4)], ["tree_small_b", Vector3(-26.5, 0.0, 33.4)], ["tree_common_b", Vector3(-17.5, 0.0, 33.5)],
+		["tree_small_a", Vector3(17.5, 0.0, 33.4)], ["tree_common_a", Vector3(26.5, 0.0, 33.5)],
+		["tree_palm_c", Vector3(-9.5, 0.0, 33.4)], ["tree_small_b", Vector3(9.5, 0.0, 33.4)],
 	]
 	for spot: Array in spots:
 		var at: Vector3 = spot[1]
@@ -406,7 +403,7 @@ func _plant_cliffs() -> void:
 		var from := Vector3(ridge_x + rng.randf_range(-1.0, 1.0), 30.0, rng.randf_range(-65.0, -61.5))
 		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 40.0, WORLD_MASK))
 		if not hit.is_empty() and (hit.normal as Vector3).y > 0.2 and (hit.position as Vector3).y > 5.0:
-			_foliage(greenery, ["tree_pine_a", "tree_pine_b", "tree_olive_a", "tree_common_b"][rng.randi() % 4], hit.position, false)
+			_foliage(greenery, ["tree_palm_a", "tree_palm_b", "tree_small_a", "tree_common_b"][rng.randi() % 4], hit.position, false)
 		ridge_x += rng.randf_range(3.0, 6.0)
 	for band: int in [0, 3]:
 		var side := -1.0 if band == 0 else 1.0
@@ -423,7 +420,7 @@ func _plant_cliffs() -> void:
 				var at: Vector3 = hit.position
 				var roll := rng.randf()
 				if roll < 0.45:
-					_foliage(greenery, ["tree_olive_a", "tree_olive_b", "tree_olive_c", "tree_pine_b", "tree_common_b"][rng.randi() % 5], at, false)
+					_foliage(greenery, ["tree_small_a", "tree_small_b", "tree_palm_c", "tree_palm_b", "tree_common_b"][rng.randi() % 5], at, false)
 				elif roll < 0.8:
 					_foliage(greenery, "bush", at, false)
 				else:

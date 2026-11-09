@@ -1,10 +1,14 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Clover_1.gltf" id="1_dwfgf"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/plant_2.res" id="1_dwfgf"]
 
-[node name="Clover" type="Node3D" unique_id=1370010707]
-metadata/footprint = Vector2(0.08347341, 0.080076605)
-metadata/height = 0.11999999
+[node name="Clover" type="Node3D" unique_id=1996750121]
+metadata/footprint = Vector2(0.2967648, 0.32533294)
+metadata/height = 0.14
 
-[node name="Model" type="Node3D" parent="." unique_id=838709921 instance=ExtResource("1_dwfgf")]
-transform = Transform3D(0.104827985, 0, 0, 0, 0.104827985, 0, 0, 0, 0.104827985, 0.0109182075, 0.0013409797, 0.0018469729)
+[node name="Model" type="Node3D" parent="." unique_id=1407812322]
+transform = Transform3D(0.21254866, 0, 0, 0, 0.21254866, 0, 0, 0, 0.21254866, 0.0006195605, 0.03714058, -0.008864716)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=1542507093]
+transform = Transform3D(100, 0, 0, 0, 12.320989, 99.23805, 0, -99.23805, 12.320989, 0, 0, 0)
+mesh = ExtResource("1_dwfgf")

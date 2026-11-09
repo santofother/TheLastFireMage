@@ -1,10 +1,14 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Bush_Common_Flowers.gltf" id="1_j8luk"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/bush_flowers.res" id="1_j8luk"]
 
-[node name="BushFlowers" type="Node3D" unique_id=1917503877]
-metadata/footprint = Vector2(1.028975, 1.0560025)
-metadata/height = 0.84999996
+[node name="BushFlowers" type="Node3D" unique_id=1380481924]
+metadata/footprint = Vector2(1.0733865, 1.0242016)
+metadata/height = 0.85
 
-[node name="Model" type="Node3D" parent="." unique_id=29559460 instance=ExtResource("1_j8luk")]
-transform = Transform3D(0.53736734, 0, 0, 0, 0.53736734, 0, 0, 0, 0.53736734, -0.018241584, 0.12611727, -0.0043963194)
+[node name="Model" type="Node3D" parent="." unique_id=1445341767]
+transform = Transform3D(0.5728049, 0, 0, 0, 0.5728049, 0, 0, 0, 0.5728049, -0.0036851764, 0.32498902, -0.012898207)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=306425099]
+transform = Transform3D(58.77877, 46.42935, 66.25232, -4.470348e-05, 81.89257, -57.389935, -80.90151, 33.733074, 48.135475, 0, 0, 0)
+mesh = ExtResource("1_j8luk")

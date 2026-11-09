@@ -1,10 +1,14 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Grass_Common_Tall.gltf" id="1_5pvqf"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/grass_large_extruded.res" id="1_5pvqf"]
 
-[node name="GrassTall" type="Node3D" unique_id=86002685]
-metadata/footprint = Vector2(0.17206864, 0.19091214)
-metadata/height = 0.35999998
+[node name="GrassTall" type="Node3D" unique_id=14194124]
+metadata/footprint = Vector2(0.52683926, 0.35182014)
+metadata/height = 0.36
 
-[node name="Model" type="Node3D" parent="." unique_id=1961821488 instance=ExtResource("1_5pvqf")]
-transform = Transform3D(0.19223629, 0, 0, 0, 0.19223629, 0, 0, 0, 0.19223629, -0.008453965, 0.006028963, -0.0033684745)
+[node name="Model" type="Node3D" parent="." unique_id=1219714061]
+transform = Transform3D(0.7074542, 0, 0, 0, 0.7074542, 0, 0, 0, 0.7074542, -0.012698561, 0.0022488395, 0.057445675)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=1951509803]
+transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
+mesh = ExtResource("1_5pvqf")

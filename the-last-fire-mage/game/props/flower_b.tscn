@@ -1,10 +1,14 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://game/map/props/third_party/quaternius_stylized_nature/Flower_4_Single.gltf" id="1_8np5r"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/flower_2.res" id="1_8np5r"]
 
-[node name="FlowerB" type="Node3D" unique_id=456999744]
-metadata/footprint = Vector2(0.1329745, 0.09584297)
-metadata/height = 0.29999998
+[node name="FlowerB" type="Node3D" unique_id=2036789584]
+metadata/footprint = Vector2(0.1984528, 0.20535311)
+metadata/height = 0.3
 
-[node name="Model" type="Node3D" parent="." unique_id=589799332 instance=ExtResource("1_8np5r")]
-transform = Transform3D(0.12401003, 0, 0, 0, 0.12401003, 0, 0, 0, 0.12401003, -0.00386139, 0.003773685, 0.0019060597)
+[node name="Model" type="Node3D" parent="." unique_id=477484633]
+transform = Transform3D(0.830228, 0, 0, 0, 0.830228, 0, 0, 0, 0.830228, -0.065593064, 0.006375424, -0.032858096)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=2081826957]
+transform = Transform3D(75, 0, 0, 0, -8.940697e-06, 74.99999, 0, -74.99999, -8.940697e-06, 0, 0, 0)
+mesh = ExtResource("1_8np5r")
