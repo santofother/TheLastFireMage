@@ -108,7 +108,7 @@ func _build() -> void:
 	_threshold.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_marks.add_child(_threshold)
 	_label("Carry", Rect2(.035, .82, .4, .08), 24)
-	_label("Cooldowns", Rect2(.035, .87, .65, .045), 18)
+	_label("Cooldowns", Rect2(.035, .87, .85, .045), 18)
 	_label("Prompt", Rect2(.3, .68, .4, .07), 24, HORIZONTAL_ALIGNMENT_CENTER)
 	_label("Hint", Rect2(.7, .91, .27, .05), 16, HORIZONTAL_ALIGNMENT_RIGHT)
 	_labels.Hint.text = "Hold Tab · scoreboard     V · speak"
@@ -350,7 +350,11 @@ func _refresh() -> void:
 	for ability in [&"knife", &"ignite", &"fire_wave"]:
 		var left := float(abilities.call("cooldown_left", ability)) if abilities else 0.0
 		cooldowns.append("[%s] %s · %s" % [_key_names(binds[ability]), String(ability).replace("_", " ").capitalize(), "READY" if left <= 0 else "%.1fs" % left])
-	_labels.Cooldowns.text = "     ".join(cooldowns)
+	# The locator is a passive pulse with no key, so it is labelled AUTO rather than a keybind.
+	if abilities and abilities.has_method("locator_left"):
+		var pulse := float(abilities.call("locator_left"))
+		cooldowns.append("[AUTO] Locate · %s" % ("READY" if pulse <= 0 else "%.1fs" % pulse))
+	_labels.Cooldowns.text = "   ".join(cooldowns)
 	_labels.Warning.text = "FIRESTORM %d IN %d s" % [_warning_stage, ceili(_warning_left)] if _warning_left > 0 else ("FIRESTORM · STAGE %d" % _warning_stage if _required > 0 else "")
 	var feed := PackedStringArray()
 	for entry in _feed:

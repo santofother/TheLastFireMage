@@ -71,6 +71,7 @@ var _timed_clip: StringName = &""
 var _timed_left := 0.0
 var _timed_rate := 1.0
 var _skin := 0 # The player scene starts with the red body.
+var _overlay: BodyPoseOverlay
 
 
 func _ready() -> void:
@@ -83,6 +84,8 @@ func _ready() -> void:
 	_player.stunned.connect(_on_stunned)
 	_player.revived.connect(_on_revived)
 	GameEvents.carry_changed.connect(_on_carry_changed)
+	_overlay = BodyPoseOverlay.new()
+	_skeleton.add_child(_overlay)
 
 
 ## Shows the body for a `VillagerSkins` id. Clips and skeleton are unaffected.
@@ -91,12 +94,15 @@ func set_skin(id: int) -> void:
 		return
 	_skin = id
 	VillagerMeshSwap.apply(_skeleton, VillagerSkins.scene(id))
+	if _overlay != null:
+		_skeleton.move_child(_overlay, -1) # WHY: keeps the body mesh as the skeleton's first child.
 	print("[Game] Villager skin %d -> %s %s" % [_player.peer_id, VillagerSkins.NAMES[id], _skeleton.get_child(0).name])
 
 
 func _physics_process(delta: float) -> void:
 	if not visible or _player.tuning == null:
 		return
+	position.y = _player.visual_y_offset
 	_sample_motion(delta)
 	_update_strafe_yaw(delta)
 	_stun_left = maxf(0.0, _stun_left - delta)
@@ -181,7 +187,7 @@ func _select_ground_clip() -> void:
 	elif _carrying:
 		_play(CARRY_WALK, direction * minf(speed / CARRY_NATIVE_SPEED, MAX_SLOW_CLIP_RATE))
 	elif _player.is_crouching or speed < RUN_MIN_SPEED:
-		# TODO(villager model): no crouch clip was authored; crouching uses the slow walk at full height.
+		# WHY: no crouch clip exists; BodyPoseOverlay bends the legs on top of the slow walk.
 		_play(WALK, direction * minf(speed / WALK_NATIVE_SPEED, MAX_SLOW_CLIP_RATE))
 	elif speed >= SPRINT_MIN_SPEED:
 		_play(SPRINT, direction * speed / SPRINT_NATIVE_SPEED)

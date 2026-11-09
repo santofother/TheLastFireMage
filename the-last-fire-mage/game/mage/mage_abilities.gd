@@ -12,6 +12,7 @@ var _cooldowns := {&"knife": 0.0, &"ignite": 0.0, &"fire_wave": 0.0}
 var _ignite_left := 0.0
 var _power_tier := 0
 var _locator_left := 0.0
+var _locator_display := 0.0 # owner: seconds to the next pulse, reset by each server pulse
 var _flame: MeshInstance3D
 
 func _ready() -> void:
@@ -25,6 +26,7 @@ func _physics_process(delta: float) -> void:
 	for key in _cooldowns:
 		_cooldowns[key] = maxf(0.0, float(_cooldowns[key]) - delta)
 	_ignite_left = maxf(0.0, _ignite_left - delta)
+	_locator_display = maxf(0.0, _locator_display - delta)
 	_flame.visible = is_ignited()
 	$Knife.visible = false
 	if _flame.visible: # FIX(mage model): burn on the held blade instead of in front of the capsule.
@@ -161,9 +163,8 @@ func _tick_locator(delta: float) -> void:
 	if _locator_left > 0.0:
 		return
 	_locator_left = maxf(0.1, tuning.locator_interval)
+	# WHY: sent even when nobody is near, because each pulse also restarts the HUD countdown.
 	var points := _nearby_villager_positions()
-	if points.is_empty():
-		return
 	if _player.is_local():
 		_rpc_locator(points)
 	elif Net.is_online(self):
@@ -182,7 +183,10 @@ func _nearby_villager_positions() -> PackedVector3Array:
 
 @rpc("any_peer", "call_remote", "unreliable", 1)
 func _rpc_locator(points: PackedVector3Array) -> void:
-	if not Net.from_server(self) or not _player.is_local() or DisplayServer.get_name() == "headless":
+	if not Net.from_server(self) or not _player.is_local():
+		return
+	_locator_display = maxf(0.1, tuning.locator_interval)
+	if points.is_empty() or DisplayServer.get_name() == "headless":
 		return
 	var effect := preload("res://game/mage/mage_feedback.gd").new()
 	effect.top_level = true
@@ -203,6 +207,11 @@ func _rpc_extinguish() -> void:
 ## True while the knife burns, on every peer.
 func is_ignited() -> bool:
 	return _ignite_left > 0.0
+
+## Seconds until the next automatic locator pulse (owner peer; HUD reads it).
+func locator_left() -> float:
+	return _locator_display
+
 
 ## Seconds until an ability is ready; HUD countdown mirrors server-approved casts.
 func cooldown_left(ability: StringName) -> float:

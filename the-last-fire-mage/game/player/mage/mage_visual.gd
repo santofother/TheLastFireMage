@@ -54,6 +54,9 @@ func _ready() -> void:
 	_last_position = _player.global_position
 	position.y = PIVOT_HEIGHT
 	_model.position.y = -PIVOT_HEIGHT
+	var overlay := BodyPoseOverlay.new()
+	overlay.procedural_mantle = true # WHY: the mage has no climb clip.
+	_skeleton.add_child(overlay)
 
 
 ## Restart the one-shot for a server-confirmed cast, even if the same one is still playing.
@@ -99,7 +102,7 @@ func _update_pose(delta: float) -> void:
 		return
 	_tumble_angle = _tumble_angle + _player.tuning.tumble_roll_speed * delta if _player.is_tumbling else 0.0
 	rotation.x = _tumble_angle
-	position.y = PIVOT_HEIGHT
+	position.y = PIVOT_HEIGHT + _player.visual_y_offset
 
 
 func _select_locomotion() -> void:

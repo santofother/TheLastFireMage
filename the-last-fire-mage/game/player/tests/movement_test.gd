@@ -26,7 +26,7 @@ var _driver := Driver.new()
 
 
 func _ready() -> void:
-	get_tree().create_timer(40.0).timeout.connect(func() -> void:
+	get_tree().create_timer(90.0).timeout.connect(func() -> void:
 		print("[TEST] FAIL movement timeout"); get_tree().quit(1))
 	_box(Vector3(0, -0.5, 0), Vector3(100, 1, 100))
 	_run.call_deferred()
@@ -140,7 +140,8 @@ func _run() -> void:
 
 	await _reset()
 	_driver.crouch = true
-	await _ticks(2)
+	# WHY: _reset leaves the feet 4 cm up; crouching in the air is a leg tuck, so settle on the floor first.
+	await _ticks(12)
 	_check(_player.is_crouching and is_equal_approx((_player.get_node("Collision").shape as CapsuleShape3D).height,
 		_player.tuning.crouch_height), "crouch resizes collision")
 	var ceiling := _box(Vector3(0, 0.9, 0), Vector3(3, 0.25, 3))
@@ -277,8 +278,54 @@ func _run() -> void:
 	_check(_player.collision_layer == 2 and _player.get_node("Body").rotation.x == 0.0,
 		"revive restores upright body")
 	await _check_stamina()
+	await _check_step_and_tuck()
 	print("[TEST] MOVEMENT %s (%d failures)" % ["PASSED" if _fails == 0 else "FAILED", _fails])
 	get_tree().quit(0 if _fails == 0 else 1)
+
+
+func _jump_peak(tuck_near_apex: bool, tuck_at_takeoff: bool) -> float:
+	await _reset(Vector3(30, 0.04, 0))
+	await _ticks(10)
+	_driver.jump = true
+	await _ticks(1)
+	var peak := 0.0
+	for i in 70:
+		if tuck_at_takeoff or (tuck_near_apex and _player.velocity.y < 0.5):
+			_driver.crouch = true
+		await _ticks(1)
+		peak = maxf(peak, _player.position.y)
+	_driver.crouch = false
+	return peak
+
+
+func _check_step_and_tuck() -> void:
+	var curb := _box(Vector3(30, 0.15, -6), Vector3(4, 0.3, 9))
+	await _reset(Vector3(30, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	await _ticks(70)
+	_check(_player.position.y > 0.27 and _player.position.z < -2.0, "runs up a 0.3 m ledge without jumping")
+	curb.queue_free()
+	var wall := _box(Vector3(30, 0.3, -3), Vector3(4, 0.6, 3))
+	await _reset(Vector3(30, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	await _ticks(70)
+	_check(_player.position.y < 0.1 and _player.position.z > -1.6, "a 0.6 m ledge still needs a jump")
+	wall.queue_free()
+	await _reset(Vector3(30, 0.04, 0))
+	var plain: float = await _jump_peak(false, false)
+	var timed: float = await _jump_peak(true, false)
+	var early: float = await _jump_peak(false, true)
+	print("[TEST] jump peak plain=%.2f early-tuck=%.2f apex-tuck=%.2f" % [plain, early, timed])
+	_check(timed > plain + 0.2, "crouching at the top of a jump lifts the feet higher")
+	_check(early < timed - 0.05, "a badly timed tuck gains less")
+	await _reset(Vector3(30, 0.04, 0))
+	await _ticks(10)
+	_driver.crouch = true
+	await _ticks(10)
+	_driver.jump = true
+	await _ticks(2)
+	_check(_player.velocity.y > 0.0, "can jump out of a crouch")
+	_driver.crouch = false
 
 
 func _check_stamina() -> void:

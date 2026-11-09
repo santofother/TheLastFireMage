@@ -29,6 +29,25 @@ const RECIPES := {
 	"chapel": [["wall", "bench"], ["wall", "bench"], ["wall", "bench"], ["top", "stool", "candles"], ["top", "stool", "candles"],
 		["wall", "vase"], ["light", "lantern"]],
 }
+## TUNE: Wall dressing per room, tried in order. No collision, so it can never affect a route.
+const WALL_DECOR := {
+	"kitchen": ["plates", "herbs", "ledge", "herbs", "plates", "ledge", "pegs"],
+	"living": ["painting", "tapestry", "ledge", "painting", "banner", "painting", "ledge"],
+	"bedroom": ["painting", "pegs", "tapestry", "ledge", "painting", "painting"],
+	"storage": ["pegs", "ledge", "tools", "herbs", "ledge", "pegs"],
+	"workshop": ["tools", "ledge", "tools", "pegs", "ledge", "herbs"],
+	"shop": ["ledge", "banner", "ledge", "plates", "ledge", "banner"],
+	"chapel": ["tapestry", "tapestry", "banner", "tapestry", "banner", "tapestry"],
+}
+const RUG_ROOMS := ["living", "bedroom", "chapel", "shop"]
+const DECOR_SIZE := {"painting": Vector2(0.62, 0.46), "tapestry": Vector2(0.7, 1.1), "plates": Vector2(0.95, 0.3),
+	"herbs": Vector2(0.65, 0.5), "ledge": Vector2(0.95, 0.3), "pegs": Vector2(0.75, 0.75), "tools": Vector2(0.9, 0.55),
+	"banner": Vector2(0.55, 0.9)}
+const DECOR_CENTRE := 1.32 # TUNE: height of wall dressing above the floor
+const CLOTHS := [Color(0.55, 0.16, 0.14), Color(0.17, 0.3, 0.5), Color(0.26, 0.4, 0.24), Color(0.62, 0.45, 0.16), Color(0.4, 0.22, 0.42)]
+const WOOD := Color(0.31, 0.2, 0.12)
+# CONTRACT: only props with no collision, so shelves can never block a search ray or a route.
+const SHELF_ITEMS := ["bottle", "bowl", "books", "candles"]
 const CRAFT_NAMES := ["Dye", "Rope", "Weaver", "Tanner", "Cooper", "Potter", "Sail", "Net", "Tiler", "Carver", "Mender",
 	"Scribe", "Press", "Kiln", "Cloth", "Wool", "Oven"]
 const POTS := ["pot_plant_fern", "pot_plant_flowers", "pot_plant_leafy", "pot_plant_tall"]
@@ -51,6 +70,8 @@ var _placed: Array = []
 var _counts: Dictionary = {}
 var _vines: Dictionary = {}
 var _vine_material: StandardMaterial3D
+var _decor: Dictionary = {} # band -> SurfaceTool
+var _decor_used: Array = []
 
 
 ## Places everything. `generator` is the running generate.gd; its walls must already be in the physics world.
@@ -64,6 +85,7 @@ func run(generator: Variant) -> void:
 	_plant_streets()
 	_plant_landmarks()
 	_plant_cliffs()
+	_commit_decor()
 	_grow_vines()
 	print("[Map] Furnished: %s" % str(_counts))
 
@@ -89,6 +111,10 @@ func _furnish_storey(room: Dictionary) -> void:
 		var kind: String = kinds[i]
 		for step: Array in RECIPES[kind]:
 			_run_step(step, room, low, high)
+		# WHY: dressing must not consume the furniture sequence, or adding a picture moves the room's furniture.
+		var furniture_state := rng.state
+		_decorate(room, low, high, kind)
+		rng.state = furniture_state
 		_counts[kind] = int(_counts.get(kind, 0)) + 1
 
 
@@ -278,6 +304,196 @@ func _behind_tall_furniture(point: Vector2) -> bool:
 		if _height(other.key) > FIXTURE_HEIGHT - 0.1 and (other.at as Vector2).distance_to(point) < 0.9:
 			return true
 	return false
+
+
+# --- Wall dressing ------------------------------------------------------------------------------
+
+func _decorate(room: Dictionary, low: float, high: float, kind: String) -> void:
+	_decor_used = []
+	for key: String in WALL_DECOR[kind]:
+		var anchor := _decor_anchor(room, low, high, DECOR_SIZE[key])
+		if anchor.is_empty():
+			continue
+		call("_decor_" + key, room, anchor)
+		_counts.wall_decor = int(_counts.get("wall_decor", 0)) + 1
+	if kind in RUG_ROOMS:
+		_rug(room, low, high)
+
+
+# A wall spot whose whole face is solid plaster, so nothing hangs across a window, door or corner.
+func _decor_anchor(room: Dictionary, low: float, high: float, size: Vector2) -> Dictionary:
+	var centre_y: float = room.y + DECOR_CENTRE
+	for site: Dictionary in _sites(room, low, high):
+		var inward: Vector2 = site.in
+		var from := Vector3(site.p.x + inward.x * 0.7, centre_y, site.p.y + inward.y * 0.7)
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(from,
+			Vector3(site.p.x - inward.x * 0.5, centre_y, site.p.y - inward.y * 0.5), WORLD_MASK))
+		if hit.is_empty() or absf((hit.normal as Vector3).y) > 0.1:
+			continue
+		var point: Vector3 = hit.position
+		var normal: Vector3 = hit.normal
+		if point.z < low - 0.3 or point.z > high + 0.3 or not _clear_of_routes(Vector3(point.x, room.y, point.z), 0.35):
+			continue
+		if _behind_tall_furniture(Vector2(point.x, point.z)) or _decor_crowded(point, size.x):
+			continue
+		if not _wall_solid(point, normal, size):
+			continue
+		_decor_used.append([point, size.x])
+		return {"at": point, "n": normal, "t": normal.cross(Vector3.UP).normalized()}
+	return {}
+
+
+func _decor_crowded(point: Vector3, width: float) -> bool:
+	for used: Array in _decor_used:
+		if (used[0] as Vector3).distance_to(point) < (float(used[1]) + width) / 2.0 + 0.25:
+			return true
+	return false
+
+
+func _wall_solid(point: Vector3, normal: Vector3, size: Vector2) -> bool:
+	var tangent := normal.cross(Vector3.UP).normalized()
+	for corner: Vector2 in [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(-0.5, 0.5), Vector2(0.5, 0.5)]:
+		var target: Vector3 = point + tangent * corner.x * size.x + Vector3.UP * corner.y * size.y
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(target + normal * 0.25, target - normal * 0.12, WORLD_MASK))
+		if hit.is_empty() or absf((hit.position as Vector3).distance_to(target)) > 0.05:
+			return false
+	return true
+
+
+func _decor_painting(room: Dictionary, a: Dictionary) -> void:
+	_panel(room, a, 0.0, 0.0, 0.62, 0.46, 0.03, WOOD)
+	var sky := Color(0.55, 0.68, 0.76).lerp(Color(0.86, 0.62, 0.42), rng.randf())
+	_panel(room, a, 0.0, 0.0, 0.54, 0.38, 0.038, sky)
+	_panel(room, a, 0.0, -0.1, 0.54, 0.18, 0.042, Color(0.2, 0.33, 0.42).lerp(Color(0.34, 0.42, 0.22), rng.randf()))
+	_panel(room, a, rng.randf_range(-0.16, 0.16), 0.08, 0.08, 0.08, 0.046, Color(0.96, 0.84, 0.5))
+
+
+func _decor_tapestry(room: Dictionary, a: Dictionary) -> void:
+	var cloth: Color = CLOTHS[rng.randi() % CLOTHS.size()]
+	_panel(room, a, 0.0, 0.57, 0.8, 0.04, 0.05, WOOD)
+	_panel(room, a, 0.0, 0.0, 0.7, 1.1, 0.02, cloth)
+	_panel(room, a, 0.0, 0.42, 0.62, 0.05, 0.026, cloth.lightened(0.45))
+	_panel(room, a, 0.0, -0.42, 0.62, 0.05, 0.026, cloth.lightened(0.45))
+	_panel(room, a, 0.0, 0.0, 0.2, 0.2, 0.026, cloth.lightened(0.3))
+
+
+func _decor_banner(room: Dictionary, a: Dictionary) -> void:
+	var cloth: Color = CLOTHS[rng.randi() % CLOTHS.size()]
+	_panel(room, a, 0.0, 0.47, 0.65, 0.04, 0.05, WOOD)
+	_panel(room, a, 0.0, 0.0, 0.55, 0.9, 0.02, cloth)
+	_panel(room, a, 0.0, 0.05, 0.14, 0.42, 0.026, cloth.lightened(0.5))
+	_panel(room, a, 0.0, 0.1, 0.34, 0.12, 0.026, cloth.lightened(0.5))
+
+
+func _decor_plates(room: Dictionary, a: Dictionary) -> void:
+	_panel(room, a, 0.0, -0.12, 0.95, 0.05, 0.16, WOOD)
+	_panel(room, a, 0.0, 0.14, 0.95, 0.03, 0.04, WOOD)
+	for i in 4:
+		var x := -0.33 + 0.22 * i
+		var plate := Color(0.86, 0.82, 0.72).lerp(Color(0.42, 0.56, 0.68), rng.randf() * 0.6)
+		_panel(room, a, x, 0.0, 0.17, 0.11, 0.04, plate)
+		_panel(room, a, x, 0.0, 0.11, 0.17, 0.04, plate)
+
+
+func _decor_herbs(room: Dictionary, a: Dictionary) -> void:
+	_panel(room, a, 0.0, 0.2, 0.65, 0.05, 0.05, WOOD)
+	for i in 3:
+		var x := -0.21 + 0.21 * i
+		var herb := Color(0.33, 0.42, 0.18).lerp(Color(0.62, 0.52, 0.2), rng.randf())
+		var drop := rng.randf_range(0.22, 0.34)
+		_panel(room, a, x, 0.2 - drop * 0.5, 0.11, drop, 0.07, herb)
+		_panel(room, a, x, 0.17, 0.05, 0.06, 0.09, Color(0.7, 0.62, 0.42))
+
+
+func _decor_ledge(room: Dictionary, a: Dictionary) -> void:
+	_panel(room, a, 0.0, -0.02, 0.95, 0.04, 0.24, WOOD)
+	for side: float in [-0.36, 0.36]:
+		_panel(room, a, side, -0.12, 0.04, 0.18, 0.12, WOOD.darkened(0.2))
+	var count := rng.randi_range(2, 4)
+	for i in count:
+		var x := lerpf(-0.34, 0.34, (float(i) + 0.5) / float(count))
+		var key: String = SHELF_ITEMS[rng.randi() % SHELF_ITEMS.size()]
+		var pos: Vector3 = a.at + a.t * x + a.n * 0.13 + Vector3.UP * (room.y + DECOR_CENTRE - a.at.y)
+		_instance(room.floor, key, pos, rng.randf() * TAU)
+
+
+func _decor_pegs(room: Dictionary, a: Dictionary) -> void:
+	_panel(room, a, 0.0, 0.3, 0.75, 0.05, 0.04, WOOD)
+	for i in 3:
+		var x := -0.25 + 0.25 * i
+		_panel(room, a, x, 0.3, 0.03, 0.03, 0.1, WOOD.darkened(0.3))
+		if rng.randf() < 0.75:
+			var cloth: Color = CLOTHS[rng.randi() % CLOTHS.size()].darkened(0.15)
+			var drop := rng.randf_range(0.42, 0.68)
+			_panel(room, a, x, 0.28 - drop * 0.5, 0.22, drop, 0.06, cloth)
+
+
+func _decor_tools(room: Dictionary, a: Dictionary) -> void:
+	_panel(room, a, 0.0, 0.0, 0.9, 0.55, 0.02, WOOD.lightened(0.12))
+	var iron := Color(0.4, 0.4, 0.43)
+	_panel(room, a, -0.3, 0.0, 0.04, 0.42, 0.04, WOOD)
+	_panel(room, a, -0.3, 0.19, 0.18, 0.08, 0.05, iron)
+	_panel(room, a, 0.0, 0.05, 0.3, 0.09, 0.03, iron)
+	_panel(room, a, 0.0, -0.08, 0.05, 0.2, 0.04, WOOD)
+	_panel(room, a, 0.3, -0.03, 0.04, 0.36, 0.04, WOOD)
+	_panel(room, a, 0.3, 0.17, 0.14, 0.12, 0.05, iron)
+
+
+func _rug(room: Dictionary, low: float, high: float) -> void:
+	var z := (low + high) / 2.0
+	var edge: Vector2 = g._edges(room.band, z)
+	var centre := Vector3((edge.x + edge.y) / 2.0, room.y, z)
+	var extent := Vector2(minf((edge.y - edge.x) * 0.26, 1.1), minf((high - low) * 0.28, 0.9))
+	if extent.x < 0.4 or extent.y < 0.35 or not _supported(centre, extent, room.y) or not _clear_of_routes(centre, 0.1):
+		return
+	var cloth: Color = CLOTHS[rng.randi() % CLOTHS.size()]
+	var surface := _decor_surface(room.band)
+	_box(surface, centre + Vector3.UP * 0.008, Vector3(extent.x, 0, 0), Vector3(0, 0.008, 0), Vector3(0, 0, extent.y), cloth)
+	_box(surface, centre + Vector3.UP * 0.018, Vector3(extent.x * 0.82, 0, 0), Vector3(0, 0.003, 0), Vector3(0, 0, extent.y * 0.8), cloth.lightened(0.35))
+	_box(surface, centre + Vector3.UP * 0.024, Vector3(extent.x * 0.66, 0, 0), Vector3(0, 0.003, 0), Vector3(0, 0, extent.y * 0.62), cloth)
+	_counts.rugs = int(_counts.get("rugs", 0)) + 1
+
+
+# Coloured box flat on the wall: `x`,`y` offset the centre, `depth` is how far it stands off the plaster.
+func _panel(room: Dictionary, a: Dictionary, x: float, y: float, width: float, height: float, depth: float, colour: Color) -> void:
+	var centre: Vector3 = a.at + a.t * x + Vector3.UP * y + a.n * depth / 2.0
+	_box(_decor_surface(room.band), centre, a.t * width / 2.0, Vector3.UP * height / 2.0, a.n * depth / 2.0, colour)
+
+
+func _decor_surface(band: int) -> SurfaceTool:
+	if not _decor.has(band):
+		var surface := SurfaceTool.new()
+		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_decor[band] = surface
+	return _decor[band]
+
+
+func _box(surface: SurfaceTool, c: Vector3, ax: Vector3, ay: Vector3, az: Vector3, colour: Color) -> void:
+	surface.set_color(colour)
+	var flip := ax.cross(ay).dot(az) < 0.0
+	for face: Array in [[ax, ay, az], [-ax, az, ay], [ay, az, ax], [-ay, ax, az], [az, ax, ay], [-az, ay, ax]]:
+		var n: Vector3 = face[0]
+		var u: Vector3 = face[1]
+		var v: Vector3 = face[2]
+		var quad: Array = [c + n - u - v, c + n + u - v, c + n + u + v, c + n - u + v]
+		# Godot front faces wind clockwise seen from outside.
+		for index: int in ([0, 1, 2, 0, 2, 3] if flip else [0, 2, 1, 0, 3, 2]):
+			surface.add_vertex(quad[index])
+
+
+func _commit_decor() -> void:
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.95
+	for band: int in _decor:
+		var surface: SurfaceTool = _decor[band]
+		surface.generate_normals()
+		var mesh := MeshInstance3D.new()
+		mesh.name = "WallDecor%d" % band
+		mesh.mesh = surface.commit()
+		mesh.material_override = material
+		g._add(g._town, mesh)
+		mesh.add_to_group("map_decor", true)
 
 
 # --- Exterior ----------------------------------------------------------------------------------

@@ -6,7 +6,8 @@ extends Node3D
 ## NET: server simulates (authority 1); clients show synced state ($Sync: position, state, carrier_id).
 ## Spawned by CounterplayManager's MultiplayerSpawner (data: name, pos, kind, break_chance).
 ## Flight (server): ballistic, swept against the mage (-> manager applies the effect, item breaks) and the
-## world. On world impact it breaks with probability `break_chance` (dead-area items 0.9), else stays.
+## world. On world impact it breaks with probability `break_chance` (dead-area items 0.9), else stays. A dead
+## player's item that touches a living villager is caught: it drops straight down and cannot break.
 ## Public API: `kind`, `state`, `carrier_id`, `break_chance`, `thrower_id`, signals `hit_mage`, `broke`.
 
 enum State { IDLE, CARRIED, AIR }
@@ -18,6 +19,8 @@ signal broke
 
 const GRAVITY := 9.8
 const KILL_Y := -20.0
+## Items above this height are on the dead players' layer and only ghosts can see them.
+const DEAD_LAYER_MIN_Y := 25.0
 
 ## Item type, set at spawn on every peer.
 var kind: StringName = &"bucket"
@@ -41,6 +44,31 @@ func _ready() -> void:
 	area.kind = kind
 	area.prompt = "Pick up %s" % kind
 	_apply_look()
+
+
+func _process(_delta: float) -> void:
+	var held_by_ghost := state == State.CARRIED and carrier_id == 0
+	var spectator := GameEvents.system(&"spectator") as SpectatorManager
+	var ghost_view := spectator != null and spectator.is_spectating
+	_mesh.visible = not held_by_ghost and (not in_dead_layer() or ghost_view)
+
+
+## True while resting on the dead players' layer (a ghost may pick it up).
+func in_dead_layer() -> bool:
+	return state == State.IDLE and global_position.y >= DEAD_LAYER_MIN_Y
+
+
+## NET: server only. A ghost picked this up; it is hidden until thrown.
+func take_by_ghost(ghost_id: int) -> void:
+	thrower_id = ghost_id
+	state = State.CARRIED
+
+
+## NET: server only. Launches a ghost's held item from the glass layer.
+func throw_by_ghost(from: Vector3, impulse: Vector3) -> void:
+	global_position = from
+	velocity = impulse
+	state = State.AIR
 
 
 func _physics_process(delta: float) -> void:
@@ -68,6 +96,10 @@ func _fly(delta: float) -> void: # NET: server only
 			manager.apply_item_hit(self, mage)
 		_break("hit mage")
 		return
+	if break_chance > 0.0 and _villager_hit(from, to):
+		print("[Counterplay] %s %s caught by a living villager" % [kind, name])
+		break_chance = 0.0
+		velocity = Vector3.ZERO
 	var query := PhysicsRayQueryParameters3D.create(from, to, 1)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit:
@@ -76,12 +108,26 @@ func _fly(delta: float) -> void: # NET: server only
 		state = State.IDLE
 		if randf() < break_chance:
 			_break("hit the ground")
+			return
+		break_chance = 0.0 # WHY: it landed intact, so living villagers can use it like any other item.
 		return
 	global_position = to
 	if to.y < KILL_Y:
 		global_position = home
 		velocity = Vector3.ZERO
 		state = State.IDLE
+
+
+func _villager_hit(from: Vector3, to: Vector3) -> bool:
+	for v in Players.alive_with_role(Enums.Role.VILLAGER):
+		var base: Vector3 = v.global_position
+		var height: float = v.tuning.height if v.tuning else 1.0
+		for t in [0.0, 0.5, 1.0]:
+			var p := from.lerp(to, t)
+			if p.y >= base.y - 0.1 and p.y <= base.y + height \
+					and Vector2(p.x - base.x, p.z - base.z).length() <= 0.6:
+				return true
+	return false
 
 
 ## First living mage whose body the segment passes through (cylinder around the player's axis).

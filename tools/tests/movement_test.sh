@@ -5,7 +5,7 @@ GODOT="${GODOT:-/Users/santofothergill/Downloads/Godot.app/Contents/MacOS/Godot}
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LOG="$(mktemp -t lastmage_movement)"
 # FIX(S14, Codex): Leave enough process frames for the added roof landings.
-"$GODOT" --headless --quit-after 4800 --path "$ROOT/the-last-fire-mage" res://game/player/tests/movement_test.tscn \
+"$GODOT" --headless --quit-after 12000 --path "$ROOT/the-last-fire-mage" res://game/player/tests/movement_test.tscn \
     -- --no-steam >"$LOG" 2>&1
 result=$?
 grep '^\[TEST\]' "$LOG"

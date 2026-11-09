@@ -37,3 +37,5 @@ The map regression uses the real character controller for street, door, stair an
 ```
 
 Wooden furniture is `BreakableProp`. Sprinting into it (or falling on it) breaks it, as do Fire Wave and ignited swings. A new round restores it.
+
+Streets use `game/map/textures/cobble_*.png`, written by `tools/map/build_cobble.gd`. `furnish.gd` also adds collision-free wall dressing and rugs per room (`WALL_DECOR`).

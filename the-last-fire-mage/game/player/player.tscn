@@ -44,6 +44,9 @@ properties/6/replication_mode = 1
 properties/7/path = NodePath(".:villager_skin")
 properties/7/spawn = true
 properties/7/replication_mode = 1
+properties/8/path = NodePath(".:air_tuck_lift")
+properties/8/spawn = true
+properties/8/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D" groups=["players"]]
 collision_layer = 2

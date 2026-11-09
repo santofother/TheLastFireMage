@@ -49,6 +49,7 @@ func _generate() -> void:
 		mat.albedo_color = Color(rgb[0], rgb[1], rgb[2])
 		mat.roughness = 1.0
 		_materials[key] = mat
+	_cobble(_materials.paving)
 	_region = NavigationRegion3D.new()
 	_region.name = "ChickenNavigation"
 	_add(_town, _region)
@@ -430,6 +431,19 @@ func _sample(rows: Array, z: float) -> Vector3:
 			var t := clampf(inverse_lerp(a[0], b[0], z), 0, 1)
 			return Vector3(lerpf(a[1], b[1], t), lerpf(a[2], b[2], t), lerpf(a[3], b[3], t)) if a.size() > 2 else Vector3(lerpf(a[1], b[1], t), 0, 0)
 	return Vector3.ZERO
+
+
+# Streets and quays share "paving". World triplanar keeps the stones the same size on every lane and ramp.
+func _cobble(mat: StandardMaterial3D) -> void:
+	mat.albedo_color = Color.WHITE
+	mat.albedo_texture = load("res://game/map/textures/cobble_albedo.png")
+	mat.normal_enabled = true
+	mat.normal_texture = load("res://game/map/textures/cobble_normal.png")
+	mat.normal_scale = 1.4
+	mat.uv1_triplanar = true
+	mat.uv1_world_triplanar = true
+	mat.uv1_scale = Vector3.ONE * 0.6 # TUNE: tiles per metre (one tile = 11 stones)
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 
 
 func _street_at(lane: int, z: float) -> Vector3:

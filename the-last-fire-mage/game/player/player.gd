@@ -93,7 +93,13 @@ var is_sprinting := false
 var stamina := 0.0
 ## Replicated: the owner's controller is off the floor. Remote peers cannot ask is_on_floor() themselves.
 var is_airborne := false
+## Replicated: metres the feet are currently pulled up by a mid-air crouch (0 = not tucked).
+# NET: owner peer writes; every peer sizes its capsule and offsets its visuals from it.
+var air_tuck_lift := 0.0
+## Vertical offset for the character model: keeps the head still during a tuck and smooths step-ups.
+var visual_y_offset := 0.0
 
+var _step_offset := 0.0
 var _coyote_left := 0.0
 var _jump_buffer_left := 0.0
 var _mantle_armed := false
@@ -346,6 +352,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	_update_stance()
 	_update_pose(delta)
+	_step_offset = lerpf(_step_offset, 0.0, 1.0 - exp(-tuning.step_smoothing * delta))
+	visual_y_offset = _step_offset - air_tuck_lift
 	if not is_multiplayer_authority():
 		return
 	_stun_left = maxf(0.0, _stun_left - delta)
@@ -389,9 +397,11 @@ func _physics_process(delta: float) -> void:
 		_fall_peak_y = maxf(_fall_peak_y, global_position.y)
 		velocity += get_gravity() * delta
 
-	is_crouching = input.crouch or (is_crouching and not _has_standing_room())
+	_update_crouch(grounded)
 	_update_stance()
-	var can_jump := can_control() and not is_crouching and stamina >= tuning.jump_stamina_cost
+	# WHY: jumping out of a crouch stands first; holding crouch then tucks the legs next tick (crouch jump).
+	var can_jump := can_control() and air_tuck_lift <= 0.0 and (not is_crouching or _has_standing_room()) \
+		and stamina >= tuning.jump_stamina_cost
 	var mantle_cost := 0.0 if _jumped_in_air else tuning.jump_stamina_cost
 	if input.jump_pressed and not grounded and can_control() and not is_crouching and not _mantled_in_air and stamina >= mantle_cost:
 		if _try_space_mantle():
@@ -404,6 +414,9 @@ func _physics_process(delta: float) -> void:
 	_stamina_delay = maxf(0.0, _stamina_delay - delta)
 	if _jump_buffer_left > 0.0 and _coyote_left > 0.0 and can_jump:
 		_spend_stamina(tuning.jump_stamina_cost)
+		if is_crouching:
+			is_crouching = false
+			_update_stance()
 		velocity.y = tuning.jump_velocity
 		_jumped_in_air = true
 		_jump_sprinted = is_sprinting
@@ -418,7 +431,7 @@ func _physics_process(delta: float) -> void:
 		if stamina >= minf(tuning.sprint_recovery_stamina, tuning.max_stamina):
 			_sprint_exhausted = false
 
-	var speed := tuning.crouch_speed if is_crouching else (
+	var speed := tuning.crouch_speed if is_crouching and air_tuck_lift <= 0.0 else (
 		tuning.sprint_speed if is_sprinting else tuning.walk_speed)
 	var wish := global_basis * Vector3(input.move.x, 0.0, input.move.y).limit_length()
 	var planar := Vector3(velocity.x, 0.0, velocity.z)
@@ -439,6 +452,8 @@ func _physics_process(delta: float) -> void:
 	if _mantle_armed and can_control() and not is_crouching and not grounded and _try_mantle(wish):
 		is_sprinting = false
 		return
+	if grounded and can_control():
+		_try_step_up(delta)
 	var approach := velocity
 	move_and_slide()
 	is_airborne = not is_on_floor()
@@ -520,12 +535,8 @@ func _try_space_mantle() -> bool:
 	if test_move(global_transform, lift - global_position) or test_move(
 		Transform3D(global_basis, lift), target - lift):
 		return false
-	global_position = target
-	velocity = Vector3.ZERO
-	_mantled_in_air = true
-	_mantle_armed = false
-	_jump_buffer_left = 0.0
-	_fall_peak_y = target.y
+	# WHY: this path used to set global_position directly, which read as a teleport.
+	_begin_mantle(target)
 	return true
 
 
@@ -553,14 +564,19 @@ func _try_mantle(wish: Vector3) -> bool:
 	if test_move(global_transform, lift - global_position) or test_move(
 		Transform3D(global_basis, lift), target - lift):
 		return false
+	_begin_mantle(target)
+	return true
+
+
+func _begin_mantle(target: Vector3) -> void:
 	_mantle_start = global_position
 	_mantle_target = target
 	_mantle_elapsed = 0.0
 	_mantled_in_air = true
 	_mantle_armed = false # One pull per takeoff: no wall scaling or repeated upward grabs.
+	_jump_buffer_left = 0.0
 	is_mantling = true
 	velocity = Vector3.ZERO
-	return true
 
 
 func _tick_mantle(delta: float) -> void:
@@ -609,10 +625,83 @@ func _has_standing_room() -> bool:
 	return _capsule_clear(global_position + Vector3.UP * tuning.collision_clearance, tuning.height)
 
 
+# Ground crouch shortens the capsule from the top. Air crouch pulls the feet up instead (head stays put),
+# so a tuck timed near the apex clears a slightly taller ledge. CONTRACT: only the authority calls this.
+func _update_crouch(grounded: bool) -> void:
+	if grounded:
+		if air_tuck_lift > 0.0:
+			_step_offset -= air_tuck_lift
+			air_tuck_lift = 0.0
+		is_crouching = input.crouch or (is_crouching and not _has_standing_room())
+	elif input.crouch and air_tuck_lift <= 0.0 and not is_crouching:
+		_tuck_legs()
+	elif not input.crouch and air_tuck_lift > 0.0:
+		_untuck_legs()
+
+
+func _tuck_legs() -> void:
+	var apex := 1.0 - clampf(absf(velocity.y) / maxf(tuning.jump_velocity, 0.01), 0.0, 1.0)
+	var lift := minf(lerpf(tuning.crouch_jump_lift_min, tuning.crouch_jump_lift_max, apex),
+		tuning.height - tuning.radius * 2.0 - 0.01)
+	if lift <= 0.0:
+		return
+	global_position.y += lift
+	air_tuck_lift = lift
+	is_crouching = true
+	camera_rig.position.y -= lift
+
+
+func _untuck_legs() -> void:
+	# Feet may be over a ledge now; then they stay up until landing.
+	if test_move(global_transform.translated(Vector3.UP * tuning.collision_clearance), Vector3.DOWN * air_tuck_lift):
+		return
+	global_position.y -= air_tuck_lift
+	camera_rig.position.y += air_tuck_lift
+	air_tuck_lift = 0.0
+	is_crouching = false
+
+
+# Runs over kerbs and low ledges instead of stopping dead. Solid world geometry only: players, chickens and
+# breakable furniture still block, and steep rock is rejected by the floor-angle check.
+func _try_step_up(delta: float) -> void:
+	var planar := Vector3(velocity.x, 0.0, velocity.z)
+	if planar.length() < tuning.step_min_speed or velocity.y > 0.1:
+		return
+	var direction := planar.normalized()
+	var hit := KinematicCollision3D.new()
+	if not test_move(global_transform, direction * maxf(planar.length() * delta, 0.05), hit):
+		return
+	var collider := hit.get_collider()
+	if collider is CharacterBody3D or collider is BreakableProp:
+		return
+	var up := Vector3.UP * (tuning.step_max_height + tuning.collision_clearance)
+	if test_move(global_transform, up):
+		return
+	var raised := global_transform.translated(up)
+	var nudge := direction * tuning.radius * 0.6
+	if test_move(raised, nudge):
+		return
+	var above := raised.translated(nudge)
+	var down := KinematicCollision3D.new()
+	if not test_move(above, Vector3.DOWN * (up.length() + 0.05), down):
+		return
+	var rise: float = above.origin.y - down.get_travel().length() - global_position.y
+	if rise < 0.03 or rise > tuning.step_max_height:
+		return
+	var point := down.get_position() + direction * 0.03
+	var top := _ray(point + Vector3.UP * 0.3, point + Vector3.DOWN * 0.3)
+	if top.is_empty() or (top.normal as Vector3).dot(Vector3.UP) < cos(floor_max_angle):
+		return
+	global_position += nudge + Vector3.UP * (rise + 0.005)
+	_step_offset -= rise
+	camera_rig.position.y -= rise
+
+
 func _update_stance() -> void:
 	if tuning == null:
 		return
-	var height := tuning.crouch_height if is_crouching and is_alive else tuning.height
+	var crouched := tuning.height - air_tuck_lift if air_tuck_lift > 0.0 else tuning.crouch_height
+	var height := crouched if is_crouching and is_alive else tuning.height
 	if is_equal_approx(_standing_height, height):
 		return
 	_standing_height = height
@@ -634,7 +723,8 @@ func _update_pose(delta: float) -> void:
 
 func _update_camera(delta: float) -> void:
 	var blend := 1.0 - exp(-tuning.camera_response * delta)
-	var height := tuning.camera_height - (tuning.height - tuning.crouch_height if is_crouching else 0.0)
+	var drop := air_tuck_lift if air_tuck_lift > 0.0 else (tuning.height - tuning.crouch_height if is_crouching else 0.0)
+	var height := tuning.camera_height - drop
 	camera_rig.position.y = lerpf(camera_rig.position.y, height, blend)
 	camera.fov = lerpf(camera.fov, tuning.camera_fov + (tuning.sprint_fov_kick if is_sprinting else 0.0), blend)
 
@@ -704,6 +794,8 @@ func _reset_movement() -> void:
 	_mantled_in_air = false
 	_jumped_in_air = false
 	_jump_sprinted = false
+	air_tuck_lift = 0.0
+	_step_offset = 0.0
 	velocity = Vector3.ZERO
 	_knockback = Vector3.ZERO
 	_coyote_left = 0.0

@@ -107,5 +107,25 @@ func _run() -> void:
 	var line := $Laundry as LaundryLine
 	(line.get_node(^"Interactable") as Interactable).interact(a)
 	_check(line.sheet_up and line.get_node(^"Sheet").visible, "laundry sheet blocks sight")
+	# A dead player's item: caught by a living villager it survives; ghosts grab and throw through the server.
+	a.global_position = Vector3(25, 0, 25)
+	var caught := manager.spawn_item(&"pot", Vector3(25, 3, 25), 1.0) as CounterItem
+	caught.on_dropped(caught.global_position, Vector3.DOWN)
+	await _wait(1.0)
+	_check(is_instance_valid(caught) and not caught.is_queued_for_deletion() and caught.break_chance == 0.0,
+		"item hitting a living villager does not break")
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_server(20000 + randi() % 20000)
+	multiplayer.multiplayer_peer = peer
+	var glass := manager.spawn_item(&"net", Vector3(40, 30.1, 40), 0.9) as CounterItem
+	await get_tree().physics_frame
+	_check(manager.ghost_nearest_item(Vector3(41, 30, 40)) == glass, "ghost finds an item on the glass")
+	manager.ghost_pickup(glass, Vector3(41, 30, 40))
+	_check(glass.state == CounterItem.State.IDLE, "living players cannot use ghost pickup")
+	mage.health.kill(0, &"test")
+	manager.ghost_pickup(glass, Vector3(41, 30, 40))
+	_check(manager.ghost_held_kind == &"net", "dead player grabs the item")
+	manager.ghost_throw(Vector3(41, 30, 40), Vector3(0, -1, 0))
+	_check(glass.state == CounterItem.State.AIR and manager.ghost_held_kind == &"", "dead player throws it down")
 	print("[TEST] COUNTERPLAY %s" % ["FAILED" if failed else "PASSED"])
 	get_tree().quit(1 if failed else 0)
