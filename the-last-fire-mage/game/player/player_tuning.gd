@@ -15,6 +15,24 @@ extends Tuning
 ## TUNE: Sprint speed, m/s.
 @export var sprint_speed := 6.5
 
+## TUNE: Full stamina pool.
+@export var max_stamina := 100.0
+
+## TUNE: Stamina spent per second of ground sprinting.
+@export var sprint_stamina_per_second := 18.0
+
+## TUNE: Stamina spent on a jump or a mantle started without a jump.
+@export var jump_stamina_cost := 7.0
+
+## TUNE: Stamina regained per second while walking or resting on the ground.
+@export var stamina_recovery_per_second := 24.0
+
+## TUNE: Seconds after spending stamina before it starts recovering.
+@export var stamina_recovery_delay := 0.65
+
+## TUNE: Stamina needed to resume sprinting after exhaustion.
+@export var sprint_recovery_stamina := 25.0
+
 ## TUNE: Ground acceleration, m/s squared.
 @export var ground_acceleration := 24.0
 

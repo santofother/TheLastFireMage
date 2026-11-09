@@ -47,7 +47,12 @@ func _generate() -> void:
 	_loft_link("SaltLoft", "Fishers", 22.5)
 	_loft_link("BellLoft", "BellWalk", -45.0)
 	_roof_step("SaltLoft", "RopeHouse", -13.2, 24.8, 1.61)
-	_roof_step("Chapel", "BellLoft", 2.45, -46.0, 3.83)
+	# Jump down from Chapel instead of walking up from Bell Loft on a ramp.
+	var chapel: Dictionary = _houses.Chapel
+	var bell_loft: Dictionary = _houses.BellLoft
+	var chapel_edge := Vector3(2.45, chapel.base + chapel.spacing * chapel.spec[3], -46.85)
+	var bell_roof := Vector3(2.45, bell_loft.base + bell_loft.spacing * bell_loft.spec[3], -44.4)
+	_jump_link("BellLoftRoofLanding", chapel_edge, chapel_edge, bell_roof, "roof_landing")
 	_spawn_points()
 	_finish_surfaces()
 	# Wait for instanced CSG hide crates to build before parsing source geometry.
@@ -293,10 +298,17 @@ func _waterfront() -> void:
 	var pier: Array = data.pier
 	var bed := float(data.bed)
 	_box(_town, "RecoveryShelf", Vector3(0, bed - 0.35, 56.0), Vector3(68, 0.7, 40), "")
-	var water := _visual(_town, "Sea", Vector3(0, data.water - 0.05, 0), Vector3(650, 0.1, 650), "sea")
-	var sea := water.mesh.surface_get_material(0) as StandardMaterial3D
+	var water := MeshInstance3D.new()
+	water.name = "Sea"
+	water.position.y = data.water
+	var surface := PlaneMesh.new()
+	surface.size = Vector2(650, 650)
+	var sea := _materials.sea as StandardMaterial3D
 	sea.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	sea.albedo_color.a = 0.78
+	surface.material = sea
+	water.mesh = surface
+	_add(_town, water)
 	_box(_coastal, "QuayDeck", Vector3((quay[0] + quay[1]) / 2.0, -0.22, (quay[2] + quay[3]) / 2.0),
 		Vector3(quay[1] - quay[0], 0.44, quay[3] - quay[2]), "paving")
 	_box(_coastal, "DockDeck", Vector3((pier[0] + pier[1]) / 2.0, -0.22, (quay[3] + pier[2]) / 2.0),
@@ -496,6 +508,7 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 	var spacing := 2.28 + 0.08 * (String(spec[0]).length() % 4)
 	var loft: bool = spec.size() > 8 and spec[8] == "loft"
 	var passage: bool = spec[5] == "passage"
+	var parkour: bool = levels > 2 and not spec[0] in _layout.tall_roof_stairs
 	if passage:
 		entry_z = (z0 + z1) * 0.5
 		height = _street_at(lane, entry_z).y
@@ -523,25 +536,26 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 	for level in levels:
 		var y := height + level * spacing
 		var floor := _container(house, "Storey%d" % level, Vector3.ZERO, "map_storey")
-		var is_loft := loft and level == levels - 1
+		var roof := level == levels - 1
 		var covered := passage and level == 0
+		var window_z := z0 + 1.08 if parkour and roof else entry_z
 		for side in 2:
 			var front := is_equal_approx(float(side), door_u)
 			var door := level == 0 and (front or covered)
-			var window := is_loft and front
-			_face(floor, band, side, z0, z1, y, y + spacing - 0.14, wall_u, spec[6], entry_z,
+			var window := roof and front and (loft or parkour)
+			_face(floor, band, side, z0, z1, y, y + spacing - 0.14, wall_u, spec[6], window_z,
 				1.50 if covered else (1.55 if window else (DOOR if door else 0.0)),
-				0.26 if window else 0.0, spacing - 0.17 if window else DOOR_TOP, front or covered)
+				(0.24 if parkour else 0.26) if window else 0.0, spacing - 0.17 if window else DOOR_TOP,
+				front or covered, window and parkour)
 			if door:
 				_door_link(floor, "StreetDoor", _plot_point(band, side, y, entry_z), Vector3.RIGHT if side else Vector3.LEFT)
 		# Double skins meet at the party line. Side walls enclose split-level neighbours independently.
 		for end in [z0, z1 - WALL]:
 			_plot_box(floor, "PartyWall", band, 0, 1, end, end + WALL, y, y + spacing - 0.14, spec[6])
-		var roof := level == levels - 1
 		# Stairs change ends each floor so the next flight never hangs over the previous landing.
 		var at_north := level % 2 == 0
 		var stair_z := z0 + 1.02 if at_north else z1 - 1.02
-		var stairs := not (loft and level >= levels - 2)
+		var stairs := not (loft and level >= levels - 2) and not (parkour and roof)
 		var split := (z0 + z1) * 0.5 if not covered else entry_z - 0.94
 		_partition(floor, band, split, y, spacing, wall_u, spec[5] in ["court", "chapel"])
 		if covered:
@@ -555,7 +569,9 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 		else:
 			_plot_box(floor, "Ceiling", band, 0, 1, z0, z1, top - 0.14, top, roof_colour if roof else "interior")
 		if roof:
-			_roof(house, band, z0, z1, top, spec[7], roof_colour)
+			_roof(house, band, z0, z1, top, spec[7], roof_colour, door_u if parkour else -1.0)
+			if parkour:
+				_facade_route(floor, band, door_u, window_z, y, top)
 	if spec[0] == "Chapel":
 		var tower := _plot_point(band, 0.30, height + levels * spacing, -51.1)
 		_box(house, "BellTower", tower + Vector3.UP * 0.88, Vector3(1.65, 1.76, 1.65), "ashlar")
@@ -563,7 +579,8 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 
 
 func _face(parent: Node3D, band: int, side: int, z0: float, z1: float, y: float, top: float,
-		u: float, colour: String, at: float, width: float, sill: float, header: float, facing: bool) -> void:
+		u: float, colour: String, at: float, width: float, sill: float, header: float, facing: bool,
+		parkour: bool) -> void:
 	var left := 0.0 if side == 0 else 1.0 - u
 	var right := u if side == 0 else 1.0
 	if width > 0:
@@ -572,13 +589,14 @@ func _face(parent: Node3D, band: int, side: int, z0: float, z1: float, y: float,
 		_plot_box(parent, "JambNorth", band, left, right, z0, start, y, top, colour)
 		_plot_box(parent, "JambSouth", band, left, right, end, z1, y, top, colour)
 		_plot_box(parent, "Lintel", band, left, right, start, end, y + header, top, "ashlar")
-		_plot_box(parent, "Sill", band, left, right, start, end, y, y + sill, "open_window")
+		if not parkour:
+			_plot_box(parent, "Sill", band, left, right, start, end, y, y + sill, "open_window")
 	else:
 		_plot_box(parent, "Facade", band, left, right, z0, z1, y, top, colour)
-	if sill > 0:
+	if sill > 0 and not parkour:
 		var face := _plot_point(band, float(side), y + sill * 0.5, at)
 		_visual(parent, "LoftSill", face, Vector3(0.23, 0.09, width), "open_window")
-	if facing or (band == 0 and side == 0) or (band == 3 and side == 1):
+	if not parkour and (facing or (band == 0 and side == 0) or (band == 3 and side == 1)):
 		var span := _edges(band, at)
 		var w := span.y - span.x
 		var trim := u * 0.32
@@ -678,10 +696,11 @@ func _lot_stair(parent: Node3D, band: int, z: float, z0: float, z1: float, y: fl
 	_plot_box(parent, "DeckEast", band, hi, 1, z - half, z + half, top - 0.14, top, colour)
 
 
-func _roof(parent: Node3D, band: int, z0: float, z1: float, y: float, style: String, tile: String) -> void:
+func _roof(parent: Node3D, band: int, z0: float, z1: float, y: float, style: String, tile: String,
+		landing_side: float) -> void:
 	if style == "flat":
 		return
-	# Keep both stair landings open. Pitch and ridge direction vary between neighbours.
+	# Keep the stair landings and the approach from the eaves board clear.
 	z0 += 1.78
 	z1 -= 1.78
 	var z_mid := (z0 + z1) / 2
@@ -703,9 +722,64 @@ func _roof(parent: Node3D, band: int, z0: float, z1: float, y: float, style: Str
 					if style == "hip":
 						f *= 0.38 + 0.62 * (1.0 - absf(p.y - z_mid) / (z_mid - z0))
 					f *= clampf(minf(p.y - z0, z1 - p.y) / 1.05, 0.0, 1.0)
-					roof.append(_plot_point(band, p.x, y + 0.017 + f * (0.47 if style == "shed" else 0.62), p.y))
+					var u := p.x
+					if is_equal_approx(u, landing_side):
+						var edges := _edges(band, p.y)
+						u = lerpf(u, 0.5, minf(0.94, 2.8 / (edges.y - edges.x)))
+					roof.append(_plot_point(band, u, y + 0.017 + f * (0.47 if style == "shed" else 0.62), p.y))
 				_quad(parent, "TileRoof", [roof[0], roof[1], roof[2]], y - 0.014, tile)
 				_quad(parent, "TileRoof", [roof[0], roof[2], roof[3]], y - 0.014, tile)
+
+
+# Positive depth is outside the wall, regardless of which street the house fronts.
+func _facade_point(band: int, side: float, z: float, depth: float, y: float) -> Vector3:
+	return _plot_point(band, side, y, z) + Vector3.RIGHT * (2.0 * side - 1.0) * depth
+
+
+func _facade_box(parent: Node3D, label: String, band: int, side: float, z: float, half: float,
+		inner: float, outer: float, bottom: float, top: float, colour: String) -> void:
+	var sections := _intervals(z - half, z + half)
+	for i in range(1, sections.size()):
+		var a := sections[i - 1]
+		var b := sections[i]
+		_quad(parent, label, [_facade_point(band, side, a, inner, top), _facade_point(band, side, a, outer, top),
+			_facade_point(band, side, b, outer, top), _facade_point(band, side, b, inner, top)], bottom, colour)
+
+
+func _facade_route(parent: Node3D, band: int, side: float, z: float, y: float, roof: float) -> void:
+	var planter_z := z + 1.84
+	var plank_z := z + 3.68
+	var sill := y + 0.24
+	var planter := y + 1.07
+	var plank := maxf(roof - 0.74, y + 1.94)
+	# Follow facade bends so the ramp meets the sill without a lip, even at a street knot.
+	var sections := _intervals(z - 0.775, z + 0.775)
+	for i in range(1, sections.size()):
+		var a := sections[i - 1]
+		var b := sections[i]
+		_quad(parent, "WindowApproach", [
+			_facade_point(band, side, a, -1.20, y + 0.006),
+			_facade_point(band, side, a, -0.55, sill),
+			_facade_point(band, side, b, -0.55, sill),
+			_facade_point(band, side, b, -1.20, y + 0.006)], y - 0.07, "wood")
+	_facade_box(parent, "WindowLedge", band, side, z, 0.775, -0.55, 1.04, y, sill, "open_window")
+	_facade_box(parent, "FlowerBox", band, side, planter_z, 0.64, 0.0, 1.13, planter - 0.25, planter, "tile_sienna")
+	_facade_box(parent, "ClosedShutter", band, side, planter_z, 0.42, -0.02, 0.09, planter + 0.09, planter + 0.86, "shutter")
+	for offset: float in [-0.40, 0.0, 0.40]:
+		var leaves := _facade_point(band, side, planter_z + offset, 0.15, planter + 0.09)
+		_visual(parent, "Leaves", leaves, Vector3(0.18, 0.18, 0.22), "garden")
+		_visual(parent, "Blossom", leaves + Vector3.UP * 0.12, Vector3(0.13, 0.09, 0.13), "rose")
+	_facade_box(parent, "EavesPlank", band, side, plank_z, 0.70, 0.0, 1.12, plank - 0.12, plank, "wood")
+	_facade_box(parent, "ClosedShutter", band, side, plank_z, 0.38, -0.02, 0.09, plank - 0.94, plank - 0.23, "shutter")
+	var window := _facade_point(band, side, z, 0.62, sill)
+	var flowers := _facade_point(band, side, planter_z, 0.68, planter)
+	var board := _facade_point(band, side, plank_z, 0.66, plank)
+	var landing := _facade_point(band, side, plank_z, -0.55, roof)
+	var house := String(parent.get_parent().name)
+	_walk_link(house + "OpenWindow", _facade_point(band, side, z, -1.22, y), window)
+	_jump_link(house + "FlowerBox", window, window, flowers, "roof_parkour")
+	_jump_link(house + "EavesPlank", flowers, flowers, board, "roof_parkour")
+	_jump_link(house + "RoofLanding", board, board, landing, "roof_landing")
 
 
 func _garden(parent: Node3D, band: int, z0: float, z1: float, y: float, wall: float, side: float, at: float) -> void:
@@ -774,7 +848,8 @@ func _walk_link(label: String, start: Vector3, end: Vector3) -> void:
 
 func _bookends() -> void:
 	var apron := _container(_plan, "FishMarket", Vector3.ZERO, "map_landmark")
-	_deck(apron, "MarketApron", -30, 30, 32, 36, 0, "square")
+	# Share the quay's boundary without laying two surfaces over the same stretch of paving.
+	_deck(apron, "MarketApron", -30, 30, 32, _layout.waterfront.quay[2], 0, "square")
 	_box(apron, "StallLeg", Vector3(0.1, 0.92, 34.7), Vector3(0.16, 1.84, 0.16), "wood")
 	_box(apron, "StallLeg", Vector3(2.7, 0.92, 34.7), Vector3(0.16, 1.84, 0.16), "wood")
 	_box(apron, "StallAwning", Vector3(1.4, 1.95, 34.7), Vector3(3.06, 0.18, 1.33), "indigo")

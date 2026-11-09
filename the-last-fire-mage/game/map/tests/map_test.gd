@@ -33,7 +33,9 @@ var _links: Array[PackedVector3Array] = []
 
 
 func _ready() -> void:
-	get_tree().create_timer(500).timeout.connect(func() -> void: get_tree().quit(1))
+	get_tree().create_timer(750).timeout.connect(func() -> void:
+		print("[TEST] FAIL map traversal timed out")
+		get_tree().quit(1))
 	_town = load("res://game/map/town.tscn").instantiate()
 	add_child(_town)
 	_nav = get_world_3d().navigation_map
@@ -63,6 +65,8 @@ func _run() -> void:
 				_links.append(PackedVector3Array([start, finish]))
 			walked = walked and passed
 		_check(walked, "standing mage walks all of " + name)
+	_check(await _walk(Vector3(-1, 0, 34), Vector3(-1, 0, 50)),
+		"market, quay and pier stay walkable across the paving seams")
 	var doors_ok := true
 	var doors := get_tree().get_nodes_in_group("map_house_exit") + get_tree().get_nodes_in_group("map_room_opening")
 	for door: Marker3D in doors:
@@ -103,8 +107,13 @@ func _run() -> void:
 			var label := "%s %s" % ["mage" if role == Enums.Role.MAGE else "villager", route.name]
 			var kind: String = route.get_meta("kind")
 			var mantle := kind == "window_mantle"
-			var entered := await _jump(start, takeoff, finish, mantle, kind == "boat_sprint")
+			var roof := _town.find_child(String(route.name).trim_suffix("RoofLanding"), true, false) if kind == "roof_landing" else null
+			var entered := await _jump(start, takeoff, finish, mantle, kind == "boat_sprint", roof)
 			_check(entered, label)
+			if kind.begins_with("roof_"):
+				if entered and role == Enums.Role.MAGE:
+					_links.append(PackedVector3Array([start, _player.global_position if roof else finish]))
+				continue
 			var direction := _flat(finish - start).normalized()
 			var window := kind.begins_with("window")
 			var reverse_start := finish + direction * (1.5 if window else 0.48)
@@ -134,7 +143,19 @@ func _run() -> void:
 
 
 func _contracts() -> void:
-	_check(_town.get_meta("layout_version") == "salmara-party-walls-v2", "new village is the production town")
+	_check(_town.get_meta("layout_version") == "salmara-party-walls-v3", "new village is the production town")
+	var apron := _town.find_child("MarketApron", true, false) as StaticBody3D
+	var quay := _town.find_child("QuayDeck", true, false) as StaticBody3D
+	var pier := _town.find_child("DockDeck", true, false) as StaticBody3D
+	var previous := -INF
+	var paving_is_flush := true
+	for piece: StaticBody3D in [apron, quay, pier]:
+		var mesh := piece.get_node("Mesh") as MeshInstance3D
+		var bounds := mesh.global_transform * mesh.get_aabb()
+		paving_is_flush = paving_is_flush and absf(bounds.end.y) < 0.001
+		paving_is_flush = paving_is_flush and (previous == -INF or absf(bounds.position.z - previous) < 0.001)
+		previous = bounds.end.z
+	_check(paving_is_flush, "waterfront paving shares edges without coplanar overlap")
 	_check(get_tree().get_nodes_in_group("map_district").size() == 4, "four connected wards")
 	_check(get_tree().get_nodes_in_group("map_nook").size() >= 3, "dead ends")
 	_check(get_tree().get_nodes_in_group("map_landmark").size() >= 4, "plazas and waterfront")
@@ -144,6 +165,11 @@ func _contracts() -> void:
 	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
 		templates[house.get_meta("template")] = true
 		heights[house.get_meta("storeys")] = true
+		if house.get_meta("storeys") > 2:
+			var stair := house.get_node("Storey2").has_node("Stairs")
+			var walk_up := house.name in [&"Dyeworks", &"WatchHouse"]
+			_check(stair == walk_up and _town.has_node(String(house.name) + "RoofLanding") != walk_up,
+				"%s has its intended tall roof access" % house.name)
 	_check(templates.size() == 4 and heights.size() == 3, "four interior layouts and one to three storeys")
 	for node in _town.find_children("*", "StaticBody3D", true, false):
 		if node.collision_layer != 1:
@@ -223,7 +249,7 @@ func _walk(start: Vector3, finish: Vector3) -> bool:
 	return ok
 
 
-func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool, sprint := false) -> bool:
+func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool, sprint := false, roof: Node = null) -> bool:
 	var direction := _flat(finish - start).normalized()
 	await _place(start, direction)
 	if not _player.is_on_floor():
@@ -244,9 +270,16 @@ func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool
 		was_airborne = was_airborne or not _player.is_on_floor()
 		pulled = pulled or _player.is_mantling
 		var position := _player.global_position
-		if jumped and was_airborne and _player.is_on_floor() and absf(position.y - finish.y) < 0.13 			and _flat(finish - position).dot(direction) < 0.38:
-			ok = not needs_mantle or pulled
-			break
+		if jumped and was_airborne and _player.is_on_floor() and _flat(finish - position).dot(direction) < 0.38:
+			var at_height := absf(position.y - finish.y) < 0.13
+			if roof != null:
+				# The final jump can land on the flat eave or higher on that house's pitched tiles.
+				var hit := _ray(position + Vector3.UP * 0.1, position - Vector3.UP * 0.24)
+				var surface: Node = hit.get("collider")
+				at_height = position.y >= finish.y - 0.04 and surface != null and roof.is_ancestor_of(surface)
+			if at_height:
+				ok = not needs_mantle or pulled
+				break
 		if position.y < minf(start.y, finish.y) - 0.45:
 			break
 	_driver.moving = false

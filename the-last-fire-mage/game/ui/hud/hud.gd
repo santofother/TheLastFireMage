@@ -9,6 +9,8 @@ var _root: Control
 var _labels: Dictionary = {}
 var _blind: ColorRect
 var _health_meter: ProgressBar
+var _stamina: VBoxContainer
+var _stamina_meter: ProgressBar
 var _meter: ProgressBar
 var _marks: Control
 var _threshold: ColorRect
@@ -113,6 +115,53 @@ func _build() -> void:
 	_label("Scoreboard", Rect2(.22, .24, .56, .49), 21, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_label("Results", Rect2(.18, .23, .64, .55), 23, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_root.resized.connect(_layout_meter)
+	_build_stamina()
+
+func _build_stamina() -> void:
+	# Separate from the round panel so the same meter is visible in Explore Town.
+	_stamina = VBoxContainer.new()
+	_stamina.name = "Stamina"
+	_stamina.anchor_left = 1.0
+	_stamina.anchor_right = 1.0
+	_stamina.anchor_top = 1.0
+	_stamina.anchor_bottom = 1.0
+	_stamina.offset_left = -242
+	_stamina.offset_right = -26
+	_stamina.offset_top = -106
+	_stamina.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var label := Label.new()
+	label.text = "STAMINA"
+	label.add_theme_font_size_override("font_size", 16)
+	label.add_theme_color_override("font_color", INK)
+	label.add_theme_color_override("font_shadow_color", Color.BLACK)
+	label.add_theme_constant_override("shadow_offset_y", 2)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stamina.add_child(label)
+	_stamina_meter = ProgressBar.new()
+	_stamina_meter.name = "Meter"
+	_stamina_meter.show_percentage = false
+	_stamina_meter.step = 0.0
+	_stamina_meter.custom_minimum_size.y = 10
+	_stamina_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color("17251feb")
+	track.set_corner_radius_all(3)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color("9ee391")
+	fill.set_corner_radius_all(3)
+	_stamina_meter.add_theme_stylebox_override("background", track)
+	_stamina_meter.add_theme_stylebox_override("fill", fill)
+	_stamina.add_child(_stamina_meter)
+	add_child(_stamina)
+
+func _refresh_stamina() -> void:
+	var player := _local as Player if is_instance_valid(_local) else null
+	var exploring := _phase == Enums.Phase.LOBBY and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	var in_round := _phase in [Enums.Phase.HEAD_START, Enums.Phase.HUNT] and not _blind.visible
+	_stamina.visible = player != null and player.is_alive and not player.health.is_downed and (exploring or in_round)
+	if _stamina.visible:
+		_stamina_meter.max_value = player.tuning.max_stamina
+		_stamina_meter.value = player.stamina
 
 func _label(key: String, rect: Rect2, size: int, align: HorizontalAlignment = HORIZONTAL_ALIGNMENT_LEFT, panel: bool = false) -> void:
 	var label := Label.new()
@@ -158,6 +207,7 @@ func _process(delta: float) -> void:
 		_refresh()
 	_labels.Scoreboard.visible = _root.visible and Input.is_action_pressed("scoreboard")
 	_labels.Results.visible = not _result.is_empty() and not _labels.Scoreboard.visible
+	_refresh_stamina()
 
 func _local_id() -> int:
 	if is_instance_valid(_local):

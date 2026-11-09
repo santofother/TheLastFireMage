@@ -1,5 +1,6 @@
 {
-  "version": "salmara-party-walls-v2",
+  "version": "salmara-party-walls-v3",
+  "tall_roof_stairs": ["Dyeworks", "WatchHouse"],
   "footprint": [74, 142],
   "palette": {
     "cliff": [0.39, 0.39, 0.39],

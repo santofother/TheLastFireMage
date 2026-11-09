@@ -115,8 +115,12 @@ func _run() -> void:
 	_driver.jump = true
 	await _ticks(1)
 	_check(_player.velocity.y > 0.0, "scripted jump takes off")
+	var after_jump := _player.stamina
+	_check(is_equal_approx(after_jump, _player.tuning.max_stamina - _player.tuning.jump_stamina_cost),
+		"successful jump spends stamina once")
 	await _ticks(25)
 	_check(_player.position.y > 1.0, "standing jump reaches approximately 1.2 metres")
+	_check(is_equal_approx(_player.stamina, after_jump), "stamina does not recover in the air")
 	await _ticks(45)
 	await _reset()
 	_driver.move = Vector2(0, -1)
@@ -272,5 +276,30 @@ func _run() -> void:
 	_player.health.revive()
 	_check(_player.collision_layer == 2 and _player.get_node("Body").rotation.x == 0.0,
 		"revive restores upright body")
+	await _check_stamina()
 	print("[TEST] MOVEMENT %s (%d failures)" % ["PASSED" if _fails == 0 else "FAILED", _fails])
 	get_tree().quit(0 if _fails == 0 else 1)
+
+
+func _check_stamina() -> void:
+	await _reset()
+	_driver.sprint = true
+	await _ticks(10)
+	_check(is_equal_approx(_player.stamina, _player.tuning.max_stamina), "holding sprint while still costs nothing")
+	_driver.move = Vector2(0, -1)
+	for i in 390:
+		await _ticks(1)
+		if _player.stamina <= 0.0:
+			break
+	_check(_player.stamina == 0.0, "holding sprint exhausts the stamina pool")
+	_driver.jump = true
+	await _ticks(12)
+	_check(_player.is_on_floor() and not _player.is_sprinting and
+		absf(_player.velocity.z + _player.tuning.walk_speed) < 0.1,
+		"exhaustion blocks jumps and drops held sprint to running speed")
+	_driver.sprint = false
+	await _ticks(100)
+	_check(_player.stamina >= _player.tuning.sprint_recovery_stamina, "stamina recovers while running without sprint")
+	_driver.sprint = true
+	await _ticks(1)
+	_check(_player.is_sprinting, "sprint works again after recovery")

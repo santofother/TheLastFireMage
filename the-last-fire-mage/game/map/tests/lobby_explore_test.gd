@@ -29,16 +29,24 @@ func _run() -> void:
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "lobby initially exposes cursor")
 	match_manager.get_node("UI/Lobby/Content/Explore").pressed.emit()
 	Input.action_press("move_forward")
+	Input.action_press("sprint")
 	var start := player.global_position
 	for i in 30:
 		await get_tree().physics_frame
 	Input.action_release("move_forward")
+	Input.action_release("sprint")
+	await get_tree().process_frame
 	_check(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED, "lobby preserves captured cursor while exploring")
 	_check(player.global_position.z < start.z - 0.8, "real keyboard-input path moves player through town")
+	var stamina := (GameEvents.system(&"hud") as Hud).get_node("Stamina/Meter") as ProgressBar
+	_check(stamina.is_visible_in_tree() and stamina.value < stamina.max_value
+		and is_equal_approx(stamina.value, player.stamina),
+		"solo exploration displays the live stamina meter")
 	_escape()
 	for i in 3:
 		await get_tree().process_frame
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "Esc opens menu and releases cursor")
+	_check(not stamina.is_visible_in_tree(), "stamina meter clears the lobby menu")
 	# Let the movement controller finish braking before testing fresh menu input.
 	for i in 12:
 		await get_tree().physics_frame
