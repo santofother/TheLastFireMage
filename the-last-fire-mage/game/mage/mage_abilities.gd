@@ -106,6 +106,9 @@ func _attack(ability: StringName, aim: Vector3) -> void:
 		var target := health.get_parent() as Node3D
 		if not target or target == _player:
 			continue
+		# CONTRACT: mages on the same side never damage each other.
+		if target is Player and target.role == Enums.Role.MAGE:
+			continue
 		var point := target.global_position + Vector3.UP * (0.4 if target is Player else 0.25)
 		var offset := point - origin
 		if offset.length() > reach or (offset.length() > 0.01 and aim.dot(offset.normalized()) < cos(deg_to_rad(angle * 0.5))):

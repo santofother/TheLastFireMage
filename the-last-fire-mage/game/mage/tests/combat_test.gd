@@ -3,6 +3,7 @@ extends Node3D
 
 var mage: Player
 var victim: Player
+var ally: Player
 var combat: MageAbilities
 var chicken: Chicken
 var died_by := 0
@@ -25,6 +26,7 @@ func _ready() -> void:
 	add_child(chicken)
 	chicken.set_physics_process(false)
 	combat = mage.get_ability(&"MageAbilities") as MageAbilities
+	ally = _player(1000001, Vector3(0.3, 0, -1.2), Enums.Role.MAGE)
 	GameEvents.player_died.connect(func(id: int, killer: int, _cause: StringName) -> void:
 		if id == victim.peer_id: died_by = killer)
 	if hosting:
@@ -113,6 +115,7 @@ func _run() -> void:
 	await get_tree().create_timer(0.2).timeout
 	await _cast(&"fire_wave")
 	_check(victim.health.hp == 15 and victim._knockback.length() > 0, "wave damage and knockback")
+	_check(ally.health.hp == 100 and ally._knockback == Vector3.ZERO, "fellow mage is immune to fire and knives")
 	await _cast(&"knife")
 	_check(died_by == mage.peer_id, "kill attribution")
 	_check(combat._nearby_villager_positions().is_empty(), "locator excludes dead villagers")

@@ -1,7 +1,7 @@
 class_name BotManager
 extends Node
 ## CLI bot setup. Owner: S07. Registered as GameEvents.system(&"bots").
-## --bot drives the local human slot; --bots=N adds up to five server-owned players.
+## --bot drives the local human slot; --bots=N fills the lobby with server-owned players.
 ## NET: only the authority assigns a driver; replicas use normal player synchronization.
 
 func _enter_tree() -> void:
@@ -27,7 +27,7 @@ func _on_local_player_ready(player: Node) -> void:
 func _spawn_bots() -> void:
 	if not NetworkManager.is_in_session() or not multiplayer.is_server():
 		return
-	var count := clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
+	var count := clampi(int(NetworkManager.args.get("bots", 0)), 0, NetworkManager.MAX_PLAYERS - 1)
 	var main := GameEvents.system(&"main")
 	for i in count:
 		var id := Players.BOT_ID_BASE + i

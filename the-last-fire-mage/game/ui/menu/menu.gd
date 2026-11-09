@@ -199,9 +199,9 @@ func _build_ui() -> void:
 	_bot_count = SpinBox.new()
 	_bot_count.name = "BotCount"
 	_bot_count.min_value = 0
-	_bot_count.max_value = 5
+	_bot_count.max_value = NetworkManager.MAX_PLAYERS - 1
 	_bot_count.step = 1
-	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
+	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, NetworkManager.MAX_PLAYERS - 1)
 	_bot_count.tooltip_text = "Computer players to add when you host (0–5)."
 	v.add_child(_row("Bots", _bot_count))
 

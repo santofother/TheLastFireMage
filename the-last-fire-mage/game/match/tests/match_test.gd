@@ -72,7 +72,9 @@ func _on_phase(next: int, duration: float) -> void:
 	# RPC order guarantees role/lock updates precede the phase signal for existing peers.
 	if next == Enums.Phase.ROLE_REVEAL:
 		_check(_match.roles.size() == (2 if _scenario == "late_join" else 3), "round roster")
-		_check(_match.roles.values().count(Enums.Role.MAGE) == 1, "exactly one mage assigned")
+		var expected_mages := 2 if _scenario == "two_mages" else 1
+		_check(_match.roles.values().count(Enums.Role.MAGE) == expected_mages and _match.mage_ids().size() == expected_mages,
+			"host-chosen mage count assigned")
 		if Net.is_server(self):
 			var chosen := _match.mage_id
 			_match.start_round(1)
@@ -113,7 +115,7 @@ func _check_phase(next: int) -> void:
 			var group := &"mage_spawn" if p.role == Enums.Role.MAGE else &"villager_spawn"
 			var found := false
 			for marker in get_tree().get_nodes_in_group(group):
-				if Vector2(p.global_position.x, p.global_position.z).distance_to(Vector2(marker.global_position.x, marker.global_position.z)) < 0.2:
+				if Vector2(p.global_position.x, p.global_position.z).distance_to(Vector2(marker.global_position.x, marker.global_position.z)) < (1.2 if _scenario == "two_mages" else 0.2):
 					found = true
 			_check(found, "participant %s teleported to role spawn at %s" % [p.display_name, p.global_position])
 	var local := Players.local_player()
@@ -128,6 +130,12 @@ func _exercise_outcome() -> void:
 				p.health.kill(_match.mage_id, &"test")
 		"mage_died":
 			Players.get_player(_match.mage_id).health.kill(0, &"firestorm")
+		"two_mages":
+			var mages := _match.mage_ids()
+			Players.get_player(mages[0]).health.kill(0, &"firestorm")
+			await get_tree().create_timer(0.2).timeout
+			_check(_match.phase == Enums.Phase.HUNT and _results == 0, "round continues while another mage lives")
+			Players.get_player(mages[1]).health.kill(0, &"firestorm")
 		"late_join":
 			# A spectator must be ignored by the all-villagers-dead condition.
 			get_tree().create_timer(1.4).timeout.connect(func() -> void:
@@ -139,7 +147,7 @@ func _on_result(winner: int, reason: String) -> void:
 	_results += 1
 	_check(_results == 1, "round result emitted once")
 	_check(_match.phase == Enums.Phase.HUNT, "round result precedes RESULTS")
-	var expected := {"timeout": "timeout", "all_dead": "all_dead", "mage_died": "mage_died", "mage_left": "mage_left", "late_join": "all_dead"}
+	var expected := {"timeout": "timeout", "all_dead": "all_dead", "mage_died": "mage_died", "mage_left": "mage_left", "late_join": "all_dead", "two_mages": "mage_died"}
 	_check(reason == expected[_scenario], "expected winner reason " + reason)
 	_check(winner == (Enums.Winner.MAGE if reason == "all_dead" else Enums.Winner.VILLAGERS), "expected winner")
 	if Net.is_server(self):

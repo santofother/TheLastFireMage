@@ -44,6 +44,21 @@ text = "Waiting for players"
 [node name="MagePick" type="OptionButton" parent="UI/Lobby/Content"]
 layout_mode = 2
 
+[node name="MageCountRow" type="HBoxContainer" parent="UI/Lobby/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="UI/Lobby/Content/MageCountRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Number of mages"
+
+[node name="MageCount" type="SpinBox" parent="UI/Lobby/Content/MageCountRow"]
+layout_mode = 2
+min_value = 1.0
+max_value = 4.0
+step = 1.0
+value = 1.0
+
 [node name="Start" type="Button" parent="UI/Lobby/Content"]
 layout_mode = 2
 text = "Start round"

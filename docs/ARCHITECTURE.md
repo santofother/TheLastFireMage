@@ -133,11 +133,12 @@ push_to_talk (V), scoreboard (Tab), debug (F3), menu (Esc). `core/` still reads 
 game-agnostic; S12 may switch voice to the `push_to_talk` action with a key fallback.
 
 ## Match
-`MatchManager` (`game/match/`): `phase`, `time_left` (synced), `mage_id`, `roles`, `tuning`;
-server `start_round(mage_id = 0)`, `end_round(winner, reason)`; `get_role(id)`, `is_round_active()`.
+`MatchManager` (`game/match/`): `phase`, `time_left` (synced), `mage_id` (lobby pick / first mage), `mage_count`,
+`roles`, `tuning`; server `start_round(mage_id = 0)`, `end_round(winner, reason)`; `get_role(id)`, `mage_ids()`,
+`is_round_active()`. A round has 1 to 4 mages; code that means "a mage" must use the role, not `mage_id`.
 Uses Player hooks for spawning (`teleport` to `villager_spawn`/`mage_spawn`), freezing (`set_input_lock`),
-and `Health.revive()` / `invulnerable` for resets. Ends the round on `player_died` (any cause, including
-firestorm) and on mage disconnect. The host lobby UI lives inside the match scene.
+and `Health.revive()` / `invulnerable` for resets. Ends the round once every mage has died (any cause, including
+firestorm) or disconnected. The host lobby UI lives inside the match scene.
 
 ## Map
 Map scene root: Node3D with static geometry on layer 1, a baked `NavigationRegion3D` (chickens), no
@@ -169,8 +170,8 @@ targets (find with `Health.find_on`). `power_multiplier` (default 1.0) is update
 `power_changed`. HUD reads `cooldown_left(&"knife"|&"ignite"|&"fire_wave")`, `is_ignited()`.
 
 ## Power
-`PowerManager`: server counts kills from `chicken_killed` / `player_died` (killer = mage), applies
-tier/decay from `tuning_power.tres`, fires `power_changed`. `current_power()`, `current_tier()`,
+`PowerManager`: server counts kills from `chicken_killed` / `player_died` (killer = any mage) into one shared
+pool, applies tier/decay from `tuning_power.tres`, fires `power_changed` once per mage. `current_power()`, `current_tier()`,
 `multiplier()`; `add_power()` for tests. Calls `VoiceManager.set_speaker_effect(mage_id, "mage", strength)`
 once S12 provides it.
 

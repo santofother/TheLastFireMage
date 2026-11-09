@@ -17,6 +17,13 @@ const DOOR_TOP := 1.76
 const WINDOW_HALF := 0.775
 const BEDROCK := -2.9
 const SHELL_BOTTOM := -3.1
+const STREET_LEDGE := 0.44 # How far a block below head height may project into a lane as narrow as 1.65 m.
+const STREET_FOOTING := 0.4 # Stand point on a street block: clears the mage radius from the wall.
+const HEADROOM := 1.55 # A ledge this far above the lane clears the mage's head.
+const MAX_CLIMB_HOP := 0.83 # Matches the tallest hop the roof routes already use.
+const MAX_STREET_HOP := 0.88 # Tallest block a standing jump clears from the lane.
+const BLOCK_RUN := 1.1 # Lane run-up beside a street block.
+const HOP := 1.84 # Spacing between facade climbing holds, matching the roof routes.
 var _plan: Node3D
 var _houses: Dictionary = {}
 var _knots: Array[float] = []
@@ -54,6 +61,8 @@ func _generate() -> void:
 	var chapel_edge := Vector3(2.45, _roof_height(_houses.Chapel), -46.85)
 	var bell_roof := Vector3(2.45, _roof_height(_houses.BellLoft), -44.4)
 	_jump_link("BellLoftRoofLanding", chapel_edge, chapel_edge, bell_roof, "roof_landing")
+	for house: String in _layout.roof_from_neighbour:
+		_neighbour_roof_link(house, _layout.roof_from_neighbour[house])
 	_spawn_points()
 	_finish_surfaces()
 	# Wait for instanced CSG hide crates to build before parsing source geometry.
@@ -509,7 +518,12 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 	var spacing := 2.28 + 0.08 * (String(spec[0]).length() % 4)
 	var loft: bool = spec.size() > 8 and spec[8] == "loft"
 	var passage: bool = spec[5] == "passage"
-	var parkour: bool = levels >= 2 and not loft and not spec[0] in _layout.tall_roof_stairs
+	# CONTRACT: no flight of stairs reaches a roof; every roof is climbed or jumped to.
+	var parkour: bool = levels >= 1 and not loft
+	# A sealed house has no street door. Its top-floor rear window is the only way inside.
+	var sealed: bool = spec[0] in _layout.sealed_doors
+	var back_u := 1.0 - door_u
+	var back_lane := band - 1 if east else band
 	# Put the window at the opposite end from the stair that serves this room.
 	var route_dir := -1.0 if levels == 2 else 1.0
 	if passage:
@@ -524,6 +538,7 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 		height = 1.78 # Keep the engine's void return at (0, 2, 0) inside this public court.
 	house.set_meta("template", spec[5])
 	house.set_meta("storeys", levels)
+	house.set_meta("sealed", sealed)
 	_houses[spec[0]] = {"node": house, "band": band, "spec": spec, "base": height, "spacing": spacing,
 		"entry_z": entry_z, "east": east, "lane": lane}
 	if band in [0, 3]:
@@ -541,13 +556,13 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 		var floor := _container(house, "Storey%d" % level, Vector3.ZERO, "map_storey")
 		var roof := level == levels - 1
 		var covered := passage and level == 0
-		var window_z := entry_z
-		if parkour and roof:
-			window_z = z1 - 1.08 if route_dir < 0.0 else z0 + 1.08
+		var route_z := z1 - 1.08 if route_dir < 0.0 else z0 + 1.08
+		# A one-storey front wall keeps its door; its climb starts from the street instead of a window.
+		var window_z := route_z if parkour and roof and levels >= 2 else entry_z
 		for side in 2:
 			var front := is_equal_approx(float(side), door_u)
-			var door := level == 0 and (front or covered)
-			var window := roof and front and (loft or parkour)
+			var door := level == 0 and (front or covered) and not sealed
+			var window := roof and levels >= 2 and (front and (loft or parkour) or sealed and not front)
 			_face(floor, band, side, z0, z1, y, y + spacing - 0.14, wall_u, spec[6], window_z,
 				1.50 if covered else (WINDOW_HALF * 2.0 if window else (DOOR if door else 0.0)),
 				(0.24 if parkour else 0.26) if window else 0.0, spacing - 0.17 if window else DOOR_TOP,
@@ -575,8 +590,14 @@ func _lot(parent: Node3D, band: int, spec: Array) -> void:
 			_plot_box(floor, "Ceiling", band, 0, 1, z0, z1, top - 0.14, top, roof_colour if roof else "interior")
 		if roof:
 			_roof(house, band, z0, z1, top, spec[7], roof_colour, door_u if parkour else -1.0)
-			if parkour:
-				_facade_route(floor, band, door_u, window_z, route_dir, y, top)
+			if parkour and levels >= 2:
+				_facade_route(floor, band, door_u, route_z, route_dir, y, top)
+				if sealed:
+					_rear_window_climb(floor, band, back_u, route_z, route_dir, y, back_lane)
+			elif parkour and not _layout.roof_from_neighbour.has(spec[0]):
+				_street_roof_route(floor, band, door_u, lane, y, top, z0, z1, entry_z)
+		if sealed and level == 0:
+			_facade_box(floor, "BoardedDoor", band, door_u, entry_z, DOOR / 2, -0.02, 0.06, y, y + DOOR_TOP, "wood")
 	if spec[0] == "Chapel":
 		var tower := _plot_point(band, 0.30, height + levels * spacing, -51.1)
 		_box(house, "BellTower", tower + Vector3.UP * 0.88, Vector3(1.65, 1.76, 1.65), "ashlar")
@@ -748,16 +769,8 @@ func _facade_box(parent: Node3D, label: String, band: int, side: float, z: float
 			_facade_point(band, side, b, outer, top), _facade_point(band, side, b, inner, top)], bottom, colour)
 
 
-func _facade_route(parent: Node3D, band: int, side: float, z: float, direction: float, y: float, roof: float) -> void:
-	var house := String(parent.get_parent().name)
-	# The sharper bends need a little more clearance from the wall and shutters.
-	var ledge_depth := 0.95 if house in ["Chapel", "Coopers", "LanternHouse"] else 0.88
-	var planter_z := z + direction * 1.84
-	var plank_z := z + direction * 3.68
-	var sill := y + 0.24
-	var planter := y + 1.07
-	var plank := maxf(roof - 0.74, y + 1.94)
-	# Follow facade bends so the ramp meets the sill without a lip, even at a street knot.
+# Follow facade bends so the ramp meets the sill without a lip, even at a street knot.
+func _window_ledge(parent: Node3D, band: int, side: float, z: float, y: float, sill: float, outer: float) -> void:
 	var sections := _intervals(z - WINDOW_HALF, z + WINDOW_HALF)
 	for i in range(1, sections.size()):
 		var a := sections[i - 1]
@@ -767,7 +780,19 @@ func _facade_route(parent: Node3D, band: int, side: float, z: float, direction: 
 			_facade_point(band, side, a, -0.55, sill),
 			_facade_point(band, side, b, -0.55, sill),
 			_facade_point(band, side, b, -1.20, y + 0.006)], y - 0.07, "wood")
-	_facade_box(parent, "WindowLedge", band, side, z, WINDOW_HALF, -0.55, 0.82, y, sill, "ashlar")
+	_facade_box(parent, "WindowLedge", band, side, z, WINDOW_HALF, -0.55, outer, y, sill, "ashlar")
+
+
+func _facade_route(parent: Node3D, band: int, side: float, z: float, direction: float, y: float, roof: float) -> void:
+	var house := String(parent.get_parent().name)
+	# The sharper bends need a little more clearance from the wall and shutters.
+	var ledge_depth := 0.95 if house in ["Chapel", "Coopers", "LanternHouse"] else 0.88
+	var planter_z := z + direction * 1.84
+	var plank_z := z + direction * 3.68
+	var sill := y + 0.24
+	var planter := y + 1.07
+	var plank := maxf(roof - 0.74, y + 1.94)
+	_window_ledge(parent, band, side, z, y, sill, 0.82)
 	_facade_box(parent, "FlowerBox", band, side, planter_z, 0.64, 0.0, ledge_depth, planter - 0.25, planter, "tile_sienna")
 	_facade_box(parent, "ClosedShutter", band, side, planter_z, 0.42, -0.02, 0.09, planter + 0.09, planter + 0.86, "shutter")
 	for offset: float in [-0.40, 0.0, 0.40]:
@@ -784,6 +809,80 @@ func _facade_route(parent: Node3D, band: int, side: float, z: float, direction: 
 	_jump_link(house + "FlowerBox", window, window, flowers, "roof_parkour")
 	_jump_link(house + "EavesPlank", flowers, flowers, board, "roof_parkour")
 	_jump_link(house + "RoofLanding", board, board, landing, "roof_landing")
+
+
+# WHY: only the block stands in the lane. Everything above it clears the mage's head, so streets stay open.
+func _street_block(parent: Node3D, label: String, band: int, side: float, z: float, away: float, lane: int, top: float, target: Vector3) -> Vector3:
+	var house := String(parent.get_parent().name)
+	var ground := _street_at(lane, z).y
+	_facade_box(parent, "MountingBlock", band, side, z, 0.6, 0.0, STREET_LEDGE, ground - 0.05, top, "ashlar")
+	var point := _facade_point(band, side, z, STREET_FOOTING, top)
+	# WHY: a short run along the wall clears the block without pressing into a wall that would trigger a mantle.
+	var foot_z := z + away * BLOCK_RUN
+	var foot := _facade_point(band, side, foot_z, 0.55, _street_at(lane, foot_z).y)
+	_jump_link(house + label + "Block", foot, foot, point, "roof_block")
+	_jump_link(house + label + "Ledge", point, point, target, "roof_parkour")
+	return point
+
+
+# One-storey fronts keep their door, so the block and plank sit wherever the lane is widest beside it.
+func _street_roof_route(parent: Node3D, band: int, side: float, lane: int, y: float, roof: float,
+		z0: float, z1: float, door_z: float) -> void:
+	var house := String(parent.get_parent().name)
+	var clear_of_door := DOOR / 2 + 0.75
+	var best_z := INF
+	var best_dir := 1.0
+	var widest := 0.0
+	for direction: float in [1.0, -1.0]:
+		var z := z0 + 0.85
+		while z <= z1 - 0.85:
+			var plank_z := z + direction * HOP
+			var fits := plank_z >= z0 + 0.8 and plank_z <= z1 - 0.8 and absf(z - door_z) > clear_of_door and absf(plank_z - door_z) > clear_of_door
+			var width: float = _street_at(lane, z).z
+			var ground: float = _street_at(lane, z).y
+			var foot_ground: float = _street_at(lane, z - direction * BLOCK_RUN).y
+			if fits and width > widest and _block_top(y, roof, _highest_street(lane, plank_z), ground) - foot_ground <= MAX_STREET_HOP:
+				best_z = z
+				best_dir = direction
+				widest = width
+			z += 0.2
+	assert(widest > 0.0, house + " has no room for a street roof route")
+	var plank_z := best_z + best_dir * HOP
+	var plank := _plank_top(y, roof, _highest_street(lane, plank_z))
+	var top := _block_top(y, roof, _highest_street(lane, plank_z), _street_at(lane, best_z).y)
+	_facade_box(parent, "EavesPlank", band, side, plank_z, 0.70, 0.0, 0.88, plank - 0.12, plank, "wood")
+	var board := _facade_point(band, side, plank_z, 0.57, plank)
+	_street_block(parent, "Street", band, side, best_z, -best_dir, lane, top, board)
+	_jump_link(house + "RoofLanding", board, board, _facade_point(band, side, plank_z, -0.55, roof), "roof_landing")
+
+
+# A plank must clear heads at its uphill end, not just its middle.
+func _highest_street(lane: int, z: float) -> float:
+	return maxf(_street_at(lane, z - 0.75).y, _street_at(lane, z + 0.75).y)
+
+
+func _plank_top(y: float, roof: float, ground: float) -> float:
+	return maxf(roof - MAX_CLIMB_HOP, maxf(y, ground) + HEADROOM)
+
+
+func _block_top(y: float, roof: float, plank_ground: float, ground: float) -> float:
+	return maxf(_plank_top(y, roof, plank_ground) - MAX_CLIMB_HOP, ground + 0.5)
+
+
+# Sealed houses: a block and one overhead ledge climb from the rear lane to a top-floor window.
+func _rear_window_climb(parent: Node3D, band: int, side: float, z: float, direction: float, y: float, lane: int) -> void:
+	var house := String(parent.get_parent().name)
+	var sill := y + 0.24
+	_window_ledge(parent, band, side, z, y, sill, 0.82)
+	var window := _facade_point(band, side, z, 0.52, sill)
+	_walk_link(house + "RearWindowIn", window, _facade_point(band, side, z, -1.22, y))
+	var ledge_z := z + direction * HOP
+	var ledge := maxf(sill - MAX_CLIMB_HOP, _highest_street(lane, ledge_z) + HEADROOM)
+	_facade_box(parent, "ClimbLedge", band, side, ledge_z, 0.62, 0.0, 0.82, ledge - 0.18, ledge, "wood")
+	var point := _facade_point(band, side, ledge_z, 0.52, ledge)
+	_jump_link(house + "RearWindow", point, point, window, "roof_parkour")
+	var block_z := z + direction * HOP * 2.0
+	_street_block(parent, "Rear", band, side, block_z, direction, lane, maxf(ledge - MAX_CLIMB_HOP, _street_at(lane, block_z).y + 0.5), point)
 
 
 func _garden(parent: Node3D, band: int, z0: float, z1: float, y: float, wall: float, side: float, at: float) -> void:
@@ -925,6 +1024,17 @@ func _roof_height(house: Dictionary) -> float:
 	return house.base + house.spacing * house.spec[3]
 
 
+# WHY: these two lanes bend too sharply for a street block, so their roofs are reached by jumping from next door.
+func _neighbour_roof_link(house: String, neighbour: String) -> void:
+	var lot: Dictionary = _houses[house]
+	var edge := float(lot.spec[2])
+	# WHY: a standing hop from the edge. A running jump down carries the mage clean across a one-storey roof.
+	var start := _plot_point(lot.band, 0.5, _roof_height(_houses[neighbour]), edge + 0.45)
+	var takeoff := start
+	var land := Vector3(start.x, _roof_height(lot), edge - 0.6)
+	_jump_link(house + "RoofLanding", start, takeoff, land, "roof_landing")
+
+
 func _loft_link(label: String, neighbour: String, z: float) -> void:
 	var loft: Dictionary = _houses[label]
 	var approach: Dictionary = _houses[neighbour]
@@ -948,7 +1058,7 @@ func _spawn_points() -> void:
 	var groups := {
 		"villager_spawn": [[-20, 34], [-13, 34], [-6.4, 34.5], [-2, 33.5], [9, 34], [17, 34],
 			[0, 12], [1, 8], [2, 13], [1, -23], [0, -36], [2, -42]],
-		"mage_spawn": [[-5.2, 34.9], [1, -49]],
+		"mage_spawn": [[-5.2, 34.9], [1, -49], [3.5, 34.9], [2, -48]],
 		"chicken_spawn": [[-22, 34], [-13.5, 34], [-5, 34], [10, 34], [23, 34],
 			[0, 5], [1, 11], [1, -4], [2, 9], [0, -25], [1, -23], [2, -16], [0, -46], [2, -45]],
 		"item_spawn": [[-23, 34], [-16, 34], [-8, 34], [-2, 34], [22, 34],

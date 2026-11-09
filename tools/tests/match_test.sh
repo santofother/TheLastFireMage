@@ -9,7 +9,7 @@ cleanup() { for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null || true; done; }
 trap cleanup EXIT
 mkdir -p "$OUT"
 echo "Logs: $OUT"
-for scenario in ${MATCH_CASES:-timeout all_dead mage_died mage_left late_join}; do
+for scenario in ${MATCH_CASES:-timeout all_dead mage_died mage_left late_join two_mages}; do
 	port="${PORT:-$((20000 + RANDOM % 20000))}"
 	common=(--headless --path "$ROOT/the-last-fire-mage" res://game/match/tests/match_test.tscn -- --no-steam "--port=$port" "--match-case=$scenario" --map=res://game/map/test_arena.tscn)
 	tune="match.role_reveal_time=0.5,match.head_start_time=0.6,match.hunt_time=3,match.results_time=0.5"
@@ -18,6 +18,7 @@ for scenario in ${MATCH_CASES:-timeout all_dead mage_died mage_left late_join}; 
 	if [ "$scenario" = mage_left ]; then auto=(); fi
 	if [ "$scenario" = all_dead ]; then auto=(--autostart --autostart-players=3); fi
 	if [ "$scenario" = late_join ]; then auto=(--autostart --autostart-players=2 --mage-id=1); fi
+	if [ "$scenario" = two_mages ]; then auto=(--autostart --autostart-players=3 --mage-id=1 --mage-count=2); fi
 	"$GODOT" "${common[@]}" "--tune=$tune" --host --name=Host "${auto[@]}" >"$OUT/$scenario-host.log" 2>&1 & pids=("$!")
 	sleep 0.6
 	"$GODOT" "${common[@]}" --join=127.0.0.1 --name=C1 >"$OUT/$scenario-c1.log" 2>&1 & pids+=("$!")

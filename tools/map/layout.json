@@ -1,6 +1,7 @@
 {
-  "version": "salmara-party-walls-v4",
-  "tall_roof_stairs": ["Dyeworks", "WatchHouse"],
+  "version": "salmara-party-walls-v5",
+  "sealed_doors": ["WoolHouse", "FishHall", "Coopers"],
+  "roof_from_neighbour": {"Fishers": "Netmakers", "Porters": "FishHall"},
   "footprint": [74, 142],
   "palette": {
     "cliff": [0.39, 0.39, 0.39],
