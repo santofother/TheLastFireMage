@@ -19,22 +19,22 @@ func _render() -> void:
 	env.background_color = Color(0.21, 0.30, 0.34)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.95, 0.89, 0.79)
-	env.ambient_light_energy = 0.7
+	env.ambient_light_energy = 0.57
 	environment.environment = env
 	world.add_child(environment)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, -30, 0)
-	sun.light_energy = 1.2
+	sun.light_energy = 0.95
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 300
 	world.add_child(sun)
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 140
+	camera.size = 128
 	camera.far = 600
 	world.add_child(camera)
-	camera.position = Vector3(95, 150, 145)
-	camera.look_at(Vector3(0, 0, -2))
+	camera.position = Vector3(78, 110, 145)
+	camera.look_at(Vector3(0, 0, 2))
 	camera.current = true
 	for i in 8:
 		await process_frame

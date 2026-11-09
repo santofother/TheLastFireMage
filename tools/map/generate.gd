@@ -9,6 +9,14 @@ var _materials: Dictionary = {}
 var _meshes: Dictionary = {}
 var _shapes: Dictionary = {}
 var _layout: Dictionary
+var _coastal: Node3D
+const WALL := 0.22
+const STOREY := 2.7
+const DOOR := 1.48
+const DOOR_TOP := 2.02
+const STAIR_WIDTH := 1.72
+const STAIR_START := -2.55
+const STAIR_END := 2.15
 
 
 func _initialize() -> void:
@@ -32,40 +40,21 @@ func _generate() -> void:
 	_region = NavigationRegion3D.new()
 	_region.name = "ChickenNavigation"
 	_add(_town, _region)
-	var size := Vector2(_layout.footprint[0], _layout.footprint[1])
-	_box(_region, "TownFoundation", Vector3(0, -0.6, -2), Vector3(size.x, 1.2, size.y - 4), "paving")
-	# WHY: sea is visual only; a low quay barrier contains actors without an invisible wall.
-	var half := size / 2
-	_visual(_town, "Sea", Vector3(0, -1.4, half.y + 6), Vector3(size.x + 20, 0.2, 24), "sea")
-	_box(_region, "NorthBoundary", Vector3(0, 2, -half.y + 0.5), Vector3(size.x, 4, 1), "stone")
-	for side in [-1, 1]:
-		_box(_region, "Boundary%d" % side, Vector3(side * (half.x - 0.5), 2, -2), Vector3(1, 4, size.y - 6), "stone")
-	# The foundation itself is the quay; a second flush slab caused coplanar flicker.
-	_box(_region, "QuayWallWest", Vector3(-9, 0.65, 47.5), Vector3(86, 1.3, 1), "stone")
-	_box(_region, "QuayWallEast", Vector3(47, 0.65, 47.5), Vector3(10, 1.3, 1), "stone")
+	_ground()
 	for district: Dictionary in _layout.districts:
-		_district(district)
-	for landmark: Dictionary in _layout.landmarks:
-		var s := _v(landmark.size)
-		var node := _box(_region, landmark.name, _v(landmark.position) + Vector3(0, s.y / 2, 0), s, landmark.colour)
-		node.add_to_group("map_landmark", true)
-		if landmark.name == "Mole":
-			_box(_region, "MoleWestRail", Vector3(34.2, 0.85, 49), Vector3(0.4, 1.1, 6), "stone")
-			_box(_region, "MoleEastRail", Vector3(41.8, 0.85, 49), Vector3(0.4, 1.1, 6), "stone")
-			_box(_region, "MoleEndRail", Vector3(38, 0.85, 51.8), Vector3(7.2, 1.1, 0.4), "stone")
-	for nook: Dictionary in _layout.nooks:
-		var p := _v(nook.position)
-		var node := Node3D.new()
-		node.name = nook.name
-		node.position = p
-		node.add_to_group("map_nook", true)
-		_add(_region, node)
-		_box(node, "Back", Vector3(-nook.opening * 1.5, 1.2, 0), Vector3(0.4, 2.4, 3.6), "stone")
-		_box(node, "SideN", Vector3(0, 1.2, -2), Vector3(3.4, 2.4, 0.4), "stone")
-		_box(node, "SideS", Vector3(0, 1.2, 2), Vector3(3.4, 2.4, 0.4), "stone")
-	for p: Array in _layout.mantle_ledges:
-		var ledge := _box(_region, "MantleLedge%d" % _region.get_child_count(), _v(p) + Vector3(0, 0.8, 0), Vector3(2, 1.6, 2), "stone")
-		ledge.add_to_group("map_mantle_ledge", true)
+		var neighbourhood := _container(_region, district.name, Vector3.ZERO, "map_district")
+		for house: Array in district.houses:
+			_house(neighbourhood, house)
+	_street(_layout.spine, 3.2, "paving")
+	var spine := _container(_town, "MainStreet", Vector3.ZERO)
+	for point: Array in _layout.spine:
+		_marker(spine, "Bend%02d" % spine.get_child_count(),
+			Vector3(point[0], _ground_y(point[1]), point[1]), "map_main_street")
+	for lane: Array in _layout.lanes:
+		_street(lane, 1.55, "paving")
+	_landmarks()
+	_waterfront()
+	_routes()
 	var hide_scene := load("res://game/interact/hide_spot.tscn") as PackedScene
 	for i in _layout.hide_spots.size():
 		var spot := hide_scene.instantiate() as Node3D
@@ -103,142 +92,6 @@ func _generate() -> void:
 		result = ResourceSaver.save(scene, "res://game/map/town.tscn")
 	print("[Map] Generated town: %d nav polygons, save result %d" % [nav.get_polygon_count(), result])
 	quit(0 if result == OK else 1)
-
-
-func _district(data: Dictionary) -> void:
-	var district := Node3D.new()
-	district.name = data.name
-	district.add_to_group("map_district", true)
-	_add(_region, district)
-	var buildings: Dictionary = {}
-	for i in data.buildings.size():
-		var spec: Dictionary = data.buildings[i]
-		var building := Node3D.new()
-		building.name = spec.name
-		building.position = _v(spec.position)
-		building.rotation.y = deg_to_rad(float(spec.yaw))
-		building.add_to_group("map_house", true)
-		building.set_meta("parkour_only", spec.parkour_only)
-		building.set_meta("storeys", int(spec.storeys))
-		_add(district, building)
-		var dimensions: Dictionary = _layout.house.duplicate()
-		dimensions.width = spec.width
-		dimensions.depth = spec.depth
-		for level in int(spec.storeys):
-			var floor_node := _house(building, "Storey%d" % level, Vector3(0, level * 3.6, 0), 3.6, i + level, dimensions, not (spec.parkour_only and level == 0), level == int(spec.storeys) - 1, spec.colour)
-			# Alternating stair sides leave the next flight's foot on a solid floor.
-			floor_node.rotation.y = PI if level % 2 else 0.0
-			floor_node.set_meta("parkour_only", spec.parkour_only and level > 0)
-		buildings[spec.name] = building
-	for route: Dictionary in data.parkour_routes:
-		_parkour_route(district, buildings[route.source], buildings[route.target], float(route.gap))
-
-
-func _parkour_route(parent: Node3D, source: Node3D, target: Node3D, gap: float) -> void:
-	# A broken catwalk leads from a neighbouring roof into the upper doorway.
-	# There is deliberately no staircase from the target's ground room.
-	var a := source.to_global(Vector3(0, 3.6, float(source.get_node("Storey0").get_meta("depth")) / 2 - 0.8))
-	var target_room := target.get_node("Storey1") as Node3D
-	var depth: float = target_room.get_meta("depth")
-	var b := target_room.to_global(Vector3(0, 0, depth / 2 - 0.6))
-	var direction := (b - a).normalized()
-	var middle := (a + b) / 2
-	var takeoff := middle - direction * gap / 2
-	var landing := middle + direction * gap / 2
-	_bridge(parent, "Approach" + target.name, a, takeoff)
-	_bridge(parent, "Balcony" + target.name, landing, b)
-	var marker := Marker3D.new()
-	marker.name = "JumpTo" + target.name
-	marker.position = middle
-	marker.set_meta("gap_metres", gap)
-	marker.set_meta("takeoff", takeoff - direction * 0.5)
-	marker.set_meta("landing", landing + direction * 0.7)
-	marker.set_meta("target", target.name)
-	marker.add_to_group("map_roof_gap", true)
-	_add(parent, marker)
-
-
-func _bridge(parent: Node3D, label: String, a: Vector3, b: Vector3) -> void:
-	var delta := b - a
-	var bridge := _box(parent, label, (a + b) / 2 + Vector3(0, -0.06, 0), Vector3(1.8, 0.2, delta.length()), "wood")
-	bridge.rotation.y = atan2(delta.x, delta.z)
-	bridge.add_to_group("map_roof_plank", true)
-
-
-func _house(parent: Node3D, label: String, pos: Vector3, top: float, variant: int, h: Dictionary, stairs: bool, top_floor: bool, colour: String) -> Node3D:
-	var w := float(h.width)
-	var d := float(h.depth)
-	var wall_top := top - 0.2
-	var door := float(h.door_width)
-	var door_height := float(h.door_height)
-	var house := Node3D.new()
-	house.name = label
-	house.position = pos
-	house.set_meta("roof_height", top)
-	house.add_to_group("map_storey", true)
-	house.set_meta("depth", d)
-	house.set_meta("width", w)
-	house.set_meta("stairs", stairs)
-	_add(parent, house)
-	_box(house, "WestWall", Vector3(-w / 2 + 0.2, wall_top / 2, 0), Vector3(0.4, wall_top, d - 0.8), colour)
-	_box(house, "EastWall", Vector3(w / 2 - 0.2, wall_top / 2, 0), Vector3(0.4, wall_top, d - 0.8), colour)
-	for side in [-1, 1]:
-		var z: float = side * (d / 2 - 0.2)
-		for lr in [-1, 1]:
-			_box(house, "DoorWing%d_%d" % [side, lr], Vector3(lr * (w + door) / 4, wall_top / 2, z), Vector3((w - door) / 2, wall_top, 0.4), colour)
-		_box(house, "Lintel%d" % side, Vector3(0, (wall_top + door_height) / 2, z), Vector3(door, wall_top - door_height, 0.4), colour)
-		var exit_marker := Marker3D.new()
-		exit_marker.name = "Door%d" % side
-		exit_marker.position = Vector3(0, 0.1, side * (d / 2 + 1))
-		exit_marker.add_to_group("map_house_exit", true)
-		_add(house, exit_marker)
-	if stairs:
-		# An open stairwell avoids the ceiling cutting off the last few stair treads.
-		var stair_x := -w / 2 + 0.4 + float(h.stair_width) / 2
-		var roof_left := -w / 2 + 0.4 + float(h.stair_width)
-		_box(house, "Roof", Vector3((roof_left + w / 2) / 2, top - 0.1, 0), Vector3(w / 2 - roof_left, 0.2, d), "roof")
-		_box(house, "StairLanding", Vector3(stair_x, top - 0.1, d / 2 - 1.3), Vector3(h.stair_width, 0.2, 2.6), "roof")
-		var steps := roundi(top / float(h.stair_rise))
-		# End treads at the landing edge instead of drawing through its top.
-		var run := (d - 3.2) / steps
-		for step in steps:
-			var rise := (step + 1) * float(h.stair_rise)
-			_visual(house, "Stair%02d" % step, Vector3(stair_x, rise / 2, -d / 2 + 0.6 + (step + 0.5) * run), Vector3(h.stair_width, rise, run), "stone")
-		# WHY: a smooth collision wedge prevents CharacterBody3D snagging on every riser.
-		var ramp := StaticBody3D.new()
-		ramp.name = "StairRamp"
-		ramp.collision_layer = 1
-		ramp.collision_mask = 0
-		ramp.add_to_group("map_stair_ramp", true)
-		_add(house, ramp)
-		var wedge := ConvexPolygonShape3D.new()
-		var x0 := stair_x - float(h.stair_width) / 2
-		var x1 := stair_x + float(h.stair_width) / 2
-		var z0 := -d / 2 + 0.6
-		var z1 := z0 + steps * run
-		wedge.points = PackedVector3Array([Vector3(x0, 0, z0), Vector3(x1, 0, z0),
-			Vector3(x0, 0, z1), Vector3(x1, 0, z1), Vector3(x0, top, z1), Vector3(x1, top, z1)])
-		var ramp_collision := CollisionShape3D.new()
-		ramp_collision.name = "Collision"
-		ramp_collision.shape = wedge
-		_add(ramp, ramp_collision)
-		var route := Marker3D.new()
-		route.name = "RoofAccess"
-		route.position = Vector3(stair_x, top, -d / 2 + 0.6 + steps * run + 0.3)
-		route.add_to_group("map_roof_access", true)
-		_add(house, route)
-	else:
-		_box(house, "Roof", Vector3(0, top - 0.1, 0), Vector3(w, 0.2, d), "roof")
-	# Low pitched roof sections preserve a walkable terrace around the stair and bridges.
-	if top_floor and variant % 3 != 0:
-		for side in [-1, 1]:
-			var cap := _box(house, "RoofPitch%d" % side, Vector3(1.4 + side * 0.7, top + 0.4, 0), Vector3(1.5, 0.16, 3.6), "roof")
-			cap.rotation.z = -side * deg_to_rad(25)
-	for side in [-1, 1]:
-		_visual(house, "Shutter%d" % side, Vector3(w / 2 - 1.3, 1.8, side * (d / 2 + 0.04)), Vector3(1.1, 1.1, 0.08), "wood")
-		if variant % 2 == 0:
-			_visual(house, "Banner%d" % side, Vector3(-1.8, wall_top - 0.8, side * (d / 2 + 0.06)), Vector3(0.6, 1.2, 0.08), "purple")
-	return house
 
 
 func _add(parent: Node, node: Node) -> void:
@@ -282,3 +135,435 @@ func _box(parent: Node3D, label: String, pos: Vector3, size: Vector3, colour: St
 
 func _v(values: Array) -> Vector3:
 	return Vector3(values[0], values[1], values[2])
+
+
+func _container(parent: Node3D, label: String, pos: Vector3, group: String = "") -> Node3D:
+	var node := Node3D.new()
+	node.name = label
+	node.position = pos
+	_add(parent, node)
+	if not group.is_empty():
+		node.add_to_group(group, true)
+	return node
+
+
+func _marker(parent: Node3D, label: String, pos: Vector3, group: String) -> Marker3D:
+	var node := Marker3D.new()
+	node.name = label
+	node.position = pos
+	node.add_to_group(group, true)
+	_add(parent, node)
+	return node
+
+
+func _ground_y(z: float) -> float:
+	var bands: Array = _layout.terrain
+	for i in range(1, bands.size()):
+		var a: Array = bands[i - 1]
+		var b: Array = bands[i]
+		if z <= b[0]:
+			return lerpf(a[1], b[1], clampf(inverse_lerp(a[0], b[0], z), 0, 1))
+	return bands[-1][1]
+
+
+func _ground() -> void:
+	var land := _container(_region, "Hillside", Vector3.ZERO)
+	var bands: Array = _layout.terrain
+	var half := float(_layout.footprint[0]) / 2
+	for i in range(1, bands.size()):
+		var a: Array = bands[i - 1]
+		var b: Array = bands[i]
+		_wedge(land, "Slope%d" % i, -half, half, Vector2(a[0], a[1]), Vector2(b[0], b[1]), -2.9, "earth")
+		for side in [-1, 1]:
+			var x := half * float(side)
+			_wedge(land, "Ridge%d_%d" % [i, side], x - 0.55, x + 0.55,
+				Vector2(a[0] + (0.55 if i == 1 else 0.0), a[1] + 4.4), Vector2(b[0], b[1] + 4.4), -2.9, "cliff")
+	_box(land, "NorthRidge", Vector3(0, 6.3, bands[0][0]), Vector3(2 * half + 1.1, 9.6, 1.1), "cliff")
+
+
+func _street(points: Array, width: float, colour: String) -> void:
+	var mesh := SurfaceTool.new()
+	mesh.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(1, points.size()):
+		var a := Vector2(points[i - 1][0], points[i - 1][1])
+		var b := Vector2(points[i][0], points[i][1])
+		var steps := ceili(a.distance_to(b) / 0.3)
+		var across := (b - a).normalized().orthogonal() * width / 2
+		for j in steps:
+			var p := a.lerp(b, float(j) / steps)
+			var q := a.lerp(b, float(j + 1) / steps)
+			for point: Vector2 in [p + across, p - across, q - across, p + across, q - across, q + across]:
+				mesh.add_vertex(Vector3(point.x, _ground_y(point.y) + (0.032 if colour == "square" else 0.023), point.y))
+	mesh.generate_normals()
+	var strip := MeshInstance3D.new()
+	strip.mesh = mesh.commit()
+	strip.material_override = _materials[colour]
+	strip.material_override.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_add(_region, strip)
+
+
+func _landmarks() -> void:
+	for plaza: Array in _layout.plazas:
+		var p := Vector3(plaza[1], _ground_y(plaza[2]), plaza[2])
+		var node := _container(_region, plaza[0], p, "map_landmark")
+		_street([[plaza[1], plaza[2] - plaza[4] / 2.0], [plaza[1], plaza[2] + plaza[4] / 2.0]], plaza[3], "square")
+		match plaza[0]:
+			"FishMarket":
+				for side in [-1, 1]:
+					_box(node, "StallLeg", Vector3(side * 1.48, 1.08, 0), Vector3(0.18, 2.16, 0.20), "wood")
+				_box(node, "StallAwning", Vector3(0, 2.25, 0), Vector3(3.35, 0.18, 1.65), "indigo")
+				_box(node, "FishCounter", Vector3(0, 0.36, 0), Vector3(1.8, 0.72, 0.75), "wood")
+			"CisternSquare":
+				_round_platform(node, "Cistern", 1.1, -0.48, 0.8, "stone")
+				_round_platform(node, "Rim", 1.23, 0.8, 0.98, "ashlar")
+			"ChapelSquare":
+				_round_platform(node, "Plinth", 1.35, -0.1, 0.55, "stone")
+				_box(node, "Pillar", Vector3(0, 1.39, 0), Vector3(0.53, 1.68, 0.53), "ashlar")
+				_box(node, "Cap", Vector3(0, 2.29, 0), Vector3(0.74, 0.12, 0.74), "ochre")
+	for bed: Array in _layout.gardens:
+		_planter(_region, Vector3(bed[0], _ground_y(bed[1]), bed[1]), Vector2(bed[2], bed[3]))
+	for spec: Array in _layout.nooks:
+		var p := Vector3(spec[1], _ground_y(spec[2]), spec[2])
+		var nook := _container(_region, spec[0], p, "map_nook")
+		nook.rotation_degrees.y = spec[3]
+		_box(nook, "Back", Vector3(0, 1.15, -1.55), Vector3(3.35, 2.3, 0.30), "stone")
+		for side in [-1, 1]:
+			_box(nook, "Side%d" % side, Vector3(side * 1.52, 1.15, 0.15), Vector3(0.30, 2.3, 3.1), "stone")
+
+
+func _round_platform(parent: Node3D, label: String, radius: float, bottom: float, top: float, colour: String) -> void:
+	var points := PackedVector3Array()
+	for y: float in [bottom, top]:
+		for i in 12:
+			var angle := TAU * i / 12.0
+			points.append(Vector3(radius * cos(angle), y, radius * sin(angle)))
+	_solid(parent, label, points, colour)
+
+
+func _planter(parent: Node3D, p: Vector3, size: Vector2) -> void:
+	_box(parent, "Bed", p + Vector3(0, 0.18, 0), Vector3(size.x, 0.36, size.y), "stone")
+	_visual(parent, "Planting", p + Vector3(0, 0.365, 0), Vector3(size.x - 0.16, 0.025, size.y - 0.16), "garden")
+
+
+func _house(parent: Node3D, spec: Array) -> void:
+	var style: Dictionary = _layout.templates[spec[1]]
+	var x := float(spec[2])
+	var z := float(spec[3])
+	var levels := int(spec[4])
+	var opts: Dictionary = spec[7] if spec.size() > 7 else {}
+	var w := float(style.width)
+	var d := float(style.depth)
+	var sealed := int(opts.get("window_floor", -1))
+	var house := _container(parent, spec[0], Vector3(x, _ground_y(z), z), "map_house")
+	house.rotation_degrees.y = float(spec[5])
+	house.set_meta("template", spec[1])
+	house.set_meta("storeys", levels)
+	for level in levels:
+		var h := float(opts.get("top_height", STOREY)) if level == levels - 1 else STOREY
+		var floor := _container(house, "Storey%d" % level, Vector3(0, level * STOREY, 0), "map_storey")
+		var stairs: bool = level + 1 != sealed and (level != sealed or level < levels - 1)
+		var stair_x := (-1 if level % 2 == 0 and level != sealed and spec[1] != "court" else 1) * (w / 2 - WALL - STAIR_WIDTH / 2)
+		var arcade: bool = spec[1] == "passage" and level == 0
+		var across := 0.0 if arcade else (1.65 if spec[1] == "court" else 0.0)
+		var upper_door: bool = spec[1] == "through" and level == 1
+		_facade(floor, "Front", d / 2, w, h, spec[6], level == 0, across)
+		_facade(floor, "Back", -d / 2, w, h, spec[6], arcade or upper_door)
+		for side in [-1, 1]:
+			var face := _container(floor, "Side%d" % side, Vector3(side * (w - WALL) / 2, 0, 0))
+			face.rotation.y = PI / 2
+			var opening: bool = side == -1 and level == sealed
+			var sill := float(opts.get("sill", 0.58))
+			var window_x := -float(opts.get("window_z", 0.0))
+			_wall(face, d - WALL * 2, h - 0.16, spec[6],
+				[window_x, 1.72, sill, h - 0.20] if opening else [])
+			if opening:
+				_trim(face, window_x, 1.72, sill, h - 0.20, "open_window")
+				_box(face, "VaultSill", Vector3(window_x, sill / 2, 0), Vector3(1.72, sill, 0.96), "open_window")
+			else:
+				_shutter(face, -2.1, h)
+				_shutter(face, 2.1, h)
+		if arcade:
+			for side in [-1, 1]:
+				var shop := _container(floor, "ShopWall%d" % side, Vector3(side * 1.25, 0, 0))
+				shop.rotation.y = PI / 2
+				_wall(shop, d - 2 * WALL, h - 0.16, "stone", [0.0, DOOR, 0.0, DOOR_TOP])
+				_marker(shop, "ShopDoor", Vector3.ZERO, "map_room_opening")
+		elif spec[1] == "court" and level == 0:
+			var court := _container(floor, "CourtWall", Vector3.ZERO)
+			court.rotation.y = PI / 2
+			_wall(court, d - 2 * WALL, h - 0.16, "stone", [0.0, DOOR, 0.0, DOOR_TOP])
+			_marker(court, "CourtDoor", Vector3.ZERO, "map_room_opening")
+			_planter(floor, Vector3(-w / 4, 0, -1.7), Vector2(2.8, 2.8))
+		else:
+			var core := STAIR_WIDTH if stairs or (level > 0 and level != sealed) else 0.0
+			var partition := _container(floor, "RoomDivider", Vector3(0, 0, -1.95 if level == sealed else 0.0))
+			_wall(partition, w - 2 * WALL - 2 * core, h - 0.16, "interior", [0.0, DOOR, 0.0, DOOR_TOP])
+			_marker(partition, "RoomDoor", Vector3.ZERO, "map_room_opening")
+		if stairs:
+			_stairs(floor, "Stairs", Vector3(stair_x, 0, STAIR_START), STAIR_WIDTH, STAIR_END - STAIR_START, h)
+			# Courtyards leave the west half open to the sky.
+			var west := 0.0 if spec[1] == "court" and level == 0 else -w / 2
+			_cut_deck(floor, west, w / 2, d, h, stair_x, STAIR_WIDTH, STAIR_START - 0.12, STAIR_END, level == levels - 1)
+		else:
+			_deck(floor, "Ceiling", -w / 2, w / 2, -d / 2, d / 2, h, "roof" if level == levels - 1 else "interior")
+	if spec[0] == "Chapel":
+		var roof_y := levels * STOREY
+		_box(house, "BellCrown", Vector3(0.6, roof_y + 0.53, 0.3), Vector3(1.9, 1.06, 1.9), "stone")
+		_box(house, "Cornice", Vector3(0.6, roof_y + 1.12, 0.3), Vector3(2.04, 0.12, 2.04), "roof")
+		_visual(house, "ChapelBanner", Vector3(0, roof_y - 1.22, d / 2 + 0.02), Vector3(0.82, 1.6, 0.055), "indigo")
+	if spec[1] == "through":
+		var end_z := float(opts.upper_lane_z)
+		var bridge := _container(_region, "UpperWalk" + house.name, Vector3(x, 0, 0))
+		_wedge(bridge, "RetainingWalk", -1.25, 1.25, Vector2(z - d / 2, house.position.y + STOREY),
+			Vector2(end_z, _ground_y(end_z)), house.position.y - 0.2, "stone")
+
+
+func _facade(floor: Node3D, label: String, z: float, width: float, h: float, colour: String, door: bool, x: float = 0.0) -> void:
+	var face := _container(floor, label, Vector3(0, 0, z - signf(z) * WALL / 2))
+	var cut := [x, DOOR, 0.0, DOOR_TOP] if door else []
+	if floor.get_parent().get_meta("template") == "passage" and floor.name == "Storey0":
+		cut = [0.0, 2.28, 0.0, h - 0.2]
+	_wall(face, width, h - 0.16, colour, cut)
+	_shutter(face, -width / 2 + 1.52, h)
+	_shutter(face, width / 2 - 1.52, h)
+	if door:
+		var entry := _marker(floor, label + "Door", Vector3(x, 0, z), "map_house_exit")
+		entry.rotation.y = 0 if z > 0 else PI
+
+
+func _wall(parent: Node3D, width: float, h: float, colour: String, hole: Array) -> void:
+	if hole.is_empty():
+		_wall_piece(parent, "Wall", -width / 2, width / 2, 0, h, colour)
+		return
+	var left := float(hole[0]) - float(hole[1]) / 2
+	var right := left + float(hole[1])
+	_wall_piece(parent, "Left", -width / 2, left, 0, h, colour)
+	_wall_piece(parent, "Right", right, width / 2, 0, h, colour)
+	_wall_piece(parent, "Below", left, right, 0, hole[2], colour)
+	_wall_piece(parent, "Header", left, right, hole[3], h, colour)
+
+
+func _wall_piece(parent: Node3D, label: String, left: float, right: float, bottom: float, top: float, colour: String) -> void:
+	if right > left and top > bottom:
+		_box(parent, label, Vector3((left + right) / 2, (bottom + top) / 2, 0),
+			Vector3(right - left, top - bottom, WALL), colour)
+
+
+func _trim(parent: Node3D, x: float, w: float, bottom: float, top: float, colour: String) -> void:
+	for side in [-1, 1]:
+		_visual(parent, "Jamb", Vector3(x + side * (w / 2 + 0.045), (top + bottom) / 2, 0),
+			Vector3(0.09, top - bottom, WALL + 0.07), colour)
+	_visual(parent, "HeaderTrim", Vector3(x, top + 0.015, 0), Vector3(w + 0.18, 0.08, WALL + 0.07), colour)
+
+
+func _shutter(parent: Node3D, x: float, height: float) -> void:
+	var bottom := minf(0.91, height - 1.2)
+	_trim(parent, x, 0.82, bottom, bottom + 0.88, "trim")
+	_visual(parent, "Shutter", Vector3(x, bottom + 0.44, 0), Vector3(0.82, 0.88, WALL + 0.045), "shutter")
+
+
+func _deck(parent: Node3D, label: String, x0: float, x1: float, z0: float, z1: float, y: float, colour: String) -> void:
+	_box(parent, label, Vector3((x0 + x1) / 2, y - 0.08, (z0 + z1) / 2), Vector3(x1 - x0, 0.16, z1 - z0), colour)
+
+
+func _cut_deck(parent: Node3D, west: float, east: float, d: float, h: float, sx: float, sw: float, z0: float, z1: float, roof: bool) -> void:
+	var colour := "roof" if roof else "interior"
+	var left := sx - sw / 2
+	var right := sx + sw / 2
+	_deck(parent, "DeckWest", west, left, -d / 2, d / 2, h, colour)
+	_deck(parent, "DeckEast", right, east, -d / 2, d / 2, h, colour)
+	_deck(parent, "FootLanding", left, right, -d / 2, z0, h, colour)
+	_deck(parent, "TopLanding", left, right, z1, d / 2, h, colour)
+
+
+func _stairs(parent: Node3D, label: String, pos: Vector3, width: float, run: float, rise: float) -> void:
+	var stair := _container(parent, label, pos, "map_stair_ramp")
+	_wedge(stair, "WalkableRamp", -width / 2, width / 2, Vector2.ZERO, Vector2(run, rise), -0.1, "")
+	var steps := ceili(absf(rise) / 0.16)
+	var tread := run / steps
+	for i in steps:
+		var top := rise * (float(i) + 0.5) / steps
+		_visual(stair, "Tread%02d" % i, Vector3(0, top - 0.10, (i + 0.5) * tread),
+			Vector3(width, 0.2, tread), "stone")
+	_marker(stair, "Foot", Vector3(0, 0, -0.65), "map_stair_end")
+	_marker(stair, "Landing", Vector3(0, rise, run + 0.65), "map_stair_end")
+
+
+func _wedge(parent: Node3D, label: String, x0: float, x1: float, a: Vector2, b: Vector2, bottom: float, colour: String) -> void:
+	_prism(parent, label, PackedVector2Array([Vector2(a.x, bottom), Vector2(b.x, bottom), b, a]), x0, x1, colour)
+
+
+# Convex cross section in (z, y), extruded along x. Also used for the arch voussoirs.
+func _prism(parent: Node3D, label: String, section: PackedVector2Array, x0: float, x1: float, colour: String) -> void:
+	var points := PackedVector3Array()
+	for x: float in [x0, x1]:
+		for p in section:
+			points.append(Vector3(x, p.y, p.x))
+	_solid(parent, label, points, colour)
+
+
+func _solid(parent: Node3D, label: String, points: PackedVector3Array, colour: String) -> void:
+	var body := StaticBody3D.new()
+	body.name = label
+	body.collision_mask = 0
+	_add(parent, body)
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = points
+	var collider := CollisionShape3D.new()
+	collider.shape = shape
+	_add(body, collider)
+	if not colour.is_empty():
+		_convex_visual(body, points, colour)
+
+
+func _convex_visual(parent: Node3D, points: PackedVector3Array, colour: String) -> void:
+	# Input vertices are two matching rings. Flat faces keep neighbouring sand and stone pieces seamless.
+	var mesh := SurfaceTool.new()
+	mesh.begin(Mesh.PRIMITIVE_TRIANGLES)
+	mesh.set_smooth_group(-1)
+	var count := points.size() / 2
+	var centre := Vector3.ZERO
+	for p in points:
+		centre += p / float(points.size())
+	for i in range(1, count - 1):
+		_triangle(mesh, points[0], points[i], points[i + 1], centre)
+		_triangle(mesh, points[count], points[count + i], points[count + i + 1], centre)
+	for i in count:
+		var j := (i + 1) % count
+		_triangle(mesh, points[i], points[j], points[j + count], centre)
+		_triangle(mesh, points[i], points[j + count], points[i + count], centre)
+	mesh.generate_normals()
+	var visual := MeshInstance3D.new()
+	visual.mesh = mesh.commit()
+	visual.material_override = _materials[colour]
+	_add(parent, visual)
+
+
+func _triangle(mesh: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, centre: Vector3) -> void:
+	var flip := (c - a).cross(b - a).dot(a - centre) < 0
+	mesh.add_vertex(a)
+	mesh.add_vertex(c if flip else b)
+	mesh.add_vertex(b if flip else c)
+
+
+func _waterfront() -> void:
+	var data: Dictionary = _layout.waterfront
+	_coastal = _container(_region, "Waterfront", Vector3.ZERO, "map_landmark")
+	var quay: Array = data.quay
+	var pier: Array = data.pier
+	var bed := float(data.bed)
+	_box(_town, "RecoveryShelf", Vector3(0, bed - 0.35, 51.5), Vector3(65, 0.7, 31), "seabed")
+	var water := _visual(_town, "Sea", Vector3(0, data.water - 0.05, 0), Vector3(650, 0.1, 650), "sea")
+	var sea := water.mesh.surface_get_material(0) as StandardMaterial3D
+	sea.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sea.albedo_color.a = 0.78
+	_box(_coastal, "QuayDeck", Vector3((quay[0] + quay[1]) / 2.0, -0.22, (quay[2] + quay[3]) / 2.0),
+		Vector3(quay[1] - quay[0], 0.44, quay[3] - quay[2]), "paving")
+	_box(_coastal, "DockDeck", Vector3((pier[0] + pier[1]) / 2.0, -0.22, (quay[3] + pier[2]) / 2.0),
+		Vector3(pier[1] - pier[0], 0.44, pier[2] - quay[3]), "paving")
+	var seafront := _container(_coastal, "QuayArcade", Vector3(0, 0, quay[3] - 0.76))
+	seafront.rotation.y = PI / 2
+	var span := 3.2
+	var bays := floori((quay[1] - quay[0]) / span)
+	span = (quay[1] - quay[0]) / bays
+	for i in bays:
+		_arch(seafront, quay[0] + (i + 0.5) * span, span, 0.95, bed)
+	span = (pier[2] - quay[3]) / 6
+	for x: float in [pier[0] + 0.65, pier[1] - 0.65]:
+		var arcade := _container(_coastal, "DockArcade", Vector3(x, 0, 0))
+		for i in 6:
+			_arch(arcade, quay[3] + (i + 0.5) * span, span, 0.64, bed)
+	_beach(data.beach, quay[3], bed)
+	var access: Array = data.beach_stairs
+	var stairs := _container(_coastal, "BeachSteps", Vector3(access[0], -1.15, access[1]))
+	stairs.rotation.y = PI
+	_stairs(stairs, "Steps", Vector3.ZERO, 4.0, access[1] - quay[3], 1.15)
+	var slipway := _container(_coastal, "RecoverySteps", Vector3(23, bed, 49))
+	slipway.rotation.y = PI
+	_stairs(slipway, "Steps", Vector3.ZERO, 3.2, 49 - quay[3], -bed)
+	for boat: Array in data.boats:
+		_boat(boat, bed)
+
+
+func _arch(parent: Node3D, z: float, span: float, width: float, bed: float) -> void:
+	var bay := _container(parent, "StoneBay", Vector3(0, 0, z))
+	var radius := span / 2 - 0.30
+	var spring := -1.89
+	for side in [-1, 1]:
+		_box(bay, "Pier", Vector3(0, (bed - 0.44) / 2, side * (radius + 0.15)),
+			Vector3(width * 2, -0.44 - bed, 0.30), "stone")
+	for i in 10:
+		var a := PI * float(i) / 10
+		var b := PI * float(i + 1) / 10
+		var p := Vector2(radius * cos(a), spring + radius * sin(a))
+		var q := Vector2(radius * cos(b), spring + radius * sin(b))
+		_prism(bay, "Voussoir%d" % i, PackedVector2Array([p, q, Vector2(q.x, -0.44), Vector2(p.x, -0.44)]),
+			-width, width, "stone" if i % 2 == 0 else "ashlar")
+
+
+func _beach(profile: Array, quay_edge: float, bed: float) -> void:
+	# Each cross-section sets the inner flat sand and the curved waterline.
+	var beach := _container(_coastal, "CrescentBeach", Vector3.ZERO)
+	for i in range(1, profile.size()):
+		var a: Array = profile[i - 1]
+		var b: Array = profile[i]
+		var aa := [Vector3(a[0], -1.15, quay_edge), Vector3(a[0], -1.15, a[1]), Vector3(a[0], bed, a[2])]
+		var bb := [Vector3(b[0], -1.15, quay_edge), Vector3(b[0], -1.15, b[1]), Vector3(b[0], bed, b[2])]
+		for band in 2:
+			_sand_triangle(beach, [aa[band], bb[band], bb[band + 1]], bed)
+			_sand_triangle(beach, [aa[band], bb[band + 1], aa[band + 1]], bed)
+
+
+func _sand_triangle(parent: Node3D, corners: Array, bed: float) -> void:
+	var points := PackedVector3Array()
+	for p: Vector3 in corners:
+		points.append(Vector3(p.x, bed - 0.28, p.z))
+	points.append_array(PackedVector3Array(corners))
+	_solid(parent, "SandBank", points, "sand")
+
+
+func _boat(spec: Array, bed: float) -> void:
+	var deck_y := float(spec[3])
+	var boat := _container(_coastal, spec[0], Vector3(spec[1], deck_y, spec[2]), "map_boat")
+	var w := float(spec[4]) / 2.0
+	var d := float(spec[5]) / 2.0
+	var outline := PackedVector2Array([Vector2(-w, -d * 0.50), Vector2(-w * 0.65, -d * 0.90),
+		Vector2(0, -d), Vector2(w * 0.65, -d * 0.90), Vector2(w, -d * 0.50), Vector2(w, d * 0.66),
+		Vector2(w * 0.60, d), Vector2(-w * 0.60, d), Vector2(-w, d * 0.66)])
+	var points := PackedVector3Array()
+	for p in outline:
+		points.append(Vector3(p.x * 0.68, bed - deck_y - 0.05, p.y * 0.79))
+	for p in outline:
+		points.append(Vector3(p.x, 0, p.y))
+	_solid(boat, "Hull", points, spec[6])
+	var decking := SurfaceTool.new()
+	decking.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(1, outline.size() - 1):
+		for p: Vector2 in [outline[0], outline[i], outline[i + 1]]:
+			decking.add_vertex(Vector3(p.x * 0.94, 0.012, p.y * 0.94))
+	decking.generate_normals()
+	var visual := MeshInstance3D.new()
+	visual.name = "DeckPlanks"
+	visual.mesh = decking.commit()
+	visual.material_override = _materials["wood"]
+	_add(boat, visual)
+	for end in [-1, 1]:
+		_visual(boat, "Gunwale", Vector3(0, 0.04, end * d * 0.73), Vector3(w * 1.32, 0.09, 0.15), spec[6])
+	boat.set_meta("deck_size", Vector2(w * 2, d * 2))
+
+
+func _routes() -> void:
+	for platform: Array in _layout.roof_platforms:
+		_deck(_region, platform[0], platform[1], platform[2], platform[3], platform[4], platform[5], "wood")
+	for flight: Array in _layout.roof_stairs:
+		var frame := _container(_region, flight[0], _v(flight[1]))
+		frame.rotation_degrees.y = flight[2]
+		_stairs(frame, "Steps", Vector3.ZERO, flight[3], flight[4], flight[5])
+	for walk: Array in _layout.walk_links:
+		var link := _marker(_town, walk[0] + "Route", _v(walk[1]), "map_walk_link")
+		link.set_meta("landing", _v(walk[2]))
+	for route: Array in _layout.routes:
+		var marker := _marker(_town, route[0], _v(route[1]), "map_traversal")
+		marker.set_meta("takeoff", _v(route[2]))
+		marker.set_meta("landing", _v(route[3]))
+		marker.set_meta("kind", route[4])

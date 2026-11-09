@@ -25,7 +25,7 @@ func _run() -> void:
 	var match_manager := GameEvents.system(&"match") as MatchManager
 	_check(player != null and player.can_control(), "solo player is controllable")
 	_check(match_manager.phase == Enums.Phase.LOBBY, "solo exploration remains in lobby")
-	_check(get_tree().get_nodes_in_group("map_house").size() == 52, "real town loaded instead of test arena")
+	_check(get_tree().get_nodes_in_group("map_boat").size() >= 4, "real town loaded instead of test arena")
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "lobby initially exposes cursor")
 	match_manager.get_node("UI/Lobby/Content/Explore").pressed.emit()
 	Input.action_press("move_forward")
