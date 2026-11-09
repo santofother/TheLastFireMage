@@ -176,9 +176,11 @@ func _contracts() -> void:
 	_check(sealed >= 3, "some houses have no street door")
 	_check(templates.size() == 4 and heights.size() == 3, "four interior layouts and one to three storeys")
 	for node in _town.find_children("*", "StaticBody3D", true, false):
-		if node.collision_layer != 1:
+		# Furniture has its own layer so flame and the camera ignore it; cliff trees have no collision at all.
+		if not node.collision_layer in [1, 256, 0]:
 			_check(false, "world collision layer " + str(node.get_path()))
-	_check(_town.find_children("*", "Light3D", true, false).is_empty(), "lighting stays in main")
+	_check(_town.find_children("*", "DirectionalLight3D", true, false).is_empty(), "sun and sky lighting stays in main")
+	_check_furnishing()
 	var region := _town.get_node("ChickenNavigation") as NavigationRegion3D
 	_check(region.navigation_mesh.get_polygon_count() > 0 and
 		is_equal_approx(region.navigation_mesh.cell_size, NavigationServer3D.map_get_cell_size(_nav)),
@@ -453,6 +455,31 @@ func _ray(from: Vector3, to: Vector3) -> Dictionary:
 
 func _flat(v: Vector3) -> Vector3:
 	return Vector3(v.x, 0, v.z)
+
+
+func _check_furnishing() -> void:
+	var furniture := get_tree().get_nodes_in_group("map_furniture")
+	var breakable := get_tree().get_nodes_in_group(BreakableProp.GROUP)
+	var foliage := get_tree().get_nodes_in_group("map_foliage")
+	var trees := foliage.filter(func(node: Node) -> bool: return String(node.name).begins_with("Tree"))
+	print("[Map] Furniture %d, breakable %d, lights %d, foliage %d, trees %d" % [furniture.size(), breakable.size(),
+		get_tree().get_nodes_in_group("map_light").size(), foliage.size(), trees.size()])
+	_check(furniture.size() >= 600, "rooms are furnished")
+	_check(breakable.size() >= 300, "wooden furniture can break")
+	_check(get_tree().get_nodes_in_group("map_light").size() >= 150, "rooms have torches or lanterns")
+	_check(foliage.size() >= 300 and trees.size() >= 15, "town has trees, bushes and flowers")
+	_check(not get_tree().get_nodes_in_group("map_vines").is_empty(), "buildings have vines")
+	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
+		var count := house.find_children("*", "Node3D", true, false).filter(func(node: Node) -> bool:
+			return node.is_in_group("map_furniture")).size()
+		_check(count >= 3, "%s has furniture" % house.name)
+	# Furniture must never crowd a doorway the route tests below rely on.
+	var doors := get_tree().get_nodes_in_group("map_house_exit") + get_tree().get_nodes_in_group("map_room_opening")
+	for door: Node3D in doors:
+		for prop: Node3D in furniture:
+			if absf(prop.global_position.y - door.global_position.y) < 1.5 and \
+					Vector2(prop.global_position.x - door.global_position.x, prop.global_position.z - door.global_position.z).length() < 0.6:
+				_check(false, "%s clears %s" % [prop.name, door.get_path()])
 
 
 func _check(ok: bool, label: String) -> void:

@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/bowl_05.glb" id="1_gg2to"]
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/plant_2.res" id="2_qou8x"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_no7g3"]
+size = Vector3(0.364178, 0.24, 0.364178)
+
+[node name="PotPlantLeafy" type="StaticBody3D" unique_id=663297332]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(0.39584565, 0.39584565)
+metadata/height = 0.504000011086464
+
+[node name="Model" type="Node3D" parent="." unique_id=859293786 instance=ExtResource("1_gg2to")]
+transform = Transform3D(1.2716329, 0, 0, 0, 1.2716329, 0, 0, 0, 1.2716329, 0, 0, 1.4901161e-08)
+
+[node name="Plant" type="Node3D" parent="." unique_id=377507950]
+transform = Transform3D(0.54655373, 0, 0, 0, 0.54655373, 0, 0, 0, 0.54655373, 0.0015931427, 0.23950435, -0.022795022)
+
+[node name="Mesh" type="MeshInstance3D" parent="Plant" unique_id=1247791608]
+transform = Transform3D(100, 0, 0, 0, 12.320989, 99.23805, 0, -99.23805, 12.320989, 0, 0, 0)
+mesh = ExtResource("2_qou8x")
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=235675288]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
+shape = SubResource("BoxShape3D_no7g3")

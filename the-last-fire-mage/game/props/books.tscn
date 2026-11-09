@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/paper_01.glb" id="1_qjj22"]
+
+[node name="Books" type="Node3D" unique_id=719173732]
+metadata/footprint = Vector2(0.33999997, 0.3161118)
+metadata/height = 0.07833709
+
+[node name="Model" type="Node3D" parent="." unique_id=1596038735 instance=ExtResource("1_qjj22")]
+transform = Transform3D(0.52950025, 0, 0, 0, 0.52950025, 0, 0, 0, 0.52950025, -0.00088712573, 0.00090792956, 0.018737182)

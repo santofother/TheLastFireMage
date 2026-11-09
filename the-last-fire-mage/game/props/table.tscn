@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/props/breakable_prop.gd" id="1_62olt"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/table_01.glb" id="2_xwtmo"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_in0aq"]
+size = Vector3(1.2419999, 0.6903284, 0.764205)
+
+[node name="Table" type="StaticBody3D" unique_id=1479844036]
+collision_layer = 256
+collision_mask = 0
+script = ExtResource("1_62olt")
+metadata/footprint = Vector2(1.3499999, 0.8306576)
+metadata/height = 0.6903284
+
+[node name="Model" type="Node3D" parent="." unique_id=513047181 instance=ExtResource("2_xwtmo")]
+transform = Transform3D(0.5393445, 0, 0, 0, 0.5393445, 0, 0, 0, 0.5393445, 0.0031602383, -1.9288461e-07, 2.9802322e-08)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1798624173]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3451642, 0)
+shape = SubResource("BoxShape3D_in0aq")

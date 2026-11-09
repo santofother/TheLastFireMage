@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/candlestick_01.glb" id="1_c1fpy"]
+
+[node name="Candles" type="Node3D" unique_id=1580087564]
+metadata/footprint = Vector2(0.2739519, 0.25450915)
+metadata/height = 0.3
+
+[node name="Model" type="Node3D" parent="." unique_id=2016901818 instance=ExtResource("1_c1fpy")]
+transform = Transform3D(0.7054057, 0, 0, 0, 0.7054057, 0, 0, 0, 0.7054057, 0.009721383, 0, 0)

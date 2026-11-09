@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/flower_4_clump.res" id="1_jta8i"]
+
+[node name="FlowersB" type="Node3D" unique_id=1036748459]
+metadata/footprint = Vector2(0.3213083, 0.28167057)
+metadata/height = 0.34
+
+[node name="Model" type="Node3D" parent="." unique_id=387072383]
+transform = Transform3D(0.7542342, 0, 0, 0, 0.7542342, 0, 0, 0, 0.7542342, -0.017918304, -0.000672159, 0.0023085177)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=765329424]
+transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
+mesh = ExtResource("1_jta8i")

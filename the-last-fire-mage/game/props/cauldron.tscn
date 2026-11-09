@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/pot_03.glb" id="1_cevt6"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_h0e5p"]
+size = Vector3(0.5630754, 0.55, 0.55946714)
+
+[node name="Cauldron" type="StaticBody3D" unique_id=735353675]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(0.6120385, 0.60811645)
+metadata/height = 0.55
+
+[node name="Model" type="Node3D" parent="." unique_id=1401429276 instance=ExtResource("1_cevt6")]
+transform = Transform3D(1.2062614, 0, 0, 0, 1.2062614, 0, 0, 0, 1.2062614, 0.0034235418, 0.0014963215, 0.005736947)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1429610746]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.275, 0)
+shape = SubResource("BoxShape3D_h0e5p")

@@ -121,6 +121,7 @@ menu={
 3d_physics/layer_6="hitboxes"
 3d_physics/layer_7="triggers"
 3d_physics/layer_8="spectator"
+3d_physics/layer_9="furniture"
 
 [physics]
 

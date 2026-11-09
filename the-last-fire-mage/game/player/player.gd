@@ -432,6 +432,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	is_airborne = not is_on_floor()
 	_bump_players(approach)
+	_smash_furniture(approach)
 	if is_on_floor() and not grounded and velocity.y <= 0.0:
 		var drop := _fall_peak_y - global_position.y
 		var sprawls := drop >= tuning.fall_tumble_height
@@ -623,6 +624,25 @@ func _update_camera(delta: float) -> void:
 	var height := tuning.camera_height - (tuning.height - tuning.crouch_height if is_crouching else 0.0)
 	camera_rig.position.y = lerpf(camera_rig.position.y, height, blend)
 	camera.fov = lerpf(camera.fov, tuning.camera_fov + (tuning.sprint_fov_kick if is_sprinting else 0.0), blend)
+
+
+# Charging into wooden furniture breaks it; the server confirms. Keeps the player's run going on a hit.
+func _smash_furniture(approach: Vector3) -> void:
+	if not is_alive:
+		return
+	var breakables := GameEvents.system(&"breakables") as BreakableManager
+	if breakables == null:
+		return
+	for i in get_slide_collision_count():
+		var hit := get_slide_collision(i)
+		var prop := hit.get_collider() as BreakableProp
+		if prop == null:
+			continue
+		var momentum := -approach.dot(hit.get_normal()) * tuning.body_mass
+		if breakables.report_impact(self, prop, momentum):
+			velocity.x = approach.x
+			velocity.z = approach.z
+			return
 
 
 func _bump_players(approach: Vector3) -> void:

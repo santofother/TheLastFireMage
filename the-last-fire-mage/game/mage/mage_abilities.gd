@@ -122,6 +122,10 @@ func _attack(ability: StringName, aim: Vector3) -> void:
 		if wave and target is Player:
 			target.apply_knockback((aim + Vector3.UP * 0.25).normalized() * tuning.wave_knockback * power)
 		Net.broadcast(self, &"_rpc_hit", [target.get_path(), point])
+	# Fire Wave and ignited swings splinter wooden furniture; a plain knife does not.
+	var breakables := GameEvents.system(&"breakables") as BreakableManager
+	if breakables and (wave or is_ignited()):
+		breakables.burn_cone(origin, aim, reach, angle)
 	if wave:
 		Net.broadcast(self, &"_rpc_wave", [origin, aim, reach, angle])
 

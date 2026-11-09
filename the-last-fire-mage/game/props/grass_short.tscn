@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/grass_small.res" id="1_mpbea"]
+
+[node name="GrassShort" type="Node3D" unique_id=1850912436]
+metadata/footprint = Vector2(0.2623942, 0.15493004)
+metadata/height = 0.22
+
+[node name="Model" type="Node3D" parent="." unique_id=1704378756]
+transform = Transform3D(0.5582332, 0, 0, 0, 0.5582332, 0, 0, 0, 0.5582332, 0.008407891, 0.00306265, 0.009689108)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=556106718]
+transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
+mesh = ExtResource("1_mpbea")

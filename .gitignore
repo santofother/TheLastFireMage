@@ -5,3 +5,7 @@ the-last-fire-mage/addons/godotsteam/androidarm64/
 the-last-fire-mage/addons/godotsteam/linux32/
 the-last-fire-mage/addons/godotsteam/linuxarm64/
 the-last-fire-mage/addons/godotsteam/win32/
+
+# Raw third-party pack downloads; the models the game uses live under game/map/props/third_party/
+/interior__free__zappypixel/
+/Ultimate Stylized Nature Pack-zip/

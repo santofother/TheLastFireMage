@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/bowl_04.glb" id="1_xtdpq"]
+
+[node name="Bowl" type="Node3D" unique_id=314281688]
+metadata/footprint = Vector2(0.3, 0.3)
+metadata/height = 0.046674076
+
+[node name="Model" type="Node3D" parent="." unique_id=116022646 instance=ExtResource("1_xtdpq")]
+transform = Transform3D(0.54018503, 0, 0, 0, 0.54018503, 0, 0, 0, 0.54018503, 0, 0, 0)
