@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbmo7m1guhykb"
-path="res://.godot/imported/normal_trees_0.png-b78393a05bf16c0dd866d66a37adcab3.ctex"
+path.s3tc="res://.godot/imported/normal_trees_0.png-b78393a05bf16c0dd866d66a37adcab3.s3tc.ctex"
+path.etc2="res://.godot/imported/normal_trees_0.png-b78393a05bf16c0dd866d66a37adcab3.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5bb061f5f7b954993bf440cb8bd45d4e"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://game/map/props/third_party/stylized_nature_pack/normal_trees_0.png"
-dest_files=["res://.godot/imported/normal_trees_0.png-b78393a05bf16c0dd866d66a37adcab3.ctex"]
+dest_files=["res://.godot/imported/normal_trees_0.png-b78393a05bf16c0dd866d66a37adcab3.s3tc.ctex", "res://.godot/imported/normal_trees_0.png-b78393a05bf16c0dd866d66a37adcab3.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

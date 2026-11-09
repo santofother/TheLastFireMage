@@ -21,7 +21,6 @@ A ~150×150 m dense seaside neighbourhood in grey boxes, good enough to playtest
   Hide spots (≥15): instance `res://game/interact/hide_spot.tscn` (S10 owns its behaviour). Navmesh for chickens (NavigationRegion3D baked by script).
 - Simple flat colours from the Salmara palette (plaster cream/peach/ochre, terracotta roofs, stone). No textures.
 - A few landmark boxes where Salmara pieces (church, windmill, mole) may go later.
-
 ## Tests
 Headless: load the map, count markers per group, check the navmesh has polygons. One overview screenshot at
 the end (small) is allowed for the user.

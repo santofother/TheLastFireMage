@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b3wx21ofnns4j"
-path="res://.godot/imported/bushes_1.png-2d17aa7c78386db1fed5e0f722ae30b0.ctex"
+path.s3tc="res://.godot/imported/bushes_1.png-2d17aa7c78386db1fed5e0f722ae30b0.s3tc.ctex"
+path.etc2="res://.godot/imported/bushes_1.png-2d17aa7c78386db1fed5e0f722ae30b0.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9cd30b574ee4effdc19cf9575cbae54f"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://game/map/props/third_party/stylized_nature_pack/bushes_1.png"
-dest_files=["res://.godot/imported/bushes_1.png-2d17aa7c78386db1fed5e0f722ae30b0.ctex"]
+dest_files=["res://.godot/imported/bushes_1.png-2d17aa7c78386db1fed5e0f722ae30b0.s3tc.ctex", "res://.godot/imported/bushes_1.png-2d17aa7c78386db1fed5e0f722ae30b0.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

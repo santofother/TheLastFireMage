@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://1ba5cqqb2ib7"
-path="res://.godot/imported/palm_trees_0.png-90d95d456a4fa84aebd02a7e5a65d965.ctex"
+path.s3tc="res://.godot/imported/palm_trees_0.png-90d95d456a4fa84aebd02a7e5a65d965.s3tc.ctex"
+path.etc2="res://.godot/imported/palm_trees_0.png-90d95d456a4fa84aebd02a7e5a65d965.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "977c8f23b587458317fde9493b075148"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://game/map/props/third_party/stylized_nature_pack/palm_trees_0.png"
-dest_files=["res://.godot/imported/palm_trees_0.png-90d95d456a4fa84aebd02a7e5a65d965.ctex"]
+dest_files=["res://.godot/imported/palm_trees_0.png-90d95d456a4fa84aebd02a7e5a65d965.s3tc.ctex", "res://.godot/imported/palm_trees_0.png-90d95d456a4fa84aebd02a7e5a65d965.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
