@@ -57,6 +57,7 @@ func _cast(ability: StringName) -> void:
 	await get_tree().physics_frame
 	mage.input.clear()
 
+# FIX(S14, Codex): Cover Wave balance, chicken hits, and the locator range in the combat harness.
 func _run() -> void:
 	await get_tree().create_timer(0.4).timeout
 	combat.tuning.knife_cooldown = 0.15
@@ -90,6 +91,7 @@ func _run() -> void:
 	_check(victim.health.hp == 40, "ignited damage")
 	await get_tree().create_timer(0.45).timeout
 	_check(not combat.is_ignited(), "ignite expires")
+	victim.health.heal(20.0)
 	var wall := StaticBody3D.new()
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
@@ -99,31 +101,47 @@ func _run() -> void:
 	wall.position = Vector3(0, 0.5, -0.6)
 	add_child(wall)
 	await _cast(&"fire_wave")
-	_check(victim.health.hp == 40, "wave blocked by wall")
+	_check(victim.health.hp == 60, "wave blocked by wall")
 	await _cast(&"knife")
-	_check(victim.health.hp == 40, "knife blocked by wall")
+	_check(victim.health.hp == 60, "knife blocked by wall")
 	wall.queue_free()
 	await get_tree().create_timer(0.2).timeout
 	victim.health.invulnerable = true
 	await _cast(&"fire_wave")
-	_check(victim.health.hp == 40 and victim._knockback == Vector3.ZERO, "invulnerable target unaffected")
+	_check(victim.health.hp == 60 and victim._knockback == Vector3.ZERO, "invulnerable target unaffected")
 	victim.health.invulnerable = false
 	await get_tree().create_timer(0.2).timeout
 	await _cast(&"fire_wave")
-	_check(victim.health.hp == 5 and victim._knockback.length() > 0, "wave damage and knockback")
+	_check(victim.health.hp == 15 and victim._knockback.length() > 0, "wave damage and knockback")
 	await _cast(&"knife")
 	_check(died_by == mage.peer_id, "kill attribution")
+	_check(combat._nearby_villager_positions().is_empty(), "locator excludes dead villagers")
 	victim.health.revive()
+	victim.position = Vector3(0, 0, -20.0)
+	_check(combat._nearby_villager_positions() == PackedVector3Array([victim.global_position + Vector3.UP * 1.3]),
+		"locator reports the position of a villager within 20 m")
+	victim.position.z = -20.5
+	_check(combat._nearby_villager_positions().is_empty(), "locator excludes villagers outside 20 m")
 	victim.position = Vector3(0, 0, -2.8)
 	GameEvents.power_changed.emit(1, 20.0, 1, 2.0)
 	await get_tree().create_timer(0.2).timeout
 	await _cast(&"knife")
 	_check(victim.health.hp == 60, "power scales range and damage")
-	victim.position.z = -5
+	victim.position.z = 5
 	chicken.position = Vector3(0, 0, -1)
-	await get_tree().create_timer(0.2).timeout
-	await _cast(&"knife")
-	_check(not chicken.health.is_alive, "chicken target")
+	combat.tuning.wave_cooldown = 0.55
+	var previous_cooldown := 1.0
+	for tier in 4:
+		GameEvents.power_changed.emit(1, float(tier), tier, 1.0)
+		await get_tree().create_timer(0.6).timeout
+		await _cast(&"fire_wave")
+		var remaining := combat.cooldown_left(&"fire_wave")
+		var expected := 0.55 * pow(0.8, tier)
+		_check(remaining < previous_cooldown and absf(remaining - expected) < 0.05,
+			"Fire Wave cooldown at tier %d" % tier)
+		previous_cooldown = remaining
+		if tier == 0:
+			_check(not is_instance_valid(chicken) or not chicken.health.is_alive, "Fire Wave damages chickens")
 	_probe.rpc()
 	await get_tree().create_timer(0.3).timeout
 	_check(victim.health.hp == 60, "non-owner remote request rejected")

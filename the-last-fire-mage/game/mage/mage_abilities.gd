@@ -10,6 +10,8 @@ var tuning: MageCombatTuning
 var _player: Player
 var _cooldowns := {&"knife": 0.0, &"ignite": 0.0, &"fire_wave": 0.0}
 var _ignite_left := 0.0
+var _power_tier := 0
+var _locator_left := 0.0
 var _flame: MeshInstance3D
 
 func _ready() -> void:
@@ -24,6 +26,8 @@ func _physics_process(delta: float) -> void:
 		_cooldowns[key] = maxf(0.0, float(_cooldowns[key]) - delta)
 	_ignite_left = maxf(0.0, _ignite_left - delta)
 	_flame.visible = is_ignited()
+	if Net.is_server(self) and not _player.is_bot:
+		_tick_locator(delta)
 	if not _player.is_multiplayer_authority() or not _player.can_control():
 		return
 	var aim := -_player.camera_rig.global_basis.z
@@ -61,7 +65,8 @@ func _rpc_request(ability: StringName, aim: Vector3) -> void:
 	if ability == &"ignite":
 		cooldown = tuning.ignite_cooldown
 	elif ability == &"fire_wave":
-		cooldown = tuning.wave_cooldown
+		# FIX(S14, Codex): Use the server's unlocked tier at the time of the cast.
+		cooldown = tuning.wave_cooldown * pow(tuning.wave_cooldown_per_tier, _power_tier)
 	Net.broadcast(self, &"_rpc_cast", [ability, cooldown, tuning.ignite_duration])
 	if ability != &"ignite":
 		_attack(ability, aim)
@@ -108,7 +113,9 @@ func _attack(ability: StringName, aim: Vector3) -> void:
 		var ray := PhysicsRayQueryParameters3D.create(origin, point, 1 | 16, [_player.get_rid()])
 		if not get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
 			continue
-		health.apply_damage(damage, _player.peer_id, ability)
+		# FIX(S14, Codex): Boost player hits and keep chicken damage on the shared path.
+		var hit_damage := tuning.wave_player_damage * power if wave and target is Player else damage
+		health.apply_damage(hit_damage, _player.peer_id, ability)
 		if wave and target is Player:
 			target.apply_knockback((aim + Vector3.UP * 0.25).normalized() * tuning.wave_knockback * power)
 		Net.broadcast(self, &"_rpc_hit", [target.get_path(), point])
@@ -132,9 +139,48 @@ func _rpc_wave(origin: Vector3, aim: Vector3, reach: float, angle: float) -> voi
 	get_tree().current_scene.add_child(effect)
 	effect.wave(origin, aim, reach, angle)
 
-func _on_power_changed(mage_id: int, _power: float, _tier: int, multiplier: float) -> void:
+func _on_power_changed(mage_id: int, _power: float, tier: int, multiplier: float) -> void:
 	if _player.peer_id == mage_id and is_finite(multiplier):
 		power_multiplier = multiplier
+		_power_tier = tier
+
+# FIX(S14, Codex): Sense nearby villagers periodically during the hunt. Only the mage gets the pulse.
+func _tick_locator(delta: float) -> void:
+	var match_system := GameEvents.system(&"match") as MatchManager
+	if not match_system or match_system.phase != Enums.Phase.HUNT or not _player.can_control():
+		return
+	_locator_left -= delta
+	if _locator_left > 0.0:
+		return
+	_locator_left = maxf(0.1, tuning.locator_interval)
+	var points := _nearby_villager_positions()
+	if points.is_empty():
+		return
+	if _player.is_local():
+		_rpc_locator(points)
+	elif Net.is_online(self):
+		_rpc_locator.rpc_id(_player.get_multiplayer_authority(), points)
+
+
+func _nearby_villager_positions() -> PackedVector3Array:
+	var points := PackedVector3Array()
+	var range_squared := tuning.locator_range * tuning.locator_range
+	for villager in Players.alive_with_role(Enums.Role.VILLAGER):
+		var position_in_world: Vector3 = villager.global_position
+		if not villager.health.is_downed and _player.global_position.distance_squared_to(position_in_world) <= range_squared:
+			points.append(position_in_world + Vector3.UP * 1.3)
+	return points
+
+
+@rpc("any_peer", "call_remote", "unreliable", 1)
+func _rpc_locator(points: PackedVector3Array) -> void:
+	if not Net.from_server(self) or not _player.is_local() or DisplayServer.get_name() == "headless":
+		return
+	var effect := preload("res://game/mage/mage_feedback.gd").new()
+	effect.top_level = true
+	add_child(effect)
+	effect.locator(points)
+
 
 ## FIX(S15, Claude): NET: server only. Puts out Ignite (water bucket hit). Fires on every peer.
 func extinguish() -> void:

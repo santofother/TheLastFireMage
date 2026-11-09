@@ -10,8 +10,16 @@ extends Tuning
 @export var ignite_duration := 5.0 ## TUNE: s
 @export var ignite_cooldown := 10.0 ## TUNE: s
 @export var ignite_damage := 40.0 ## TUNE: hp per ignited swing
-@export var wave_cooldown := 25.0 ## TUNE: s
-@export var wave_damage := 35.0 ## TUNE: hp
+# FIX(S14, Codex): Fire Wave comes back faster at each unlocked mage tier.
+@export var wave_cooldown := 15.0 ## TUNE: base seconds
+@export var wave_cooldown_per_tier := 0.8 ## TUNE: remaining fraction of cooldown per tier
+@export var wave_damage := 35.0 ## TUNE: hp against chickens and other targets
+@export var wave_player_damage := 45.0 ## TUNE: hp against players
 @export var wave_range := 6.0 ## TUNE: m
 @export var wave_angle_deg := 60.0 ## TUNE: deg
 @export var wave_knockback := 6.0 ## TUNE: m/s impulse
+
+## FIX(S14, Codex): TUNE: Maximum distance to a villager for a locator pulse, in meters.
+@export var locator_range := 20.0
+## TUNE: Seconds between locator pulses.
+@export var locator_interval := 4.0

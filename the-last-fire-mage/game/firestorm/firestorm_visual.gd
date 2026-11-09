@@ -1,21 +1,17 @@
 extends Node3D
-## Local firestorm wall, rune animation, destination beacon, and stage tint. Owner: S14.
+## Local firestorm wall, rune animation, and stage tint. Owner: S14.
 ## NET: presentation only; each peer may instantiate this for synchronized zone values.
-## Public API: set_zone(center, radius, stage), set_destination(center, radius), clear_zone().
+## Public API: set_zone(center, radius, stage), clear_zone().
 
 const WALL_SHADER := preload("res://game/firestorm/firestorm_wall.gdshader")
 const RUNE_TEXTURE := preload("res://game/firestorm/firestorm_runes.png")
 
 const WALL_HEIGHT := 30.0
-const BEACON_HEIGHT := 48.0
 const STAGE_TINTS: Array[Color] = [Color(1.0, 0.52, 0.24), Color(1.0, 0.34, 0.12), Color(0.92, 0.19, 0.08), Color(0.68, 0.08, 0.12)]
 
 var _wall: MeshInstance3D
 var _wall_material: ShaderMaterial
 var _embers: GPUParticles3D
-var _beacon: Node3D
-var _destination_ring: MeshInstance3D
-var _destination_radius := 0.0
 var _environment: WorldEnvironment
 var _original_environment: Environment
 var _ember_material: ParticleProcessMaterial
@@ -28,7 +24,6 @@ func _ready() -> void:
 		return
 	_build_wall()
 	_build_embers()
-	_build_beacon()
 
 
 ## Update the wall center and radius each frame; shader/material setup only changes on stage edges.
@@ -44,21 +39,10 @@ func set_zone(center: Vector3, radius: float, stage: int) -> void:
 	_embers.position = center + Vector3.UP * WALL_HEIGHT * 0.25
 	_ember_material.emission_ring_radius = radius
 	_ember_material.emission_ring_inner_radius = radius * 0.98
-	_beacon.visible = radius > _destination_radius + 0.05
 	if stage != _last_stage:
 		_last_stage = stage
 		_wall_material.set_shader_parameter("stage_energy", 1.0 + float(maxi(stage - 1, 0)) * 0.16)
 		_set_environment_stage(stage)
-
-
-## Show a distant marker for the pre-announced final safe area.
-func set_destination(center: Vector3, radius: float) -> void:
-	if _beacon == null:
-		return
-	_beacon.visible = true
-	_beacon.position = center
-	_destination_radius = radius
-	_destination_ring.scale = Vector3(radius, 1.0, radius)
 
 
 ## Hide all firestorm visuals and restore the shared world environment's original colors.
@@ -69,8 +53,6 @@ func clear_zone() -> void:
 	if _embers != null:
 		_embers.emitting = false
 		_embers.visible = false
-	if _beacon != null:
-		_beacon.visible = false
 	_restore_environment()
 
 
@@ -129,49 +111,6 @@ func _build_embers() -> void:
 	_embers.draw_pass_1 = quad
 	_embers.visible = false
 	add_child(_embers)
-
-
-func _build_beacon() -> void:
-	if _beacon != null:
-		return
-	_beacon = Node3D.new()
-	_beacon.name = "DestinationBeacon"
-	_beacon.top_level = true
-	_beacon.visible = false
-	var shaft := MeshInstance3D.new()
-	var shaft_mesh := CylinderMesh.new()
-	shaft_mesh.top_radius = 0.12
-	shaft_mesh.bottom_radius = 0.45
-	shaft_mesh.height = BEACON_HEIGHT
-	shaft_mesh.radial_segments = 12
-	shaft.mesh = shaft_mesh
-	shaft.position.y = BEACON_HEIGHT * 0.5
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = Color(1.0, 0.68, 0.24, 0.58)
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.emission_enabled = true
-	material.emission = Color(1.0, 0.32, 0.08)
-	material.emission_energy_multiplier = 1.6
-	shaft.material_override = material
-	_beacon.add_child(shaft)
-	_destination_ring = MeshInstance3D.new()
-	var ring_mesh := TorusMesh.new()
-	ring_mesh.inner_radius = 0.94
-	ring_mesh.outer_radius = 1.0
-	_destination_ring.mesh = ring_mesh
-	_destination_ring.position.y = 0.12
-	_destination_ring.material_override = material
-	_beacon.add_child(_destination_ring)
-	var label := Label3D.new()
-	label.text = "FINAL SAFE ZONE"
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.modulate = Color(1.0, 0.81, 0.47)
-	label.font_size = 36
-	label.pixel_size = 0.04
-	label.position.y = BEACON_HEIGHT + 1.0
-	_beacon.add_child(label)
-	add_child(_beacon)
 
 
 func _set_environment_stage(stage: int) -> void:

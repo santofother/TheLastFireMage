@@ -72,6 +72,9 @@ extends Tuning
 ## TUNE: Drops shorter than this (metres) never hurt, however you leave the ledge.
 @export var fall_story_height := 3.1
 
+## FIX(S14, Codex): TUNE: Half damage for one-story drops through this height. Town roofs are 3.6 m.
+@export var one_story_drop_max := 4.0
+
 ## TUNE: Multiplier on every fall damage value below.
 @export var fall_damage_scale := 4.5
 

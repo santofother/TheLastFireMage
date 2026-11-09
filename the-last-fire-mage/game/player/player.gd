@@ -431,30 +431,34 @@ func _physics_process(delta: float) -> void:
 
 ## FIX(S11, Claude): no fall damage below `fall_story_height` (3.1 m) however you leave the ledge.
 ## Above it, walking/sprinting off (no jump) does reduced damage; jumps hurt more.
-## NET: owner peer reports, server validates and applies. Damage scales linearly with stories fallen.
+## NET: owner peer reports the fall, server validates the sender and applies damage.
 func _report_fall(fall_height: float, sprinted: bool, jumped: bool = true) -> void:
 	if fall_height < tuning.fall_story_height:
 		return
+	# FIX(S14, Codex): Measure the ledge drop separately so the jump arc doesn't count as roof height.
+	var ledge_drop := _takeoff_y - global_position.y
 	if Net.is_server(self):
-		_apply_fall_damage(fall_height, sprinted, jumped)
+		_apply_fall_damage(fall_height, sprinted, jumped, ledge_drop)
 	else:
-		_rpc_fall.rpc_id(1, fall_height, sprinted, jumped)
+		_rpc_fall.rpc_id(1, fall_height, sprinted, jumped, ledge_drop)
 
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_fall(fall_height: float, sprinted: bool, jumped: bool) -> void:
+func _rpc_fall(fall_height: float, sprinted: bool, jumped: bool, ledge_drop: float) -> void:
 	if not Net.is_server(self) or Net.sender_id(self) != get_multiplayer_authority():
 		return
-	_apply_fall_damage(fall_height, sprinted, jumped)
+	_apply_fall_damage(fall_height, sprinted, jumped, ledge_drop)
 
 
-func _apply_fall_damage(fall_height: float, sprinted: bool, jumped: bool) -> void:
+func _apply_fall_damage(fall_height: float, sprinted: bool, jumped: bool, ledge_drop: float) -> void:
 	if not is_alive or health.is_downed or fall_height < tuning.fall_story_height:
 		return
 	var base := tuning.fall_damage_walk_off
 	if jumped:
 		base = tuning.fall_damage_sprint_jump if sprinted else tuning.fall_damage_jump
 	var damage := base * tuning.fall_damage_scale * minf(fall_height, 60.0) / tuning.fall_story_height
+	if ledge_drop >= tuning.fall_story_height and ledge_drop <= tuning.one_story_drop_max:
+		damage *= 0.5
 	# WHY: a lethal fall downs the player (revivable by a villager) a limited number of times per round.
 	if damage >= health.hp and not health.invulnerable and health.downs_used < tuning.fall_downs_allowed:
 		health.down(tuning.downed_hp)

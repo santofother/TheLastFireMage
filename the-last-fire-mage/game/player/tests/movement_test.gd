@@ -66,6 +66,32 @@ func _reset(pos := Vector3(0, 0.04, 0)) -> void:
 	await _ticks(4)
 
 
+# FIX(S14, Codex): Drive real roof landings, including jumps whose apex is above the one-story band.
+func _check_roof_fall(height: float, sprint: bool, jump: bool, damage_scale: float) -> void:
+	var roof := _box(Vector3(0, height - 0.15, 0), Vector3(4, 0.3, 2.4))
+	await _reset(Vector3(0, height + 0.04, 0))
+	_player.health.revive()
+	_driver.move = Vector2(0, -1)
+	_driver.sprint = sprint
+	await _ticks(10)
+	_driver.jump = jump
+	var peak := _player.position.y
+	for i in 120:
+		await _ticks(1)
+		if _player.is_on_floor() and _player.position.y < 0.2:
+			break
+		peak = _player.position.y if _player.is_on_floor() else maxf(peak, _player.position.y)
+	var base := 4.0
+	if jump:
+		base = 8.0 if sprint else 5.0
+	var expected := base * 4.5 * (peak - _player.position.y) / 3.1 * damage_scale
+	_check(_player.is_on_floor() and _player.position.y < 0.2
+		and absf(100.0 - _player.health.hp - expected) < 0.1,
+		"%.1f m roof fall (sprint=%s, jump=%s) takes %.2f HP, expected %.2f (landing y=%.2f)" % [
+			height, sprint, jump, 100.0 - _player.health.hp, expected, _player.position.y])
+	roof.queue_free()
+
+
 func _run() -> void:
 	_player = load("res://game/player/player.tscn").instantiate() as Player
 	_player.name = "1"
@@ -211,6 +237,12 @@ func _run() -> void:
 	await _ticks(45)
 	_check(_player.can_control() and not _player.is_tumbling, "recovers from landing tumble")
 
+	await _check_roof_fall(3.6, false, false, 0.5)
+	await _check_roof_fall(3.6, true, false, 0.5)
+	await _check_roof_fall(3.6, false, true, 0.5)
+	await _check_roof_fall(3.6, true, true, 0.5)
+	await _check_roof_fall(7.2, true, true, 1.0)
+	_player.health.revive()
 	await _reset()
 	var other := load("res://game/player/player.tscn").instantiate() as Player
 	other.peer_id = Players.BOT_ID_BASE

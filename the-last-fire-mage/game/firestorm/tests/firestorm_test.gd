@@ -16,10 +16,11 @@ var _mage_died := false
 var _round_won := false
 var _finished := false
 var _closed := false
-var _saw_plan := false
+var _saw_inactive := false
 var _late := false
 var _hosting := false
 var _previous_radius := INF
+var _previous_center := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -55,20 +56,22 @@ func _start_round() -> void:
 func _process(_delta: float) -> void:
 	if not _storm:
 		return
-	if not _saw_plan and _storm.final_zone_radius > 0.0:
-		_saw_plan = true
-		_check_plan()
 	if _storm.stage == 0:
 		_previous_radius = INF
 		return
 	var radius := _storm.zone_radius
-	if radius > _previous_radius + 0.001:
-		_check(false, "the ring must shrink monotonically")
+	var center := _storm.zone_center
+	_check(center.distance_to(_previous_center) + radius <= _previous_radius + 0.001,
+		"each shrinking disk stays inside the last one")
 	_previous_radius = radius
+	_previous_center = center
 	_closed = _closed or is_equal_approx(radius, _storm.final_zone_radius)
 
 
 func _on_phase(phase: int, _duration: float) -> void:
+	if phase == Enums.Phase.HUNT and not _late:
+		_check(_storm.stage == 0 and _storm.final_zone_radius == 0.0,
+			"hunt starts without a storm boundary or final target")
 	if phase == Enums.Phase.HUNT and _hosting:
 		var bot := Players.get_player(_BOT_ID) as Player
 		bot.set_physics_process(false)
@@ -77,31 +80,35 @@ func _on_phase(phase: int, _duration: float) -> void:
 		_finish.call_deferred()
 
 
-func _check_plan() -> void:
-	_check(is_equal_approx(_storm.final_zone_radius, 2.0), "final ring announced in HUNT")
-	if not _late:
-		_check(_storm.stage == 0 and _storm.is_inside(Vector3(100.0, 0.0, 100.0)),
-			"no damage boundary before activation")
-
-
 func _on_stage(number: int, target: Vector3, radius: float, required: float, time_to_next: float) -> void:
 	_stages.append(number)
-	_check(required == [0.0, 3.0, 6.0, 10.0][number - 1] and _storm.required_power() == required,
+	_check(required == [0.0, 3.0, 6.0][number - 1] and _storm.required_power() == required,
 		"stage %d matches S13 power tier" % number)
 	_check(_storm.is_inside(_storm.zone_center + Vector3.UP * 100.0), "safe zone is horizontal")
-	_check((_storm.zone_radius + 0.001 >= radius) and (time_to_next > 0.0) == (number < 4),
+	_check((_storm.zone_radius + 0.001 >= radius) and (time_to_next > 0.0) == (number < 3),
 		"stage reports target radius and next-stage time")
-	if number == 4:
+	_check(is_equal_approx(PI * radius * radius / _storm.tuning.map_area, [0.8, 0.6, 0.25][number - 1]),
+		"stage target matches the requested fraction of map area")
+	if number == 3:
 		_check(target.is_equal_approx(_storm.final_zone_center) and radius == _storm.final_zone_radius,
-			"last stage closes at the announced destination")
+			"final target is revealed when its shrink starts")
+	else:
+		var map: Node3D = GameEvents.system(&"main").get_map()
+		_check(_storm.final_zone_radius == 0.0 and target.is_equal_approx(map.global_position),
+			"early stages stay centered on the map without revealing the final target")
 	if _hosting and number == 2:
-		# Let the mage recover from a brief deficit, then satisfy the third threshold as well.
-		get_tree().create_timer(0.45).timeout.connect(func() -> void: _power.add_power(6.0, &"test"))
+		# Let the mage recover from a brief deficit, then fail the final threshold.
+		get_tree().create_timer(0.45).timeout.connect(func() -> void: _power.add_power(3.0, &"test"))
 
 
 func _on_warning(number: int, seconds: float) -> void:
 	_warnings.append(number)
 	_check(number == _storm.stage + 1 and seconds > 0.0 and seconds <= 1.1, "warning precedes its stage")
+	_check(_storm.final_zone_radius == 0.0, "warnings do not reveal the final target")
+	if number == 1:
+		_saw_inactive = true
+		_check(_storm.stage == 0 and _storm.is_inside(Vector3(100.0, 0.0, 100.0)),
+			"no damage boundary before activation")
 	if _hosting and number == 2:
 		print("[TEST] FIRESTORM JOIN WINDOW")
 
@@ -115,7 +122,7 @@ func _on_damage(id: int, amount: float, source: int, cause: StringName) -> void:
 func _on_death(id: int, killer: int, cause: StringName) -> void:
 	if id == 1:
 		_mage_died = true
-		_check(killer == 0 and cause == _CAUSE and _stages.back() == 4 and _closed,
+		_check(killer == 0 and cause == _CAUSE and _stages.back() == 3 and _closed,
 			"mage survives earlier deficit and dies to final-stage firestorm")
 
 
@@ -126,9 +133,9 @@ func _on_result(winner: int, reason: String) -> void:
 
 func _finish() -> void:
 	_finished = true
-	_check(_stages == [1, 2, 3, 4], "all stages delivered including current stage for late client")
-	_check(_warnings == ([2, 3, 4] if _late else [1, 2, 3, 4]), "all applicable warnings delivered")
-	_check(_saw_plan and _damaged and _mage_died, "plan and health events reached this peer")
+	_check(_stages == [1, 2, 3], "all stages delivered including current stage for late client")
+	_check(_warnings == ([2, 3] if _late else [1, 2, 3]), "all applicable warnings delivered")
+	_check((_late or _saw_inactive) and _damaged and _mage_died, "warning and health events reached this peer")
 	_check(_storm.stage == 0 and _storm.required_power() == 0.0 and _storm.final_zone_radius == 0.0,
 		"storm state cleared on return to lobby")
 	print("[TEST] FIRESTORM PASSED" if not _failed else "[TEST] FAIL FIRESTORM")
