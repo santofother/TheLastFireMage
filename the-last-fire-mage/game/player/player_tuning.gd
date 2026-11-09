@@ -130,6 +130,9 @@ extends Tuning
 ## TUNE: seconds a villager must hold E to revive a downed player.
 @export var revive_hold_time := 4.0
 
+## TUNE: seconds a downed villager lasts before bleeding out (paused while someone is reviving them).
+@export var bleed_out_time := 30.0
+
 ## TUNE: hp while downed (any damage kills).
 @export var downed_hp := 1.0
 

@@ -14,6 +14,8 @@ var _stamina_meter: ProgressBar
 var _meter: ProgressBar
 var _marks: Control
 var _threshold: ColorRect
+var _status_bar: ProgressBar
+var _status_fill: StyleBoxFlat
 var _phase := Enums.Phase.LOBBY
 var _role := Enums.Role.NONE
 var _remaining := 0.0
@@ -116,6 +118,52 @@ func _build() -> void:
 	_label("Results", Rect2(.18, .23, .64, .55), 23, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_root.resized.connect(_layout_meter)
 	_build_stamina()
+	_build_status()
+
+# Centre-screen state line + bar: revive progress (reviver), bleed-out clock (downed), stun.
+func _build_status() -> void:
+	_label("Status", Rect2(.3, .55, .4, .06), 24, HORIZONTAL_ALIGNMENT_CENTER)
+	_status_bar = ProgressBar.new()
+	_status_bar.name = "StatusBar"
+	_status_bar.show_percentage = false
+	_status_bar.step = 0.0
+	_status_bar.max_value = 1.0
+	_status_bar.anchor_left = .38
+	_status_bar.anchor_right = .62
+	_status_bar.anchor_top = .615
+	_status_bar.anchor_bottom = .635
+	_status_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color("17251feb")
+	track.set_corner_radius_all(3)
+	_status_fill = StyleBoxFlat.new()
+	_status_fill.set_corner_radius_all(3)
+	_status_bar.add_theme_stylebox_override("background", track)
+	_status_bar.add_theme_stylebox_override("fill", _status_fill)
+	_root.add_child(_status_bar)
+
+func _refresh_status() -> void:
+	var player := _local as Player if is_instance_valid(_local) else null
+	var text := ""
+	var fraction := -1.0
+	if player != null and player.is_alive and player.tuning != null:
+		var interactor := player.get_ability(&"Interactor")
+		var hold := float(interactor.call("hold_progress")) if interactor and interactor.has_method("hold_progress") else 0.0
+		if player.health.is_downed:
+			text = "DOWNED · BEING REVIVED" if player.being_revived \
+				else "DOWNED · BLEEDING OUT IN %d s" % ceili(player.bleed_out_left)
+			fraction = player.bleed_out_left / maxf(player.tuning.bleed_out_time, 0.01)
+			_status_fill.bg_color = Color("ff5a54")
+		elif hold > 0.0:
+			text = "REVIVING…"
+			fraction = hold
+			_status_fill.bg_color = Color("9ee391")
+		elif player.stun_time_left() > 0.0:
+			text = "STUNNED"
+	_labels.Status.text = text
+	_labels.Status.visible = text != ""
+	_status_bar.visible = fraction >= 0.0
+	_status_bar.value = clampf(fraction, 0.0, 1.0)
 
 func _build_stamina() -> void:
 	# Separate from the round panel so the same meter is visible in Explore Town.
@@ -208,6 +256,7 @@ func _process(delta: float) -> void:
 	_labels.Scoreboard.visible = _root.visible and Input.is_action_pressed("scoreboard")
 	_labels.Results.visible = not _result.is_empty() and not _labels.Scoreboard.visible
 	_refresh_stamina()
+	_refresh_status()
 
 func _local_id() -> int:
 	if is_instance_valid(_local):

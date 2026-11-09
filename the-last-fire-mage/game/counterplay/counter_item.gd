@@ -2,7 +2,8 @@ class_name CounterItem
 extends Node3D
 ## A throwable villager tool (bucket, clay pot, fishing net). Owner: S15.
 ## Implements the CARRYABLE interface of the interact system (ARCHITECTURE §Interact), so pick up / drop /
-## throw come from S10. Kinds: &"bucket" (stun + puts out Ignite), &"pot" (short stagger), &"net" (slow).
+## throw come from S10. Kinds: &"bucket" (stun + puts out Ignite), &"pot" (short stagger), &"net" (area stun:
+## opens where it hits or lands and stuns + slows every mage within `net_radius`).
 ## NET: server simulates (authority 1); clients show synced state ($Sync: position, state, carrier_id).
 ## Spawned by CounterplayManager's MultiplayerSpawner (data: name, pos, kind, break_chance).
 ## Flight (server): ballistic, swept against the mage (-> manager applies the effect, item breaks) and the
@@ -32,6 +33,7 @@ var break_chance := 0.0
 var thrower_id := 0
 var velocity := Vector3.ZERO
 var home := Vector3.ZERO
+var _thrown := false # NET: server. In flight from a throw (not a plain drop); a net opens where it lands.
 
 @onready var _mesh: MeshInstance3D = $Mesh
 
@@ -69,6 +71,7 @@ func throw_by_ghost(from: Vector3, impulse: Vector3) -> void:
 	global_position = from
 	velocity = impulse
 	state = State.AIR
+	_thrown = true
 
 
 func _physics_process(delta: float) -> void:
@@ -106,6 +109,13 @@ func _fly(delta: float) -> void: # NET: server only
 		global_position = hit.position + Vector3.UP * 0.05
 		velocity = Vector3.ZERO
 		state = State.IDLE
+		var opened := kind == &"net" and _thrown
+		_thrown = false
+		if opened:
+			var manager := GameEvents.system(&"counterplay") as CounterplayManager
+			if manager and manager.net_burst(self, global_position) > 0:
+				_break("net caught the mage")
+				return
 		if randf() < break_chance:
 			_break("hit the ground")
 			return
@@ -193,6 +203,7 @@ func on_dropped(pos: Vector3, impulse: Vector3) -> void:
 	global_position = pos
 	velocity = impulse
 	state = State.AIR
+	_thrown = not impulse.is_zero_approx()
 
 
 ## Carryable: items can't be hidden.

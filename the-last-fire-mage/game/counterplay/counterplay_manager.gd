@@ -104,7 +104,26 @@ func apply_item_hit(item: CounterItem, mage: Node) -> void:
 		&"pot":
 			request_stun(mage, tuning.pot_stun, item.thrower_id)
 		&"net":
-			request_slow(mage, tuning.net_slow, tuning.net_slow_time)
+			net_burst(item, item.global_position)
+
+
+## NET: server only. A thrown net opened at `center`: every living mage inside `net_radius` is stunned for
+## `net_stun` and slowed afterwards. Area effect, so a near miss still catches. Returns mages caught.
+func net_burst(item: CounterItem, center: Vector3) -> int:
+	if not Net.is_server(self):
+		return 0
+	var caught := 0
+	for mage in Players.alive_with_role(Enums.Role.MAGE):
+		var offset: Vector3 = mage.global_position - center
+		if absf(offset.y) > tuning.net_reach_y + float(mage.tuning.height if mage.tuning else 1.4):
+			continue
+		if Vector2(offset.x, offset.z).length() > tuning.net_radius:
+			continue
+		request_stun(mage, tuning.net_stun, item.thrower_id)
+		request_slow(mage, tuning.net_slow, tuning.net_slow_time)
+		caught += 1
+	print("[Counterplay] net opened at %s, caught %d" % [center, caught])
+	return caught
 
 
 ## NET: server only. Spawns one item. Returns the node.

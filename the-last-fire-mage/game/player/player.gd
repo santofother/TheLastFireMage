@@ -17,6 +17,7 @@ extends CharacterBody3D
 ## - local (call on every peer): `set_role(role)`, `is_local()`, `can_control()`, `get_ability(name)`
 ## - server only: `stun(s)`, `set_input_lock(reason, on)`, `teleport(pos)`, `apply_knockback(v)`,
 ##   `set_speed_modifier(source, mult)`
+## - downed villagers: `bleed_out_left`, `being_revived` (all peers), `stun_time_left()`
 ## - signals: `role_changed(role)`, `stunned(seconds)`, `died(killer_id, cause)`, `revived`
 
 ## Role changed on this peer (after abilities were rebuilt). Fires on all peers.
@@ -97,6 +98,12 @@ var is_airborne := false
 var air_tuck_lift := 0.0
 ## Vertical offset for the character model: keeps the head still during a tuck and smooths step-ups.
 var visual_y_offset := 0.0
+## Seconds until a downed villager bleeds out. Counts on every peer for the HUD; the server decides the death.
+var bleed_out_left := 0.0
+## True while a villager is holding revive on this downed player (bleed-out pauses). Set by the server.
+var being_revived := false
+var _revive_ping_msec := -1000000 # NET: server. Last tick an Interactor channelled a revive on us.
+var _stun_fx: Node3D
 
 var _step_offset := 0.0
 var _step_distance_debt := 0.0
@@ -148,6 +155,7 @@ func _ready() -> void:
 	health.downed.connect(_on_downed)
 	health.recovered.connect(_on_recovered)
 	_add_revive_interactable()
+	_build_stun_fx()
 	if is_local():
 		camera.current = true
 		VoiceManager.listener = self
@@ -192,6 +200,11 @@ func set_role(new_role: int) -> void:
 		abilities.add_child(node)
 		node.set_multiplayer_authority(get_multiplayer_authority(), true)
 	role_changed.emit(role)
+
+
+## Seconds of stun left (accurate on the owning peer and the server; other peers count down too).
+func stun_time_left() -> float:
+	return _stun_left
 
 
 ## Ability node by its scene root name (e.g. &"MageAbilities"), or null.
@@ -298,6 +311,8 @@ func _on_died(killer_id: int, cause: StringName) -> void:
 
 
 func _on_downed() -> void:
+	bleed_out_left = tuning.bleed_out_time
+	being_revived = false
 	_reset_movement()
 	is_crouching = false
 	_update_stance()
@@ -329,6 +344,64 @@ func _add_revive_interactable() -> void:
 	add_child(node)
 
 
+## NET: server only. An Interactor calls this every tick it channels a revive on this player.
+func note_revive_hold() -> void:
+	_revive_ping_msec = Time.get_ticks_msec()
+
+
+# A downed villager dies after `bleed_out_time` unless revived. A revive in progress pauses the clock.
+func _tick_bleed_out(delta: float) -> void:
+	if not health.is_downed or not is_alive:
+		return
+	if Net.is_server(self):
+		var reviving := Time.get_ticks_msec() - _revive_ping_msec < 250
+		if reviving != being_revived:
+			Net.broadcast(self, &"_rpc_bleed", [bleed_out_left, reviving])
+	if being_revived:
+		return
+	bleed_out_left = maxf(0.0, bleed_out_left - delta)
+	if Net.is_server(self) and bleed_out_left <= 0.0:
+		print("[Game] %s bled out" % name)
+		health.kill(0, &"bled_out")
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_bleed(left: float, reviving: bool) -> void:
+	if Net.from_server(self):
+		bleed_out_left = left
+		being_revived = reviving
+
+
+# Three little stars circling the head while stunned, so everyone can see a stun land.
+func _build_stun_fx() -> void:
+	_stun_fx = Node3D.new()
+	_stun_fx.name = "StunFx"
+	_stun_fx.visible = false
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.9, 0.3)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.85, 0.2)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.07
+	mesh.height = 0.14
+	for i in 3:
+		var star := MeshInstance3D.new()
+		star.mesh = mesh
+		star.material_override = mat
+		var a := TAU * i / 3.0
+		star.position = Vector3(cos(a) * 0.3, 0.0, sin(a) * 0.3)
+		_stun_fx.add_child(star)
+	add_child(_stun_fx)
+
+
+func _update_stun_fx(delta: float) -> void:
+	_stun_fx.visible = _stun_left > 0.0 and is_alive
+	if _stun_fx.visible:
+		_stun_fx.position.y = tuning.height + 0.25 + visual_y_offset
+		_stun_fx.rotate_y(delta * 6.0)
+
+
 func _on_revived() -> void:
 	collision_layer = _default_layer
 	_reset_movement()
@@ -350,9 +423,11 @@ func _physics_process(delta: float) -> void:
 	_update_pose(delta)
 	_step_offset = lerpf(_step_offset, 0.0, 1.0 - exp(-tuning.step_smoothing * delta))
 	visual_y_offset = _step_offset - air_tuck_lift
+	_stun_left = maxf(0.0, _stun_left - delta)
+	_update_stun_fx(delta)
+	_tick_bleed_out(delta)
 	if not is_multiplayer_authority():
 		return
-	_stun_left = maxf(0.0, _stun_left - delta)
 	_tumble_left = maxf(0.0, _tumble_left - delta)
 	is_tumbling = _tumble_left > 0.0
 	_read_input(delta)
@@ -427,6 +502,10 @@ func _physics_process(delta: float) -> void:
 		if stamina >= minf(tuning.sprint_recovery_stamina, tuning.max_stamina):
 			_sprint_exhausted = false
 
+	if grounded:
+		# WHY: sliding up a ramp leaves upward speed in velocity.y; kept, it launched players off every crest
+		# and notch (a free hop plus extra distance). On the floor, slope motion comes from move_and_slide.
+		velocity.y = minf(velocity.y, 0.0)
 	var speed := tuning.crouch_speed if is_crouching and air_tuck_lift <= 0.0 else (
 		tuning.sprint_speed if is_sprinting else tuning.walk_speed)
 	var wish := global_basis * Vector3(input.move.x, 0.0, input.move.y).limit_length()
@@ -505,7 +584,9 @@ func _apply_fall_damage(fall_height: float, sprinted: bool, jumped: bool, ledge_
 	if ledge_drop >= tuning.fall_story_height and ledge_drop <= tuning.one_story_drop_max:
 		damage *= 0.5
 	# WHY: a lethal fall downs the player (revivable by a villager) a limited number of times per round.
-	if damage >= health.hp and not health.invulnerable and health.downs_used < tuning.fall_downs_allowed:
+	# The mage never goes down: a lethal fall kills it outright.
+	if damage >= health.hp and not health.invulnerable and role == Enums.Role.VILLAGER \
+			and health.downs_used < tuning.fall_downs_allowed:
 		health.down(tuning.downed_hp)
 		return
 	health.apply_damage(damage, 0, &"fall")
@@ -671,6 +752,10 @@ func _try_step_up(delta: float) -> void:
 		return
 	var collider := hit.get_collider()
 	if collider is CharacterBody3D or collider is BreakableProp:
+		return
+	# WHY: a walkable contact (ramp, rounded kerb edge) is handled by move_and_slide. Stepping there turned
+	# every ramp into a run of tiny teleports that hopped and jittered the camera.
+	if hit.get_normal().dot(Vector3.UP) >= cos(floor_max_angle) - 0.01:
 		return
 	var up := Vector3.UP * (tuning.step_max_height + tuning.collision_clearance)
 	if test_move(global_transform, up):
@@ -864,6 +949,9 @@ func _apply_tuning(path: String, section: String) -> void:
 	_standing_height = 0.0
 	floor_snap_length = tuning.floor_snap
 	floor_max_angle = deg_to_rad(tuning.floor_max_angle_degrees)
+	# WHY: same speed up and down ramps, and a near head-on wall contact slides instead of sticking.
+	floor_constant_speed = true
+	wall_min_slide_angle = 0.0
 	_spring.spring_length = tuning.camera_distance
 	_spring.position.x = tuning.camera_shoulder
 	_spring.margin = tuning.camera_margin

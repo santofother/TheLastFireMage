@@ -326,6 +326,79 @@ func _check_notched_slope() -> void:
 		_check(distance >= flat * 0.85, "%.2f m notches do not catch the player" % notch)
 
 
+# Running up a ramp onto a plateau: never airborne at the crest, never faster than the flat.
+func _ramp_run(degrees: float) -> Array:
+	var boxes: Array[StaticBody3D] = []
+	var a := deg_to_rad(degrees)
+	var length := 8.0
+	if degrees > 0.0:
+		var top_mid := Vector3(-30, length / 2.0 * sin(a), -1.0 - length / 2.0 * cos(a))
+		var ramp := _box(top_mid - Vector3(0, cos(a), sin(a)) * 0.1, Vector3(6, 0.2, length))
+		ramp.rotation.x = a
+		boxes.append(ramp)
+		var h := length * sin(a)
+		boxes.append(_box(Vector3(-30, h / 2.0, -1.0 - length * cos(a) - 4.0), Vector3(6, h, 8)))
+	await _reset(Vector3(-30, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	var airborne := 0
+	for i in 180:
+		await _ticks(1)
+		if not _player.is_on_floor():
+			airborne += 1
+	var distance := absf(_player.position.z)
+	_driver.move = Vector2.ZERO
+	for b in boxes:
+		b.queue_free()
+	await _ticks(2)
+	return [distance, airborne]
+
+
+# Sprinting up tight stairs (town steps): never faster than a flat sprint, never airborne for long.
+func _stair_run(rise: float, tread: float, sprint: bool) -> Array:
+	var boxes: Array[StaticBody3D] = []
+	if rise > 0.0:
+		for i in 40:
+			# Each box runs from its riser to the top of the flight, so the treads have no seams.
+			var h := rise * (i + 1)
+			var depth := tread * (40 - i)
+			boxes.append(_box(Vector3(-15, h / 2.0, -2.0 - tread * i - depth / 2.0), Vector3(4, h, depth)))
+	await _reset(Vector3(-15, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	_driver.sprint = sprint
+	var airborne := 0
+	for i in 90:
+		await _ticks(1)
+		if not _player.is_on_floor():
+			airborne += 1
+	var distance := absf(_player.position.z)
+	_driver.move = Vector2.ZERO
+	_driver.sprint = false
+	for b in boxes:
+		b.queue_free()
+	await _ticks(2)
+	return [distance, airborne]
+
+
+func _check_ramps() -> void:
+	for sprint: bool in [false, true]:
+		var flat_stairs: Array = await _stair_run(0.0, 0.3, sprint)
+		# TODO(S17): box stairs with treads under ~0.3 m (e.g. 0.25) climb slowly when walking (not sprinting).
+		# Town stairs use ramp colliders, so the map never hits this.
+		for step: Vector2 in [Vector2(0.08, 0.3), Vector2(0.15, 0.3), Vector2(0.2, 0.3)]:
+			var run: Array = await _stair_run(step.x, step.y, sprint)
+			print("[TEST] stairs rise %.2f tread %.2f sprint %s: %.2f m (flat %.2f), airborne %d" % [
+				step.x, step.y, sprint, run[0], flat_stairs[0], run[1]])
+			_check(run[0] <= flat_stairs[0] * 1.02, "stairs %.2f/%.2f give no speed boost" % [step.x, step.y])
+			_check(run[0] >= flat_stairs[0] * 0.7, "stairs %.2f/%.2f do not catch the player" % [step.x, step.y])
+	var flat: Array = await _ramp_run(0.0)
+	for degrees: float in [12.0, 25.0]:
+		var run: Array = await _ramp_run(degrees)
+		print("[TEST] ramp %d deg: distance %.2f (flat %.2f), airborne ticks %d" % [degrees, run[0], flat[0], run[1]])
+		_check(run[0] <= flat[0] * 1.02, "%d deg ramp gives no speed boost" % degrees)
+		_check(run[0] >= flat[0] * 0.8, "%d deg ramp does not catch the player" % degrees)
+		_check(run[1] <= 1, "%d deg ramp crest does not launch the player" % degrees)
+
+
 func _check_step_and_tuck() -> void:
 	var curb := _box(Vector3(30, 0.15, -6), Vector3(4, 0.3, 9))
 	await _reset(Vector3(30, 0.04, 0))
@@ -341,6 +414,7 @@ func _check_step_and_tuck() -> void:
 	wall.queue_free()
 	await _reset(Vector3(30, 0.04, 0))
 	await _check_notched_slope()
+	await _check_ramps()
 	var plain: float = await _jump_peak(false, false)
 	var timed: float = await _jump_peak(true, false)
 	var early: float = await _jump_peak(false, true)
