@@ -4,6 +4,8 @@
 [ext_resource type="PackedScene" path="res://game/common/health.tscn" id="2_health"]
 [ext_resource type="Script" path="res://game/player/villager/villager_visual.gd" id="3_visual"]
 [ext_resource type="PackedScene" path="res://game/player/villager/red-villager-animations.glb" id="4_model"]
+[ext_resource type="Script" path="res://game/player/mage/mage_visual.gd" id="5_mage"]
+[ext_resource type="PackedScene" path="res://game/player/mage/mage-animations.glb" id="6_mage"]
 
 [sub_resource type="CapsuleShape3D" id="shape"]
 radius = 0.4
@@ -61,6 +63,13 @@ mesh = SubResource("nose")
 script = ExtResource("3_visual")
 
 [node name="Model" parent="VillagerVisual" instance=ExtResource("4_model")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0, 0)
+
+[node name="MageVisual" type="Node3D" parent="."]
+visible = false
+script = ExtResource("5_mage")
+
+[node name="Model" parent="MageVisual" instance=ExtResource("6_mage")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0, 0)
 
 [node name="Nameplate" type="Label3D" parent="."]

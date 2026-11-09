@@ -71,6 +71,7 @@ var tuning: PlayerTuning
 # WHY: the capsule is still the mage's body. Villagers hide it and show $VillagerVisual instead.
 @onready var _body_mesh: MeshInstance3D = $Body
 @onready var _villager_visual: VillagerVisual = $VillagerVisual
+@onready var _mage_visual: MageVisual = $MageVisual
 @onready var _collision: CollisionShape3D = $Collision
 
 ## Replicated stance flag; remote peers resize their own collision and visuals.
@@ -571,8 +572,10 @@ func _tick_mantle(delta: float) -> void:
 func _update_role_visual() -> void:
 	var mage := role == Enums.Role.MAGE
 	_villager_visual.visible = not mage
-	_body_mesh.visible = mage
-	$Nose.visible = mage
+	# FIX(mage model): the capsule and nose are replaced by the mage model.
+	_mage_visual.visible = mage
+	_body_mesh.visible = false
+	$Nose.visible = false
 
 
 func _ray(from: Vector3, to: Vector3) -> Dictionary:

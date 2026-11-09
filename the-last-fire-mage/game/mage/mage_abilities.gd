@@ -26,6 +26,9 @@ func _physics_process(delta: float) -> void:
 		_cooldowns[key] = maxf(0.0, float(_cooldowns[key]) - delta)
 	_ignite_left = maxf(0.0, _ignite_left - delta)
 	_flame.visible = is_ignited()
+	$Knife.visible = false
+	if _flame.visible: # FIX(mage model): burn on the held blade instead of in front of the capsule.
+		_flame.global_position = (_player.get_node("MageVisual") as MageVisual).hand_position() + Vector3.UP * 0.1
 	if Net.is_server(self) and not _player.is_bot:
 		_tick_locator(delta)
 	if not _player.is_multiplayer_authority() or not _player.can_control():
@@ -78,10 +81,8 @@ func _rpc_cast(ability: StringName, cooldown: float, duration: float) -> void:
 	_cooldowns[ability] = cooldown
 	if ability == &"ignite":
 		_ignite_left = duration
-	elif ability == &"knife":
-		var tween := create_tween()
-		$Knife.rotation.z = -0.9
-		tween.tween_property($Knife, "rotation:z", 0.0, 0.2)
+	# FIX(mage model): the model plays confirmed casts on every peer; the placeholder knife box is hidden.
+	_player.get_node("MageVisual").play_cast(ability)
 
 func _attack(ability: StringName, aim: Vector3) -> void:
 	var wave := ability == &"fire_wave"
