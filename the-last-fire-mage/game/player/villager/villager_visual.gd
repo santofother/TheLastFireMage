@@ -70,6 +70,7 @@ var _carrying := false
 var _timed_clip: StringName = &""
 var _timed_left := 0.0
 var _timed_rate := 1.0
+var _skin := 0 # The player scene starts with the red body.
 
 
 func _ready() -> void:
@@ -82,6 +83,15 @@ func _ready() -> void:
 	_player.stunned.connect(_on_stunned)
 	_player.revived.connect(_on_revived)
 	GameEvents.carry_changed.connect(_on_carry_changed)
+
+
+## Shows the body for a `VillagerSkins` id. Clips and skeleton are unaffected.
+func set_skin(id: int) -> void:
+	if id == _skin:
+		return
+	_skin = id
+	VillagerMeshSwap.apply(_skeleton, VillagerSkins.scene(id))
+	print("[Game] Villager skin %d -> %s %s" % [_player.peer_id, VillagerSkins.NAMES[id], _skeleton.get_child(0).name])
 
 
 func _physics_process(delta: float) -> void:

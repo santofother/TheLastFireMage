@@ -147,6 +147,9 @@ func _build_ghost_model(me: Player) -> void:
 	if src != null and src.scene_file_path != "":
 		var model := (load(src.scene_file_path) as PackedScene).instantiate() as Node3D
 		model.transform = src.transform
+		# FIX(villager picker, Claude): the file path is always the red GLB, so reapply the player's chosen body.
+		if me.villager_skin != 0:
+			VillagerMeshSwap.apply(model.find_child("Skeleton3D", true, false) as Skeleton3D, VillagerSkins.scene(me.villager_skin))
 		_ghost.add_child(model)
 		_ghost_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 		return

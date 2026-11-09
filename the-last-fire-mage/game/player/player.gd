@@ -37,6 +37,13 @@ var peer_id := 1
 var display_name := "Player"
 ## True for a server-side local bot (S07). Bots have authority 1 and never take the camera.
 var is_bot := false
+## Villager body (`VillagerSkins` id). Cosmetic, so the owner sets it and the synchronizer sends it.
+# NET: owner peer writes; every peer applies. Values are clamped because they come from clients.
+var villager_skin := 0:
+	set(value):
+		villager_skin = VillagerSkins.clamp_id(value)
+		if is_node_ready():
+			_villager_visual.set_skin(villager_skin)
 ## Current role (Enums.Role). Change only through `set_role()`.
 var role: int = Enums.Role.NONE
 ## Alive flag (from Health; synced).
@@ -126,6 +133,9 @@ func _ready() -> void:
 	_body_mesh.material_override = mat
 	_apply_tuning(VILLAGER_TUNING, "villager")
 	_update_role_visual()
+	if is_multiplayer_authority():
+		villager_skin = posmod(peer_id, VillagerSkins.NAMES.size()) if is_bot else VillagerSkins.local
+	_villager_visual.set_skin(villager_skin)
 	health.damaged.connect(func(a: float, src: int, c: StringName) -> void:
 		GameEvents.player_damaged.emit(peer_id, a, src, c))
 	health.died.connect(_on_died)
