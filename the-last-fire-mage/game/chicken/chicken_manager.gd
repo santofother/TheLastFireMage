@@ -5,6 +5,7 @@ extends Node3D
 ## group `chicken_spawn`. Chickens are server-simulated.
 ## Lobby: when hosting starts the server spawns `tuning.count`. Round hook: on `phase_changed(ROLE_REVEAL)`
 ## the server clears and spawns a fresh `tuning.count`.
+## Firestorm: on every `firestorm_stage` the server tops the flock back up to `tuning.count` inside the zone.
 ## Respawn: if `tuning.respawn_time > 0`, a killed chicken is replaced after that many seconds (server).
 ## Public API: `spawn_chickens(count)`, `clear_chickens()`, `get_chickens()`, `alive_count()`, `tuning`.
 
@@ -28,6 +29,7 @@ func _ready() -> void:
 	spawner.spawn_function = _spawn_chicken
 	GameEvents.phase_changed.connect(_on_phase_changed)
 	GameEvents.chicken_killed.connect(_on_chicken_killed)
+	GameEvents.firestorm_stage.connect(_on_firestorm_stage)
 	NetworkManager.session_ended.connect(func(_r: String) -> void: clear_chickens())
 	# WHY: playtesters run around the lobby before any round; chickens should be there from the start.
 	NetworkManager.hosting_started.connect(func() -> void:
@@ -36,14 +38,22 @@ func _ready() -> void:
 
 
 ## NET: server only. Spawns `count` chickens spread over the `chicken_spawn` markers (random jitter).
-func spawn_chickens(count: int) -> void:
+## Optional `zone_radius` > 0 limits markers to those inside that horizontal radius around `zone_center`.
+func spawn_chickens(count: int, zone_center: Vector3 = Vector3.ZERO, zone_radius: float = 0.0) -> void:
 	if not Net.is_server(self):
 		return
 	var spawns := get_tree().get_nodes_in_group(&"chicken_spawn")
+	if zone_radius > 0.0:
+		var inside: Array[Node] = []
+		for m in spawns:
+			var d := (m as Node3D).global_position - zone_center
+			if Vector2(d.x, d.z).length() <= zone_radius:
+				inside.append(m)
+		spawns = inside
 	spawns.shuffle()
 	for i in count:
 		var base: Vector3 = (spawns[i % spawns.size()] as Node3D).global_position if not spawns.is_empty() \
-			else FALLBACK_SPAWN
+			else (zone_center + Vector3(0, 0.5, 0) if zone_radius > 0.0 else FALLBACK_SPAWN)
 		var jitter := Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)) if i >= spawns.size() \
 			else Vector3.ZERO
 		var pos := base + jitter + Vector3(0, 0.2, 0)
@@ -86,6 +96,16 @@ func _on_phase_changed(phase: int, _duration: float) -> void:
 	if phase == Enums.Phase.ROLE_REVEAL and Net.is_server(self):
 		clear_chickens()
 		spawn_chickens(tuning.count)
+
+
+# FIX(S16, Claude): user request, the flock is topped back up to `tuning.count` every time the firestorm
+# wall closes in (each stage), inside the new safe zone, so mage power can keep growing.
+func _on_firestorm_stage(_stage: int, center: Vector3, radius: float, _req: float, _next: float) -> void:
+	if not Net.is_server(self):
+		return
+	var missing := tuning.count - alive_count()
+	if missing > 0:
+		spawn_chickens(missing, center, radius)
 
 
 func _on_chicken_killed(_killer_id: int, _pos: Vector3) -> void:
