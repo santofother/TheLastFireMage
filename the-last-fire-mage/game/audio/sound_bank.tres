@@ -51,82 +51,94 @@
 [ext_resource type="AudioStream" path="res://assets/audio/interact/carry_drop_03.ogg" id="a48"]
 [ext_resource type="AudioStream" path="res://assets/audio/interact/carry_drop_04.ogg" id="a49"]
 [ext_resource type="AudioStream" path="res://assets/audio/interact/carry_drop_05.ogg" id="a50"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/chicken_squawk.wav" id="a51"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_01.wav" id="a52"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_02.wav" id="a53"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_03.wav" id="a54"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_04.wav" id="a55"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_05.wav" id="a56"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_06.wav" id="a57"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_07.wav" id="a58"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_08.wav" id="a59"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_09.wav" id="a60"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_10.wav" id="a61"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_11.wav" id="a62"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_12.wav" id="a63"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_13.wav" id="a64"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/ignite_whoosh_01.ogg" id="a65"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/ignite_whoosh_02.ogg" id="a66"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/ignite_loop.wav" id="a67"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_01.ogg" id="a68"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_02.ogg" id="a69"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_03.ogg" id="a70"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_04.ogg" id="a71"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_05.ogg" id="a72"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/locate_pulse.ogg" id="a73"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_01.ogg" id="a74"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_02.ogg" id="a75"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_03.ogg" id="a76"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_04.ogg" id="a77"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_05.ogg" id="a78"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/kill_sting_01.ogg" id="a79"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/kill_sting_02.ogg" id="a80"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/wave_ready.ogg" id="a81"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_01.ogg" id="a82"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_02.ogg" id="a83"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_03.ogg" id="a84"]
-[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_04.ogg" id="a85"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/mage_aura_loop.wav" id="a86"]
-[ext_resource type="AudioStream" path="res://assets/audio/villager/villager_hurt_01.ogg" id="a87"]
-[ext_resource type="AudioStream" path="res://assets/audio/villager/villager_hurt_02.ogg" id="a88"]
-[ext_resource type="AudioStream" path="res://assets/audio/villager/villager_death.ogg" id="a89"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_drone.wav" id="a90"]
-[ext_resource type="AudioStream" path="res://assets/audio/dread/dread_heartbeat.wav" id="a91"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_strings.wav" id="a92"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_chase.wav" id="a93"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_spotted.wav" id="a94"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/hunter_bed.wav" id="a95"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/ghost_bed.wav" id="a96"]
-[ext_resource type="AudioStream" path="res://assets/audio/music/music_cheer.mp3" id="a97"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/music_dark.wav" id="a98"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/music_drone.wav" id="a99"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/stinger_round_start.wav" id="a100"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/stinger_victory.wav" id="a101"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/stinger_defeat.wav" id="a102"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/storm_roar_loop.wav" id="a103"]
-[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_crackle_loop.wav" id="a104"]
-[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_wind_loop.ogg" id="a105"]
-[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_warning_bell.ogg" id="a106"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/storm_stage_sweep.wav" id="a107"]
-[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_rumble_hit_01.ogg" id="a108"]
-[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_rumble_hit_02.ogg" id="a109"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/storm_damage_tick.wav" id="a110"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/amb_ocean_loop.wav" id="a111"]
-[ext_resource type="AudioStream" path="res://assets/audio/placeholder/amb_town_loop.wav" id="a112"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_01.wav" id="a113"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_02.wav" id="a114"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_03.wav" id="a115"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_04.wav" id="a116"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_05.wav" id="a117"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_06.wav" id="a118"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_07.wav" id="a119"]
-[ext_resource type="AudioStream" path="res://assets/audio/ambience/flame_crackle_loop.wav" id="a120"]
-[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_01.ogg" id="a121"]
-[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_02.ogg" id="a122"]
-[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_03.ogg" id="a123"]
-[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_04.ogg" id="a124"]
-[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_05.ogg" id="a125"]
-[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_confirm.ogg" id="a126"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_01.wav" id="a51"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_02.wav" id="a52"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_03.wav" id="a53"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_04.wav" id="a54"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_05.wav" id="a55"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_06.wav" id="a56"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_07.wav" id="a57"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_cluck_08.wav" id="a58"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_squawk_01.wav" id="a59"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_squawk_02.wav" id="a60"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_squawk_03.wav" id="a61"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_squawk_04.wav" id="a62"]
+[ext_resource type="AudioStream" path="res://assets/audio/interact/chicken_squawk_05.wav" id="a63"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_01.wav" id="a64"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_02.wav" id="a65"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_03.wav" id="a66"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_04.wav" id="a67"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_05.wav" id="a68"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_06.wav" id="a69"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_07.wav" id="a70"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_08.wav" id="a71"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_09.wav" id="a72"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_10.wav" id="a73"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_11.wav" id="a74"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_12.wav" id="a75"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/knife_swing_13.wav" id="a76"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/ignite_whoosh_01.ogg" id="a77"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/ignite_whoosh_02.ogg" id="a78"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/ignite_loop.wav" id="a79"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_01.ogg" id="a80"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_02.ogg" id="a81"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_03.ogg" id="a82"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_04.ogg" id="a83"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/fire_wave_cast_05.ogg" id="a84"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/locate_pulse.ogg" id="a85"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_01.ogg" id="a86"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_02.ogg" id="a87"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_03.ogg" id="a88"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_04.ogg" id="a89"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/hit_flesh_05.ogg" id="a90"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/kill_sting_01.ogg" id="a91"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/kill_sting_02.ogg" id="a92"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/wave_ready.ogg" id="a93"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_01.ogg" id="a94"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_02.ogg" id="a95"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_03.ogg" id="a96"]
+[ext_resource type="AudioStream" path="res://assets/audio/mage/tier_up_04.ogg" id="a97"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/mage_aura_loop.wav" id="a98"]
+[ext_resource type="AudioStream" path="res://assets/audio/villager/villager_hurt_01.ogg" id="a99"]
+[ext_resource type="AudioStream" path="res://assets/audio/villager/villager_hurt_02.ogg" id="a100"]
+[ext_resource type="AudioStream" path="res://assets/audio/villager/villager_death.ogg" id="a101"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_drone.wav" id="a102"]
+[ext_resource type="AudioStream" path="res://assets/audio/dread/dread_heartbeat.wav" id="a103"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_strings.wav" id="a104"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_chase.wav" id="a105"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/dread_spotted.wav" id="a106"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/hunter_bed.wav" id="a107"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/ghost_bed.wav" id="a108"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/music_cheer.mp3" id="a109"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/music_dark.wav" id="a110"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/music_drone.wav" id="a111"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/stinger_round_start.wav" id="a112"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/stinger_victory.wav" id="a113"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/stinger_defeat.wav" id="a114"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/storm_roar_loop.wav" id="a115"]
+[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_crackle_loop.wav" id="a116"]
+[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_wind_loop.ogg" id="a117"]
+[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_warning_bell.ogg" id="a118"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/storm_stage_sweep.wav" id="a119"]
+[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_rumble_hit_01.ogg" id="a120"]
+[ext_resource type="AudioStream" path="res://assets/audio/storm/storm_rumble_hit_02.ogg" id="a121"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/storm_damage_tick.wav" id="a122"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/amb_ocean_loop.wav" id="a123"]
+[ext_resource type="AudioStream" path="res://assets/audio/placeholder/amb_town_loop.wav" id="a124"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_01.wav" id="a125"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_02.wav" id="a126"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_03.wav" id="a127"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_04.wav" id="a128"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_05.wav" id="a129"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_06.wav" id="a130"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/amb_gulls_07.wav" id="a131"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambience/flame_crackle_loop.wav" id="a132"]
+[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_01.ogg" id="a133"]
+[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_02.ogg" id="a134"]
+[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_03.ogg" id="a135"]
+[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_04.ogg" id="a136"]
+[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_click_05.ogg" id="a137"]
+[ext_resource type="AudioStream" path="res://assets/audio/ui/ui_confirm.ogg" id="a138"]
 
 [sub_resource type="AudioStreamRandomizer" id="rand_step_villager"]
 random_pitch = 1.12
@@ -288,148 +300,184 @@ stream_3/weight = 1.0
 stream_4/stream = ExtResource("a50")
 stream_4/weight = 1.0
 
+[sub_resource type="AudioStreamRandomizer" id="rand_chicken_cluck"]
+random_pitch = 1.06
+random_volume_offset_db = 1.5
+streams_count = 8
+stream_0/stream = ExtResource("a51")
+stream_0/weight = 1.0
+stream_1/stream = ExtResource("a52")
+stream_1/weight = 1.0
+stream_2/stream = ExtResource("a53")
+stream_2/weight = 1.0
+stream_3/stream = ExtResource("a54")
+stream_3/weight = 1.0
+stream_4/stream = ExtResource("a55")
+stream_4/weight = 1.0
+stream_5/stream = ExtResource("a56")
+stream_5/weight = 1.0
+stream_6/stream = ExtResource("a57")
+stream_6/weight = 1.0
+stream_7/stream = ExtResource("a58")
+stream_7/weight = 1.0
+
+[sub_resource type="AudioStreamRandomizer" id="rand_chicken_squawk"]
+random_pitch = 1.06
+random_volume_offset_db = 1.5
+streams_count = 5
+stream_0/stream = ExtResource("a59")
+stream_0/weight = 1.0
+stream_1/stream = ExtResource("a60")
+stream_1/weight = 1.0
+stream_2/stream = ExtResource("a61")
+stream_2/weight = 1.0
+stream_3/stream = ExtResource("a62")
+stream_3/weight = 1.0
+stream_4/stream = ExtResource("a63")
+stream_4/weight = 1.0
+
 [sub_resource type="AudioStreamRandomizer" id="rand_knife_swing"]
 random_pitch = 1.12
 random_volume_offset_db = 1.5
 streams_count = 13
-stream_0/stream = ExtResource("a52")
+stream_0/stream = ExtResource("a64")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a53")
+stream_1/stream = ExtResource("a65")
 stream_1/weight = 1.0
-stream_2/stream = ExtResource("a54")
+stream_2/stream = ExtResource("a66")
 stream_2/weight = 1.0
-stream_3/stream = ExtResource("a55")
+stream_3/stream = ExtResource("a67")
 stream_3/weight = 1.0
-stream_4/stream = ExtResource("a56")
+stream_4/stream = ExtResource("a68")
 stream_4/weight = 1.0
-stream_5/stream = ExtResource("a57")
+stream_5/stream = ExtResource("a69")
 stream_5/weight = 1.0
-stream_6/stream = ExtResource("a58")
+stream_6/stream = ExtResource("a70")
 stream_6/weight = 1.0
-stream_7/stream = ExtResource("a59")
+stream_7/stream = ExtResource("a71")
 stream_7/weight = 1.0
-stream_8/stream = ExtResource("a60")
+stream_8/stream = ExtResource("a72")
 stream_8/weight = 1.0
-stream_9/stream = ExtResource("a61")
+stream_9/stream = ExtResource("a73")
 stream_9/weight = 1.0
-stream_10/stream = ExtResource("a62")
+stream_10/stream = ExtResource("a74")
 stream_10/weight = 1.0
-stream_11/stream = ExtResource("a63")
+stream_11/stream = ExtResource("a75")
 stream_11/weight = 1.0
-stream_12/stream = ExtResource("a64")
+stream_12/stream = ExtResource("a76")
 stream_12/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_ignite_whoosh"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 2
-stream_0/stream = ExtResource("a65")
+stream_0/stream = ExtResource("a77")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a66")
+stream_1/stream = ExtResource("a78")
 stream_1/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_fire_wave_cast"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 5
-stream_0/stream = ExtResource("a68")
+stream_0/stream = ExtResource("a80")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a69")
+stream_1/stream = ExtResource("a81")
 stream_1/weight = 1.0
-stream_2/stream = ExtResource("a70")
+stream_2/stream = ExtResource("a82")
 stream_2/weight = 1.0
-stream_3/stream = ExtResource("a71")
+stream_3/stream = ExtResource("a83")
 stream_3/weight = 1.0
-stream_4/stream = ExtResource("a72")
+stream_4/stream = ExtResource("a84")
 stream_4/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_hit_flesh"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 5
-stream_0/stream = ExtResource("a74")
+stream_0/stream = ExtResource("a86")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a75")
+stream_1/stream = ExtResource("a87")
 stream_1/weight = 1.0
-stream_2/stream = ExtResource("a76")
+stream_2/stream = ExtResource("a88")
 stream_2/weight = 1.0
-stream_3/stream = ExtResource("a77")
+stream_3/stream = ExtResource("a89")
 stream_3/weight = 1.0
-stream_4/stream = ExtResource("a78")
+stream_4/stream = ExtResource("a90")
 stream_4/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_kill_sting"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 2
-stream_0/stream = ExtResource("a79")
+stream_0/stream = ExtResource("a91")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a80")
+stream_1/stream = ExtResource("a92")
 stream_1/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_tier_up"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 4
-stream_0/stream = ExtResource("a82")
+stream_0/stream = ExtResource("a94")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a83")
+stream_1/stream = ExtResource("a95")
 stream_1/weight = 1.0
-stream_2/stream = ExtResource("a84")
+stream_2/stream = ExtResource("a96")
 stream_2/weight = 1.0
-stream_3/stream = ExtResource("a85")
+stream_3/stream = ExtResource("a97")
 stream_3/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_villager_hurt"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 2
-stream_0/stream = ExtResource("a87")
+stream_0/stream = ExtResource("a99")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a88")
+stream_1/stream = ExtResource("a100")
 stream_1/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_storm_rumble_hit"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 2
-stream_0/stream = ExtResource("a108")
+stream_0/stream = ExtResource("a120")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a109")
+stream_1/stream = ExtResource("a121")
 stream_1/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_amb_gulls"]
 random_pitch = 1.15
 random_volume_offset_db = 1.5
 streams_count = 7
-stream_0/stream = ExtResource("a113")
+stream_0/stream = ExtResource("a125")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a114")
+stream_1/stream = ExtResource("a126")
 stream_1/weight = 1.0
-stream_2/stream = ExtResource("a115")
+stream_2/stream = ExtResource("a127")
 stream_2/weight = 1.0
-stream_3/stream = ExtResource("a116")
+stream_3/stream = ExtResource("a128")
 stream_3/weight = 1.0
-stream_4/stream = ExtResource("a117")
+stream_4/stream = ExtResource("a129")
 stream_4/weight = 1.0
-stream_5/stream = ExtResource("a118")
+stream_5/stream = ExtResource("a130")
 stream_5/weight = 1.0
-stream_6/stream = ExtResource("a119")
+stream_6/stream = ExtResource("a131")
 stream_6/weight = 1.0
 
 [sub_resource type="AudioStreamRandomizer" id="rand_ui_click"]
 random_pitch = 1.06
 random_volume_offset_db = 1.5
 streams_count = 5
-stream_0/stream = ExtResource("a121")
+stream_0/stream = ExtResource("a133")
 stream_0/weight = 1.0
-stream_1/stream = ExtResource("a122")
+stream_1/stream = ExtResource("a134")
 stream_1/weight = 1.0
-stream_2/stream = ExtResource("a123")
+stream_2/stream = ExtResource("a135")
 stream_2/weight = 1.0
-stream_3/stream = ExtResource("a124")
+stream_3/stream = ExtResource("a136")
 stream_3/weight = 1.0
-stream_4/stream = ExtResource("a125")
+stream_4/stream = ExtResource("a137")
 stream_4/weight = 1.0
 
 [resource]
@@ -447,45 +495,46 @@ streams = {
 &"hide_exit": SubResource("rand_hide_exit"),
 &"carry_pickup": SubResource("rand_carry_pickup"),
 &"carry_drop": SubResource("rand_carry_drop"),
-&"chicken_squawk": ExtResource("a51"),
+&"chicken_cluck": SubResource("rand_chicken_cluck"),
+&"chicken_squawk": SubResource("rand_chicken_squawk"),
 &"knife_swing": SubResource("rand_knife_swing"),
 &"ignite_whoosh": SubResource("rand_ignite_whoosh"),
-&"ignite_loop": ExtResource("a67"),
+&"ignite_loop": ExtResource("a79"),
 &"fire_wave_cast": SubResource("rand_fire_wave_cast"),
-&"locate_pulse": ExtResource("a73"),
+&"locate_pulse": ExtResource("a85"),
 &"hit_flesh": SubResource("rand_hit_flesh"),
 &"kill_sting": SubResource("rand_kill_sting"),
-&"wave_ready": ExtResource("a81"),
+&"wave_ready": ExtResource("a93"),
 &"tier_up": SubResource("rand_tier_up"),
-&"mage_aura_loop": ExtResource("a86"),
+&"mage_aura_loop": ExtResource("a98"),
 &"villager_hurt": SubResource("rand_villager_hurt"),
-&"villager_death": ExtResource("a89"),
-&"dread_drone": ExtResource("a90"),
-&"dread_heartbeat": ExtResource("a91"),
-&"dread_strings": ExtResource("a92"),
-&"dread_chase": ExtResource("a93"),
-&"dread_spotted": ExtResource("a94"),
-&"hunter_bed": ExtResource("a95"),
-&"ghost_bed": ExtResource("a96"),
-&"music_cheer": ExtResource("a97"),
-&"music_dark": ExtResource("a98"),
-&"music_drone": ExtResource("a99"),
-&"stinger_round_start": ExtResource("a100"),
-&"stinger_victory": ExtResource("a101"),
-&"stinger_defeat": ExtResource("a102"),
-&"storm_roar_loop": ExtResource("a103"),
-&"storm_crackle_loop": ExtResource("a104"),
-&"storm_wind_loop": ExtResource("a105"),
-&"storm_warning_bell": ExtResource("a106"),
-&"storm_stage_sweep": ExtResource("a107"),
+&"villager_death": ExtResource("a101"),
+&"dread_drone": ExtResource("a102"),
+&"dread_heartbeat": ExtResource("a103"),
+&"dread_strings": ExtResource("a104"),
+&"dread_chase": ExtResource("a105"),
+&"dread_spotted": ExtResource("a106"),
+&"hunter_bed": ExtResource("a107"),
+&"ghost_bed": ExtResource("a108"),
+&"music_cheer": ExtResource("a109"),
+&"music_dark": ExtResource("a110"),
+&"music_drone": ExtResource("a111"),
+&"stinger_round_start": ExtResource("a112"),
+&"stinger_victory": ExtResource("a113"),
+&"stinger_defeat": ExtResource("a114"),
+&"storm_roar_loop": ExtResource("a115"),
+&"storm_crackle_loop": ExtResource("a116"),
+&"storm_wind_loop": ExtResource("a117"),
+&"storm_warning_bell": ExtResource("a118"),
+&"storm_stage_sweep": ExtResource("a119"),
 &"storm_rumble_hit": SubResource("rand_storm_rumble_hit"),
-&"storm_damage_tick": ExtResource("a110"),
-&"amb_ocean_loop": ExtResource("a111"),
-&"amb_town_loop": ExtResource("a112"),
+&"storm_damage_tick": ExtResource("a122"),
+&"amb_ocean_loop": ExtResource("a123"),
+&"amb_town_loop": ExtResource("a124"),
 &"amb_gulls": SubResource("rand_amb_gulls"),
-&"flame_crackle_loop": ExtResource("a120"),
+&"flame_crackle_loop": ExtResource("a132"),
 &"ui_click": SubResource("rand_ui_click"),
-&"ui_confirm": ExtResource("a126")
+&"ui_confirm": ExtResource("a138")
 }
 loops = PackedStringArray("ignite_loop", "mage_aura_loop", "dread_drone", "dread_heartbeat", "dread_strings", "dread_chase", "hunter_bed", "ghost_bed", "music_cheer", "music_dark", "music_drone", "storm_roar_loop", "storm_crackle_loop", "storm_wind_loop", "amb_ocean_loop", "amb_town_loop", "flame_crackle_loop")
-placeholder_cues = PackedStringArray("chicken_squawk", "mage_aura_loop", "dread_drone", "dread_strings", "dread_chase", "dread_spotted", "hunter_bed", "ghost_bed", "music_dark", "music_drone", "stinger_round_start", "stinger_victory", "stinger_defeat", "storm_roar_loop", "storm_stage_sweep", "storm_damage_tick", "amb_ocean_loop", "amb_town_loop")
+placeholder_cues = PackedStringArray("mage_aura_loop", "dread_drone", "dread_strings", "dread_chase", "dread_spotted", "hunter_bed", "ghost_bed", "music_dark", "music_drone", "stinger_round_start", "stinger_victory", "stinger_defeat", "storm_roar_loop", "storm_stage_sweep", "storm_damage_tick", "amb_ocean_loop", "amb_town_loop")

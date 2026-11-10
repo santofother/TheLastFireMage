@@ -9,6 +9,7 @@ Re-runnable: it only (re)writes the files listed below. Run tools/audio/build_ba
 import os
 import re
 import shutil
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -55,6 +56,12 @@ LIBRARY = [
     ("storm_rumble_hit", "storm", ["cannon/cannon_hit_wall_no_splash.ogg", "cannon/cannon_fire_1.ogg"], {}),
     ("amb_gulls", "ambience", ["gulls/Seagull_Ambient_%d.wav" % i for i in range(1, 8)], {"peak": -4.0}),
     ("flame_crackle_loop", "ambience", ["firecrackle/fire-1.wav"], {"loop": True, "peak": -6.0}),
+    # Freesound CC0 HQ previews (mp3, converted with macOS afconvert), cut into single cluck phrases.
+    ("chicken_cluck", "interact", ["chickens/Breviceps_456803.mp3",
+                                   "chickens/chanyatenn_424076.mp3", "chickens/flumpytripod_830091.mp3",
+                                   "chickens/MBPL_668803.mp3"],
+     {"phrases": 3, "min": 0.35, "max": 1.6, "peak": -7.0}),
+    ("chicken_squawk", "interact", ["chickens/roboroo_494613.mp3"], {"phrases": 5, "min": 0.3, "max": 1.2, "peak": -4.0}),
     ("ui_click", "ui", [UI % ("click", i) for i in range(1, 6)], {}),
     ("ui_confirm", "ui", [UI % ("confirmation", 1)], {}),
     ("locate_pulse", "mage", [UI % ("pluck", 1)], {}),
@@ -75,6 +82,24 @@ def _remove_old_takes(cue):
                     os.remove(os.path.join(dirpath, f + ".import"))
 
 
+def _import_phrases(cue, dest_dir, sources, opt):
+    """Cut up to opt["phrases"] sound phrases (events joined across gaps < 0.3 s, length min..max s) from each
+    source and write them as numbered takes. mp3 sources are decoded with macOS `afconvert`."""
+    n = 0
+    for src in sources:
+        if src.endswith(".mp3"):
+            wav = src[:-4] + ".wav"
+            subprocess.run(["afconvert", "-f", "WAVE", "-d", "LEI16@44100", "-c", "1", src, wav], check=True)
+            src = wav
+        rate, chans = wavio.read_wav(src)
+        for start, end in wavio.phrases(chans[0], rate, opt["min"], opt["max"])[:opt["phrases"]]:
+            take = wavio.process(chans, rate, peak_db=opt.get("peak", -1.0), start=max(0.0, start - 0.03),
+                                 end=min(len(chans[0]) / rate, end + 0.08), fade_ms=15.0)
+            n += 1
+            wavio.write_wav(os.path.join(dest_dir, "%s_%02d.wav" % (cue, n)), rate, take)
+    return n
+
+
 def main():
     if len(sys.argv) != 2:
         print(__doc__)
@@ -85,6 +110,9 @@ def main():
         os.makedirs(dest_dir, exist_ok=True)
         slices = opt.get("slices")
         _remove_old_takes(cue)
+        if "phrases" in opt:
+            _import_phrases(cue, dest_dir, [os.path.join(packs, r) for r in sources], opt)
+            continue
         for n, rel in enumerate(sources, 1):
             src = os.path.join(packs, rel)
             for prefix, base in SPECIAL.items():

@@ -94,3 +94,26 @@ def process(chans, rate, mono=True, trim_db=-50.0, peak_db=-1.0, fade_ms=10.0, s
 def peak_db(chans):
     p = max(max(abs(v) for v in c) for c in chans)
     return 20 * math.log10(p) if p > 0 else -120.0
+
+
+def phrases(x, rate, min_len, max_len, gap=0.3, rel_thr=0.12):
+    """Sound phrases in a mono signal: 20 ms peak envelope above rel_thr * peak, events closer than `gap` s merged.
+    Returns [(start_s, end_s)] whose length is within [min_len, max_len], loudest first."""
+    win = max(1, int(rate * 0.02))
+    env = [max(abs(v) for v in x[i:i + win]) for i in range(0, max(1, len(x) - win), win)]
+    peak = max(env) or 1.0
+    out, start, last = [], None, None
+    for i, e in enumerate(env):
+        if e > peak * rel_thr:
+            if start is None:
+                start = i
+            elif (i - last) * 0.02 > gap:
+                out.append((start, last))
+                start = i
+            last = i
+    if start is not None:
+        out.append((start, last))
+    res = [(a * 0.02, (b + 1) * 0.02, max(env[a:b + 1])) for a, b in out]
+    res = [r for r in res if min_len <= r[1] - r[0] <= max_len]
+    res.sort(key=lambda r: -r[2])
+    return [(a, b) for a, b, _ in res]

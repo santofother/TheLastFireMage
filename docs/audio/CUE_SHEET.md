@@ -28,7 +28,8 @@ the file is dropped in). Status: `placeholder`, `library`, `needs AI`, `final`.
 | `hide_exit` | a hide spot's `hidden_count` goes down | in range (3D) | SFX | no | library: Kenney creak/door x3 | library |
 | `carry_pickup` | `carry_changed` to something | in range (3D) | SFX | no | library: Kenney leather/cloth x2 | library |
 | `carry_drop` | `carry_changed` to nothing | in range (3D) | SFX | no | library: Kenney Impact impactWood_light x5 | library |
-| `chicken_squawk` | a mage comes within 8 m of a chicken | in range (3D, 12 m) | SFX | no | placeholder | placeholder |
+| `chicken_cluck` | replaces the chicken's synthesized cluck (chicken decides timing/pitch) | in range (3D, 12 m) | SFX | no | library: Freesound CC0 clucks x8 cuts (Breviceps, MBPL, chanyatenn, flumpytripod) | library |
+| `chicken_squawk` | a mage comes within 8 m of a chicken | in range (3D, 12 m) | SFX | no | library: Freesound roboroo "ChickenAlarmCall" x5 cuts | library |
 | `knife_swing` | mage knife cast (cooldown starts) | in range (3D) | SFX | no | library: artisticdude swishes x13 | library |
 | `ignite_whoosh` | mage Ignite starts | in range (3D) | SFX | no | library: themightyglider flame + rubberduck fire spell | library |
 | `ignite_loop` | while the knife burns | in range (3D, on the mage) | SFX | yes | library: OGA fire crackling | library |

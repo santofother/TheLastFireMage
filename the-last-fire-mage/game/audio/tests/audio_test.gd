@@ -122,6 +122,14 @@ func _check_buses_and_voice() -> void:
 	add_child(stray)
 	_check(stray.bus == &"SFX", "stray 3D sounds on Master are moved to SFX")
 	stray.queue_free()
+	var cluck := AudioStreamPlayer3D.new()
+	cluck.name = "Cluck"
+	add_child(cluck)
+	await get_tree().process_frame
+	var takes := Sfx.stream(&"chicken_cluck") as AudioStreamRandomizer
+	_check(cluck.has_meta(&"s18_cluck") and cluck.bus == &"SFX" and takes != null and takes.streams_count >= 6,
+		"chicken clucks adopted (recorded takes swap in outside headless)")
+	cluck.queue_free()
 	_check(plain.get_node_or_null(^"AudioEmitter") is FootstepEmitter, "director attached a FootstepEmitter")
 	plain.queue_free()
 	fx.queue_free()

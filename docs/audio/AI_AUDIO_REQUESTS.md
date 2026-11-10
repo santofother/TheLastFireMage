@@ -51,7 +51,6 @@ Folder in brackets.
 | `storm_damage_tick.wav` [storm] | no, 0.2 s, mono | Short sizzle burn, skin touched by flame, quick hiss. |
 | `amb_town_loop.ogg` [ambience] | yes, 30 s, stereo | Daytime seaside town ambience, distant chatter, cart wheels on cobblestones, harbour bells, no music, peaceful. |
 | `amb_ocean_loop.ogg` [ambience] | yes, 20 s, stereo | Gentle waves on a pebble beach, close but calm, seamless loop. (Or use the CC0 file in MANUAL_DOWNLOADS.md.) |
-| `chicken_squawk_01..04.wav` [interact] | no, mono | Startled chicken squawk and wing flap, short, panicked. |
 | `locate_pulse.wav` [mage] | no, 1 s, mono | Magical sonar pulse, warm fire ping that echoes outward. |
 | `villager_hurt_01..04.wav` [villager] | no, mono | Small cartoonish villager "oof"/yelp of pain, cute, non-gory, varied voices. |
 | `villager_death_01..02.wav` [villager] | no, mono | Small cartoonish villager defeated cry, short, non-gory. |

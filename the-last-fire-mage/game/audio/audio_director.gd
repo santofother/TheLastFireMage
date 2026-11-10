@@ -460,9 +460,7 @@ func _chickens() -> void:
 	if _chicken_near.size() > 256:
 		_chicken_near.clear()
 	for c in get_tree().get_nodes_in_group(&"chickens"):
-		var cluck := c.get_node_or_null(^"Cluck") as AudioStreamPlayer3D
-		if cluck and cluck.bus != &"SFX":
-			cluck.bus = &"SFX" # routes through World (room echo)
+		_adopt_cluck(c.get_node_or_null(^"Cluck"))
 		var cpos: Vector3 = (c as Node3D).global_position
 		var near := false
 		for m in mages:
@@ -815,8 +813,26 @@ func _collect_props(n: Node) -> void:
 ## Catch-all: sounds other systems create on Master (e.g. the mage hit blip) go to SFX so the game slider and the
 ## room echo apply. Voice players (node "Voice") are left to _route_voices.
 func _on_node_added(n: Node) -> void:
+	if n.name == &"Cluck":
+		_adopt_cluck.call_deferred(n) # after Chicken._ready has set its synthesized stream
+		return
 	if n is AudioStreamPlayer3D and n.name != &"Voice" and (n as AudioStreamPlayer3D).bus == &"Master":
 		(n as AudioStreamPlayer3D).bus = &"SFX"
+
+
+## Chickens (S06) synthesize one cluck; swap in the real recorded takes (`chicken_cluck`, a randomizer) and route
+## through SFX/World. The chicken keeps deciding when/how often/at what pitch it clucks.
+func _adopt_cluck(n: Node) -> void:
+	var cluck := n as AudioStreamPlayer3D
+	if cluck == null or not is_instance_valid(cluck) or cluck.has_meta(&"s18_cluck"):
+		return
+	cluck.set_meta(&"s18_cluck", true)
+	cluck.bus = &"SFX"
+	# WHY: headless, the chicken still calls play(); a randomizer playback started on the dummy driver is never
+	# released and Godot reports "resources still in use at exit" (fails other suites' log checks).
+	var s := Sfx.stream(&"chicken_cluck")
+	if s and not Sfx.headless:
+		cluck.stream = s
 
 
 static func _lin_db(level: float) -> float:
