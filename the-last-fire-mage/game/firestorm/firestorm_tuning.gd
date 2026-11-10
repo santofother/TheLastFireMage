@@ -17,5 +17,7 @@ extends Tuning
 @export var map_area := 22500.0
 ## TUNE: HP lost per second outside the zone for a villager.
 @export var damage_per_second := 10.0
+## TUNE: HP lost per second by a mage whose power is below the stage threshold.
+@export var mage_damage_per_second := 10.0
 ## TUNE: Consecutive seconds below the threshold before the storm kills the mage.
-@export var mage_grace_time := 10.0
+@export var mage_grace_time := 0.0

@@ -148,7 +148,34 @@ static func _flat(v: Vector3) -> Vector3:
 	return Vector3(v.x, 0.0, v.z)
 
 
+## NET: server. Chickens avoid the firestorm: inside the wall margin they run for the safe zone.
+func _storm() -> FirestormManager:
+	var storm := GameEvents.system(&"firestorm") as FirestormManager
+	return storm if storm != null and storm.stage > 0 else null
+
+
+## Pulls a point inside the safe zone (with a margin) so wander/flee legs never end in the fire.
+func _keep_out_of_storm(p: Vector3) -> Vector3:
+	var storm := _storm()
+	if storm == null:
+		return p
+	var limit := maxf(1.0, storm.zone_radius - 4.0)
+	var off := Vector3(p.x - storm.zone_center.x, 0.0, p.z - storm.zone_center.z)
+	if off.length() <= limit:
+		return p
+	var inside := storm.zone_center + off.normalized() * limit
+	return Vector3(inside.x, p.y, inside.z)
+
+
 func _check_threats() -> void:
+	var storm := _storm()
+	if storm != null:
+		var off := Vector3(global_position.x - storm.zone_center.x, 0.0, global_position.z - storm.zone_center.z)
+		if off.length() > storm.zone_radius - 6.0:
+			state = State.FLEE
+			_scared_left = tuning.calm_time
+			_set_target(_closest_on_nav(_keep_out_of_storm(storm.zone_center + off.normalized() * (storm.zone_radius - 10.0))))
+			return
 	var t := _nearest_threat()
 	if t == null:
 		return
@@ -196,7 +223,8 @@ func _go_idle() -> void:
 	_stuck_time = 0.0
 
 
-func _set_target(p: Vector3) -> void:
+func _set_target(point: Vector3) -> void:
+	var p := _keep_out_of_storm(point)
 	_target = p
 	_stuck_time = 0.0
 	_path_i = 0

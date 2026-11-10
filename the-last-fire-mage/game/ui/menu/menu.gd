@@ -248,7 +248,7 @@ func _build_ui() -> void:
 	_mage_count = SpinBox.new()
 	_mage_count.name = "MageCount"
 	_mage_count.min_value = 1
-	_mage_count.max_value = 5
+	_mage_count.max_value = MatchManager.MAX_MAGES
 	_mage_count.step = 1
 	_mage_count.value = 1
 	host.add_child(_row("Mages", _mage_count))

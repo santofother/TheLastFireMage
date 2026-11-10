@@ -10,7 +10,7 @@ var phase: int = Enums.Phase.LOBBY
 ## Server's seconds remaining, replicated at 10 Hz for the HUD.
 var time_left := 0.0
 ## TUNE: most mages the host can choose. A round always keeps at least one villager.
-const MAX_MAGES := 4
+const MAX_MAGES := 9 # CONTRACT: any ratio, but one villager always remains (see _draw_mages)
 
 ## Selected mage in the lobby (0 = random). During a round: the first mage (see mage_ids() for all).
 var mage_id := 0
@@ -78,9 +78,9 @@ func _ready() -> void:
 	bots_label.text = "BOTS"
 	_bot_count = SpinBox.new()
 	_bot_count.min_value = 0
-	_bot_count.max_value = 5
+	_bot_count.max_value = NetworkManager.MAX_PLAYERS - 1
 	_bot_count.step = 1
-	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
+	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, NetworkManager.MAX_PLAYERS - 1)
 	_bot_count.value_changed.connect(func(value: float):
 		if Net.is_server(self):
 			var bot_manager := GameEvents.system(&"bots")

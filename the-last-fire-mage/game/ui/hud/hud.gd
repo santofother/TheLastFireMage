@@ -31,6 +31,7 @@ var _multiplier := 1.0
 var _required := 0.0
 var _warning_left := 0.0
 var _warning_stage := 0
+var _next_left := 0.0 ## seconds until the next shrink begins (0 = none scheduled)
 var _result := ""
 var _local: Node
 var _poll := 0.0
@@ -242,6 +243,7 @@ func _label(key: String, rect: Rect2, size: int, align: HorizontalAlignment = HO
 func _process(delta: float) -> void:
 	_remaining = maxf(0, _remaining - delta)
 	_warning_left = maxf(0, _warning_left - delta)
+	_next_left = maxf(0, _next_left - delta)
 	for entry in _feed:
 		entry.left -= delta
 	while not _feed.is_empty() and _feed[0].left <= 0:
@@ -291,6 +293,7 @@ func _on_phase(phase: int, duration: float) -> void:
 		_multiplier = 1
 		_required = 0
 		_warning_left = 0
+		_next_left = 0
 		_warning_stage = 0
 		_result = ""
 		_labels.Prompt.text = ""
@@ -319,8 +322,9 @@ func _on_warning(stage: int, seconds: float) -> void:
 	_warning_left = seconds
 	_refresh()
 
-func _on_storm(stage: int, _center: Vector3, _radius: float, required: float, _seconds: float) -> void:
+func _on_storm(stage: int, _center: Vector3, _radius: float, required: float, seconds: float) -> void:
 	_required = required
+	_next_left = seconds
 	_warning_stage = stage
 	_warning_left = 0
 	_refresh()
@@ -400,7 +404,7 @@ func _refresh() -> void:
 		var left := float(abilities.call("cooldown_left", ability)) if abilities else 0.0
 		cooldowns.append("[%s] %s · %s" % [_key_names(binds[ability]), String(ability).replace("_", " ").capitalize(), "READY" if left <= 0 else "%.1fs" % left])
 	_labels.Cooldowns.text = "   ".join(cooldowns)
-	_labels.Warning.text = "FIRESTORM %d IN %d s" % [_warning_stage, ceili(_warning_left)] if _warning_left > 0 else ("FIRESTORM · STAGE %d" % _warning_stage if _required > 0 else "")
+	_labels.Warning.text = _storm_text()
 	var feed := PackedStringArray()
 	for entry in _feed:
 		feed.append(entry.text)
@@ -453,3 +457,20 @@ func _layout_meter() -> void:
 	_threshold.visible = _required > 0
 	_threshold.position = Vector2(_required / _meter.max_value * _meter.size.x, -4)
 	_threshold.size = Vector2(3, _meter.size.y + 8)
+
+
+## Storm status line: danger first (taking damage now), then the next-shrink countdown.
+func _storm_text() -> String:
+	var storm := GameEvents.system(&"firestorm") as FirestormManager
+	var active := storm != null and storm.stage > 0 and _phase == Enums.Phase.HUNT
+	if active and is_instance_valid(_local) and bool(_local.get("is_alive")):
+		if _role == Enums.Role.MAGE and _power < _required:
+			return "⚠ POWER TOO LOW — LOSING %d HP/s · NEED %.1f" % [int(storm.tuning.mage_damage_per_second), _required]
+		if _role != Enums.Role.MAGE and not storm.is_inside((_local as Node3D).global_position):
+			return "🔥 IN THE FIRESTORM — LOSING %d HP/s · RUN INSIDE THE ZONE" % int(storm.tuning.damage_per_second)
+	if _warning_left > 0:
+		return "⚠ FIRESTORM SHRINKS IN %d s — MOVE TO THE SAFE ZONE" % ceili(_warning_left)
+	if _next_left > 0 and _warning_stage > 0:
+		var suffix := " · MAGES NEED %.1f POWER" % _required if _required > 0 else ""
+		return "FIRESTORM STAGE %d · NEXT SHRINK IN %d s%s" % [_warning_stage, ceili(_next_left), suffix]
+	return "FIRESTORM · FINAL ZONE" if _required > 0 else ""

@@ -39,6 +39,7 @@ var _required := 0.0
 var _warned_stage := 0
 var _damage_time := 0.0
 var _below_threshold := 0.0
+var _mage_tick := 0.0
 
 
 func _enter_tree() -> void:
@@ -165,8 +166,14 @@ func _check_mage(delta: float) -> void:
 		return
 	_below_threshold += delta
 	if _below_threshold >= tuning.mage_grace_time:
+		# Drain HP in half-second ticks instead of killing outright; power gains stop it.
+		_mage_tick += delta
+		if _mage_tick < _DAMAGE_INTERVAL:
+			return
+		var seconds := floorf(_mage_tick / _DAMAGE_INTERVAL) * _DAMAGE_INTERVAL
+		_mage_tick -= seconds
 		for mage in Players.alive_with_role(Enums.Role.MAGE):
-			mage.health.kill(0, _CAUSE)
+			mage.health.apply_damage(tuning.mage_damage_per_second * seconds, 0, _CAUSE)
 
 
 func _on_registered(id: int, _player_name: String) -> void:
@@ -196,6 +203,7 @@ func _reset() -> void:
 	_warned_stage = 0
 	_damage_time = 0.0
 	_below_threshold = 0.0
+	_mage_tick = 0.0
 	if _visual:
 		_visual.clear_zone()
 

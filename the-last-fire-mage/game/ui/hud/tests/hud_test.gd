@@ -54,7 +54,7 @@ func _ready() -> void:
 	_check(_label("Power").text.contains("TIER 3"), "power tier")
 	_check(_hud.get("_meter").value == 7, "power meter")
 	_check(_hud.get("_threshold").visible, "storm threshold")
-	_check(_label("Warning").text == "FIRESTORM 3 IN 15 s", "storm warning")
+	_check(_label("Warning").text.contains("SHRINKS IN 15 s"), "storm warning")
 	_check(_label("Feed").text.contains("Ash → Willow"), "kill feed")
 	_check(_label("Cooldowns").text.contains("Fire Wave · READY"), "stub cooldown")
 	var fake_player := FakePlayer.new()

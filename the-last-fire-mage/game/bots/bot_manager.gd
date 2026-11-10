@@ -48,9 +48,9 @@ func set_lobby_count(count: int) -> void:
 	var match_system := GameEvents.system(&"match")
 	if match_system == null or match_system.phase != Enums.Phase.LOBBY:
 		return
-	count = clampi(count, 0, 5)
+	count = clampi(count, 0, NetworkManager.MAX_PLAYERS - 1)
 	NetworkManager.args["bots"] = count
-	for i in range(count, 5):
+	for i in range(count, NetworkManager.MAX_PLAYERS - 1):
 		var id := Players.BOT_ID_BASE + i
 		if Players.get_player(id) != null:
 			NetworkManager.peer_left.emit(id)
