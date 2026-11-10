@@ -53,6 +53,10 @@ var _own_peer := 0
 var _hint: Label
 var _remote := {} # peer_id -> {node: Node3D, anim: AnimationPlayer, clip, pos: Vector3, yaw: float, prev: Vector3, seen: float}
 var _send_left := 0.0
+var _ui_layer: CanvasLayer
+var _ping_clock := 0.0
+var _ping_left := 0.0
+var _ping_marks := {} # peer_id -> Label (local only)
 
 const _SEND_INTERVAL := 0.1
 const _REMOTE_TIMEOUT := 1.0
@@ -86,6 +90,8 @@ func enter_spectator() -> void:
 	_ghost.visible = true
 	_glass.visible = true
 	_hint.visible = true
+	_ping_clock = 3.0 # first ping shortly after dying, then every tuning.ping_interval
+	_ping_left = 0.0
 	_update_view()
 	camera.make_current()
 	VoiceManager.listener = camera # WHY: dead players keep proximity voice, heard from where they watch
@@ -110,6 +116,7 @@ func exit_spectator() -> void:
 	_ghost.visible = false
 	_glass.visible = false
 	_hint.visible = false
+	_clear_ping()
 	_clear_remote()
 	set_process(false)
 	print("[Spectator] exit peer=%d" % _own_peer)
@@ -147,6 +154,7 @@ func _ensure_nodes() -> void:
 	_glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_glass)
 	var layer := CanvasLayer.new()
+	_ui_layer = layer
 	add_child(layer)
 	_hint = Label.new()
 	_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -250,6 +258,57 @@ func _process(delta: float) -> void:
 		_send_left = _SEND_INTERVAL
 		_rpc_ghost.rpc(focus, _yaw)
 	_update_remote(delta)
+	_update_ping(delta)
+
+
+## Every tuning.ping_interval seconds all living players are marked on the dead player's screen for
+## tuning.ping_duration seconds (arrows clamp to the screen edge), so ghosts can find targets to throw at.
+## NET: local only; positions come from the normal synced player nodes.
+func _update_ping(delta: float) -> void:
+	_ping_clock -= delta
+	if _ping_clock <= 0.0:
+		_ping_clock = tuning.ping_interval
+		_ping_left = tuning.ping_duration
+		print("[Spectator] ping")
+	if _ping_left <= 0.0:
+		_clear_ping()
+		return
+	_ping_left -= delta
+	var size := get_viewport().get_visible_rect().size
+	var seen := {}
+	for p in Players.all():
+		if p.peer_id == _own_peer or not p.is_alive or p.role == Enums.Role.SPECTATOR:
+			continue
+		seen[p.peer_id] = true
+		var label: Label = _ping_marks.get(p.peer_id)
+		if label == null:
+			label = Label.new()
+			label.add_theme_font_size_override(&"font_size", 18)
+			label.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3))
+			label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+			label.add_theme_constant_override(&"outline_size", 6)
+			_ui_layer.add_child(label)
+			_ping_marks[p.peer_id] = label
+		var world: Vector3 = p.global_position + Vector3(0, 2.3, 0)
+		var screen := camera.unproject_position(world)
+		var behind := camera.is_position_behind(world)
+		if behind:
+			screen = size - screen
+		screen = screen.clamp(Vector2(40, 60), size - Vector2(140, 60))
+		var dist := roundi(camera.global_position.distance_to(p.global_position))
+		label.text = "◆ %s %dm" % [p.display_name, dist]
+		label.position = screen
+		label.modulate.a = clampf(_ping_left, 0.0, 1.0)
+	for id in _ping_marks.keys():
+		if not seen.has(id):
+			_ping_marks[id].queue_free()
+			_ping_marks.erase(id)
+
+
+func _clear_ping() -> void:
+	for id in _ping_marks:
+		_ping_marks[id].queue_free()
+	_ping_marks.clear()
 
 
 ## Number of other spectators' ghosts drawn on this peer (test hook).

@@ -14,3 +14,12 @@
 
 ## Touched outside my card
 - `game/ui/menu/menu.gd` (Graphics section), `project.godot` (autoload).
+
+## Playtest batch (same branch)
+- START ROUND now runs party mode (everyone mage once; host's mage pick goes first) via `MatchManager._on_start_pressed`.
+  `[Score]` now logs when a party round refuses to start. Root cause of the "stuck after round 1" report was NOT reproduced
+  (scoring_test with 3 players passes); if it recurs, send the `[Score]`/`[Match]` log lines.
+- Dead players: every 15s all living players are marked on screen for 4s (`SpectatorManager._update_ping`, tuning `ping_interval`/`ping_duration`).
+- Ghost-thrown items now stun living villagers as well as mages (`CounterplayManager.stun_targets`).
+- Storm: living player outside the next ring gets a text ping every 10s while the zone closes (`FirestormManager._out_of_ring_ping`).
+- Not verified on screen: ping marker look/clamping, the storm text.

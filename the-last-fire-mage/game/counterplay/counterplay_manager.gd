@@ -94,11 +94,13 @@ func request_slow(target: Node, mult: float, seconds: float) -> void:
 
 
 ## Living players a stun from `source_id` can hit: every mage, plus other villagers when the source is a
-## living villager (villagers can stun each other, never themselves; ghosts and mages only stun mages).
+## living villager (villagers can stun each other, never themselves). Ghosts (dead players) stun anyone alive,
+## mages and villagers; mage-thrown sources only stun mages.
 static func stun_targets(source_id: int) -> Array:
 	var targets: Array = Players.alive_with_role(Enums.Role.MAGE)
 	var source := Players.get_player(source_id)
-	if source != null and source.is_alive and source.role == Enums.Role.VILLAGER:
+	var is_ghost: bool = source != null and (not source.is_alive or source.role == Enums.Role.SPECTATOR)
+	if source != null and (is_ghost or (source.is_alive and source.role == Enums.Role.VILLAGER)):
 		for v in Players.alive_with_role(Enums.Role.VILLAGER):
 			if v != source:
 				targets.append(v)

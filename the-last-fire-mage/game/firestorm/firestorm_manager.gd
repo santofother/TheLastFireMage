@@ -43,6 +43,12 @@ var _warned_stage := 0
 var _damage_time := 0.0
 var _below_threshold := 0.0
 var _mage_tick := 0.0
+## TUNE: seconds between "you're outside the next ring" pings while the zone closes.
+const _OUT_PING_EVERY := 10.0
+const _OUT_PING_SHOW := 3.0
+var _out_ping_clock := 0.0
+var _out_ping_label: Label
+var _out_ping_left := 0.0
 var _final_stage := 3 # NET: server copy of ring_count for this round; peers learn it in _rpc_stage
 
 
@@ -136,11 +142,50 @@ func _process(delta: float) -> void:
 	if stage == 0:
 		return
 	_update_zone()
+	_out_of_ring_ping(delta)
 	if Net.is_server(self):
 		_damage_outside(minf(delta, _hunt_elapsed - _boundaries[0]))
 		# Health signals can finish the round synchronously and reset the storm.
 		if stage > 0:
 			_check_mage(minf(delta, _stage_elapsed))
+
+
+## NET: local only (each peer, own player). While the zone is still closing, tells a living player standing
+## outside the NEXT ring (target) to move, at most every _OUT_PING_EVERY seconds.
+func _out_of_ring_ping(delta: float) -> void:
+	if _out_ping_label != null and _out_ping_left > 0.0:
+		_out_ping_left -= delta
+		_out_ping_label.modulate.a = clampf(_out_ping_left, 0.0, 1.0)
+		_out_ping_label.visible = _out_ping_left > 0.0
+	var me := Players.local_player() as Player
+	var closing := _stage_elapsed < _shrink_time
+	var outside := me != null and me.is_alive and me.role != Enums.Role.SPECTATOR \
+		and Vector2(me.global_position.x - _target_center.x, me.global_position.z - _target_center.z).length() > _target_radius
+	if not closing or not outside:
+		_out_ping_clock = 0.0
+		return
+	_out_ping_clock -= delta
+	if _out_ping_clock > 0.0:
+		return
+	_out_ping_clock = _OUT_PING_EVERY
+	print("[Firestorm] out-of-ring ping")
+	if DisplayServer.get_name() == "headless":
+		return
+	if _out_ping_label == null:
+		var layer := CanvasLayer.new()
+		add_child(layer)
+		_out_ping_label = Label.new()
+		_out_ping_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_out_ping_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_out_ping_label.position.y = 90.0
+		_out_ping_label.add_theme_font_size_override(&"font_size", 26)
+		_out_ping_label.add_theme_color_override(&"font_color", Color(1.0, 0.55, 0.2))
+		_out_ping_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+		_out_ping_label.add_theme_constant_override(&"outline_size", 8)
+		layer.add_child(_out_ping_label)
+	_out_ping_label.text = "You are outside the next safe ring - move in!"
+	_out_ping_left = _OUT_PING_SHOW
+	_out_ping_label.visible = true
 
 
 func _start_next_stage() -> void:
@@ -229,6 +274,10 @@ func _reset() -> void:
 	_damage_time = 0.0
 	_below_threshold = 0.0
 	_mage_tick = 0.0
+	_out_ping_clock = 0.0
+	_out_ping_left = 0.0
+	if _out_ping_label != null:
+		_out_ping_label.visible = false
 	if _visual:
 		_visual.clear_zone()
 

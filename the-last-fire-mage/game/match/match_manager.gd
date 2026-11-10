@@ -67,7 +67,7 @@ func _ready() -> void:
 	NetworkManager.session_ended.connect(_on_session_ended)
 	NetworkManager.hosting_started.connect(_on_session_started)
 	NetworkManager.connected.connect(_on_session_started)
-	_start.pressed.connect(func() -> void: start_round(mage_id))
+	_start.pressed.connect(_on_start_pressed)
 	$UI/Lobby/Content/Explore.pressed.connect(_on_explore_town)
 	_pick.item_selected.connect(_on_mage_picked)
 	_count.max_value = MAX_MAGES
@@ -149,6 +149,23 @@ func _process(delta: float) -> void:
 				_autostart_used = true
 				start_round(int(NetworkManager.args.get("mage-id", mage_id)))
 	_update_ui()
+
+
+## Host pressed START ROUND. Party mode is the default: everyone is mage once (the host's pick goes first).
+## Falls back to a single round when there is no scoring system (e.g. minimal test scenes).
+func _on_start_pressed() -> void:
+	var scoring := GameEvents.system(&"scoring")
+	if scoring == null or not Net.is_server(self):
+		start_round(mage_id)
+		return
+	var order: Array = []
+	for p in Players.all():
+		if p.peer_id != mage_id:
+			order.append(p.peer_id)
+	order.shuffle()
+	if mage_id != 0:
+		order.push_front(mage_id)
+	scoring.start_party(order)
 
 
 ## NET: server only. Starts from LOBBY with at least min_players. 0 uses the lobby pick or random.
