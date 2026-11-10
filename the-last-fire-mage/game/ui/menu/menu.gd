@@ -4,6 +4,7 @@ extends CanvasLayer
 const SETTINGS_PATH := "user://settings.cfg"
 
 var _root: CenterContainer
+var _landing: Control
 var _name_edit: LineEdit
 # FIX(S07, Codex): expose server bots for editor playtests without CLI arguments.
 var _bot_count: SpinBox
@@ -27,6 +28,8 @@ var _status: Label
 
 func _ready() -> void:
 	_build_ui()
+	_build_landing()
+	_root.visible = false
 	_load_settings()
 	NetworkManager.status_changed.connect(_set_status)
 	NetworkManager.connection_failed.connect(_set_status)
@@ -62,6 +65,8 @@ func _input(event: InputEvent) -> void:
 
 func _show(on: bool) -> void:
 	_root.visible = on
+	if _landing:
+		_landing.visible = false
 	_refresh_buttons()
 	if DisplayServer.get_name() != "headless":
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED
@@ -112,7 +117,8 @@ func _on_session_started() -> void:
 
 func _on_session_ended(reason: String) -> void:
 	_set_status(reason)
-	_show(true)
+	_show(false)
+	_landing.visible = true
 
 
 func _on_lobby_list(lobbies: Array) -> void:
@@ -275,6 +281,11 @@ func _build_ui() -> void:
 	v.add_child(_row("Mic level", _mic_bar))
 
 	v.add_child(HSeparator.new())
+	var back := _button("Back to main menu", func():
+		if not NetworkManager.is_in_session():
+			_show(false)
+			_landing.visible = true)
+	v.add_child(back)
 	_leave_btn = _button("Leave game", _on_leave)
 	v.add_child(_leave_btn)
 	_status = _label("Ready. F3 = debug overlay, Esc = menu in game.")
@@ -329,3 +340,49 @@ func _panel_style(bg: Color, border: Color, width: int) -> StyleBoxFlat:
 		style.shadow_color = Color("ff821b99")
 		style.shadow_size = 8
 	return style
+
+
+func _build_landing() -> void:
+	_landing = Control.new()
+	_landing.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_landing)
+	var picture := TextureRect.new()
+	picture.texture = load("res://game/ui/art/start.png")
+	picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_landing.add_child(picture)
+	# The supplied image contains button labels, so transparent hit targets preserve its artwork.
+	var canvas := Control.new()
+	canvas.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	canvas.offset_left = -640
+	canvas.offset_top = -360
+	canvas.offset_right = 640
+	canvas.offset_bottom = 360
+	_landing.add_child(canvas)
+	var footer := ColorRect.new()
+	footer.position = Vector2(83, 607)
+	footer.size = Vector2(300, 38)
+	footer.color = Color("301a25")
+	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(footer)
+	for spec in [["Host game", 263, func(): _show(true)], ["Join game", 345, func(): _show(true)], ["Settings", 420, func(): _show(true)], ["Quit", 496, func(): get_tree().quit()]]:
+		var hit := Button.new()
+		hit.tooltip_text = spec[0]
+		hit.position = Vector2(94, spec[1])
+		hit.size = Vector2(300, 65)
+		var clear := StyleBoxEmpty.new()
+		hit.add_theme_stylebox_override("normal", clear)
+		hit.add_theme_stylebox_override("pressed", clear)
+		var glow := StyleBoxFlat.new()
+		glow.bg_color = Color("ff9a2428")
+		glow.border_color = Color("ffce68")
+		glow.set_border_width_all(3)
+		glow.set_corner_radius_all(7)
+		glow.shadow_color = Color("ff7e1aaa")
+		glow.shadow_size = 12
+		hit.add_theme_stylebox_override("hover", glow)
+		hit.add_theme_stylebox_override("focus", clear)
+		hit.pressed.connect(spec[2])
+		canvas.add_child(hit)

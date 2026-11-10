@@ -11,6 +11,20 @@ func _run() -> void:
 	NetworkManager.host_enet(int(NetworkManager.args.get("port")))
 	await get_tree().create_timer(0.5).timeout
 	var match_system = GameEvents.system(&"match")
+	var bot_manager = GameEvents.system(&"bots")
+	bot_manager.set_lobby_count(2)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if Players.all().size() != 3:
+		print("[TEST] FAIL removing a lobby bot")
+		get_tree().quit(1)
+		return
+	bot_manager.set_lobby_count(3)
+	await get_tree().process_frame
+	if Players.all().size() != 4:
+		print("[TEST] FAIL adding a lobby bot")
+		get_tree().quit(1)
+		return
 	match_system.start_round()
 	var mages := 0
 	var villagers := 0

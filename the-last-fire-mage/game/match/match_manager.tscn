@@ -30,7 +30,8 @@ offset_top = 24.0
 offset_right = 354.0
 offset_bottom = 172.0
 
-[node name="Content" type="VBoxContainer" parent="UI/Lobby"]
+[node name="Content" type="Control" parent="UI/Lobby"]
+custom_minimum_size = Vector2(864, 420)
 layout_mode = 2
 
 [node name="Title" type="Label" parent="UI/Lobby/Content"]

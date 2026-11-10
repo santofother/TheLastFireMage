@@ -38,3 +38,19 @@ func _spawn_bots() -> void:
 		if player != null:
 			player.input_driver = BotBrain.new()
 			print("[Bot] Spawned server bot ", id)
+
+
+## NET: server only. Changes the bot roster while waiting in the lobby.
+func set_lobby_count(count: int) -> void:
+	if not NetworkManager.is_in_session() or not multiplayer.is_server():
+		return
+	var match_system := GameEvents.system(&"match")
+	if match_system == null or match_system.phase != Enums.Phase.LOBBY:
+		return
+	count = clampi(count, 0, 5)
+	NetworkManager.args["bots"] = count
+	for i in range(count, 5):
+		var id := Players.BOT_ID_BASE + i
+		if Players.get_player(id) != null:
+			NetworkManager.peer_left.emit(id)
+	_spawn_bots()

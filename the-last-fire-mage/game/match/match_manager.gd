@@ -25,7 +25,12 @@ var _reason := ""
 var _autostart_used := false
 var _session_closed := false
 var _roster_key := "uninitialized"
+var _exploring := false
 var _mage_count: SpinBox
+var _bot_count: SpinBox
+var _lobby_background: TextureRect
+var _roster_label: Label
+var _invite: Button
 
 @onready var _lobby: PanelContainer = $UI/Lobby
 @onready var _pick: OptionButton = $UI/Lobby/Content/MagePick
@@ -59,12 +64,51 @@ func _ready() -> void:
 		if Net.is_server(self) and phase == Enums.Phase.LOBBY:
 			NetworkManager.args["mages"] = int(value))
 	var count_label := Label.new()
+	count_label.name = "MageCountLabel"
 	count_label.text = "MAGES"
 	$UI/Lobby/Content.add_child(count_label)
 	$UI/Lobby/Content.add_child(_mage_count)
 	$UI/Lobby/Content.move_child(count_label, 3)
 	$UI/Lobby/Content.move_child(_mage_count, 4)
+	var bots_label := Label.new()
+	bots_label.name = "BotCountLabel"
+	bots_label.text = "BOTS"
+	_bot_count = SpinBox.new()
+	_bot_count.min_value = 0
+	_bot_count.max_value = 5
+	_bot_count.step = 1
+	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
+	_bot_count.value_changed.connect(func(value: float):
+		if Net.is_server(self):
+			var bot_manager := GameEvents.system(&"bots")
+			if bot_manager:
+				bot_manager.set_lobby_count(int(value)))
+	$UI/Lobby/Content.add_child(bots_label)
+	$UI/Lobby/Content.add_child(_bot_count)
+	$UI/Lobby/Content.move_child(bots_label, 5)
+	$UI/Lobby/Content.move_child(_bot_count, 6)
 	_style_lobby()
+	_lobby_background = TextureRect.new()
+	_lobby_background.texture = load("res://game/ui/art/host.png")
+	_lobby_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_lobby_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_lobby_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_lobby_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lobby_background.visible = false
+	$UI.add_child(_lobby_background)
+	$UI.move_child(_lobby_background, 0)
+	_roster_label = Label.new()
+	_roster_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_roster_label.add_theme_font_size_override("font_size", 20)
+	$UI/Lobby/Content.add_child(_roster_label)
+	$UI/Lobby/Content.move_child(_roster_label, 2)
+	_invite = Button.new()
+	_invite.text = "Invite Steam friends"
+	_invite.add_theme_stylebox_override("normal", _start.get_theme_stylebox("normal"))
+	_invite.add_theme_stylebox_override("hover", _start.get_theme_stylebox("hover"))
+	_invite.pressed.connect(SteamManager.invite_friends)
+	$UI/Lobby/Content.add_child(_invite)
+	_layout_lobby()
 
 
 func _process(delta: float) -> void:
@@ -298,12 +342,15 @@ func _on_session_started() -> void:
 	_session_closed = false
 	if _mage_count:
 		_mage_count.value = clampi(int(NetworkManager.args.get("mages", 1)), 1, 5)
+		_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
 
 
 func _on_session_ended(_message: String) -> void:
 	# WHY: queued player bodies can survive one frame after the transport is removed.
 	_session_closed = true
+	_exploring = false
 	_lobby.visible = false
+	_lobby_background.visible = false
 	_known.clear()
 	_pending_roles.clear()
 	_snapshots.clear()
@@ -390,16 +437,25 @@ func _update_blind() -> void:
 	_blind_text.text = "You are the Mage\nVillagers are hiding… %d" % ceili(time_left)
 
 
+func _input(event: InputEvent) -> void:
+	if _exploring and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
+		_exploring = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		get_viewport().set_input_as_handled()
+
+
 func _on_explore_town() -> void:
 	# FIX(S05, Codex): solo map playtests need captured input before a multiplayer round starts.
 	if NetworkManager.is_in_session() and phase == Enums.Phase.LOBBY:
+		_exploring = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _update_ui() -> void:
 	_update_blind()
 	var was_visible := _lobby.visible
-	_lobby.visible = NetworkManager.is_in_session() and phase == Enums.Phase.LOBBY
+	_lobby.visible = NetworkManager.is_in_session() and phase == Enums.Phase.LOBBY and not _exploring
+	_lobby_background.visible = _lobby.visible
 	if DisplayServer.get_name() != "headless":
 		# FIX(S05, Codex): release the cursor on entry, not every frame while exploring.
 		if _lobby.visible and not was_visible:
@@ -408,8 +464,11 @@ func _update_ui() -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	var roster := Players.all()
 	var key := ""
+	var roster_names: Array[String] = []
 	for p in roster:
+		roster_names.append(p.display_name)
 		key += "%d:%s;" % [p.peer_id, p.display_name]
+	_roster_label.text = "PLAYERS   " + "   •   ".join(roster_names)
 	if key != _roster_key:
 		_roster_key = key
 		_pick.clear()
@@ -419,6 +478,8 @@ func _update_ui() -> void:
 	_pick.select(maxi(0, _pick.get_item_index(mage_id)))
 	_pick.disabled = not Net.is_server(self)
 	_mage_count.editable = Net.is_server(self)
+	_bot_count.editable = Net.is_server(self)
+	_invite.disabled = not SteamManager.available or SteamManager.lobby_id == 0
 	var required := maxi(maxi(2, tuning.min_players), int(NetworkManager.args.get("mages", 1)) + 1)
 	_start.disabled = not Net.is_server(self) or roster.size() < required
 	var message := "Choose the Mage and start" if Net.is_server(self) else "Waiting for host"
@@ -428,6 +489,15 @@ func _update_ui() -> void:
 
 
 func _style_lobby() -> void:
+	_lobby.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_lobby.offset_left = -450
+	_lobby.offset_right = 450
+	_lobby.offset_top = -220
+	_lobby.offset_bottom = 220
+	$UI/Lobby/Content.add_theme_constant_override("separation", 10)
+	$UI/Lobby/Content/Title.text = "HOST LOBBY"
+	$UI/Lobby/Content/Title.add_theme_font_size_override("font_size", 30)
+	$UI/Lobby/Content/Title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var panel := StyleBoxFlat.new()
 	panel.bg_color = Color("391b2bec")
 	panel.border_color = Color("d1994f")
@@ -452,3 +522,24 @@ func _style_lobby() -> void:
 		button.add_theme_stylebox_override("normal", normal)
 		button.add_theme_stylebox_override("hover", hover)
 		button.add_theme_color_override("font_color", Color("ffe5b1"))
+
+
+func _layout_lobby() -> void:
+	var content := $UI/Lobby/Content
+	_place(content.get_node("Title"), Vector2(0, 0), Vector2(864, 44))
+	_place(_status, Vector2(20, 52), Vector2(470, 32))
+	_place(_roster_label, Vector2(20, 100), Vector2(440, 220))
+	_place(content.get_node("MageCountLabel"), Vector2(500, 55), Vector2(325, 24))
+	_place(_mage_count, Vector2(500, 80), Vector2(325, 36))
+	_place(content.get_node("BotCountLabel"), Vector2(500, 124), Vector2(325, 24))
+	_place(_bot_count, Vector2(500, 149), Vector2(325, 36))
+	_place(_pick, Vector2(500, 195), Vector2(325, 38))
+	_place(_invite, Vector2(500, 238), Vector2(325, 36))
+	_place(_start, Vector2(500, 282), Vector2(325, 48))
+	_place(content.get_node("Explore"), Vector2(500, 340), Vector2(325, 42))
+	_place(content.get_node("ExploreHelp"), Vector2(20, 340), Vector2(450, 65))
+
+
+func _place(control: Control, pos: Vector2, dimensions: Vector2) -> void:
+	control.position = pos
+	control.size = dimensions
