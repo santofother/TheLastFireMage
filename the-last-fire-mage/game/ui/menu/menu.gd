@@ -12,7 +12,6 @@ var _name_edit: LineEdit
 # FIX(S07, Codex): expose server bots for editor playtests without CLI arguments.
 var _bot_count: SpinBox
 var _mage_count: SpinBox
-var _skin_option: OptionButton
 var _saved_skin := 0
 var _steam_label: Label
 var _host_steam_btn: Button
@@ -156,7 +155,6 @@ func _refresh_buttons() -> void:
 	_host_lan_btn.disabled = in_s
 	_join_ip_btn.disabled = in_s
 	_name_edit.editable = not in_s
-	_skin_option.disabled = in_s
 	_bot_count.editable = not in_s
 	_mage_count.editable = not in_s
 	_invite_btn.disabled = not (steam and SteamManager.lobby_id != 0)
@@ -177,7 +175,6 @@ func _load_settings() -> void:
 	# WHY: --villager is for tests and must not overwrite the choice saved in the player's settings.
 	var skin: int = VillagerSkins.id_from_name(NetworkManager.args["villager"]) if NetworkManager.args.has("villager") else _saved_skin
 	VillagerSkins.local = skin
-	_skin_option.select(skin)
 	VoiceManager.push_to_talk = cfg.get_value("voice", "push_to_talk", true)
 	_ptt_check.button_pressed = VoiceManager.push_to_talk
 	for kind: StringName in _volume_sliders:
@@ -256,16 +253,6 @@ func _build_ui() -> void:
 	_mage_count.value = 1
 	host.add_child(_row("Mages", _mage_count))
 
-	# TODO: replace with the full character screen when the menus are redone.
-	_skin_option = OptionButton.new()
-	_skin_option.name = "VillagerSkin"
-	for skin_name: String in VillagerSkins.NAMES:
-		_skin_option.add_item(skin_name)
-	_skin_option.item_selected.connect(func(i: int) -> void:
-		VillagerSkins.local = i
-		_save_settings())
-	host.add_child(_row("Villager", _skin_option))
-
 	_bot_count = SpinBox.new()
 	_bot_count.name = "BotCount"
 	_bot_count.min_value = 0
@@ -342,7 +329,7 @@ func _build_ui() -> void:
 	v.add_child(_leave_btn)
 	_status = UiStyle.footer("Ready", 15)
 	v.add_child(_status)
-	for field: Control in [_name_edit, _port_edit, _ip_edit, _mage_count, _bot_count, _skin_option, _mic_option]:
+	for field: Control in [_name_edit, _port_edit, _ip_edit, _mage_count, _bot_count, _mic_option]:
 		UiStyle.style_field(field)
 	_select_page("host")
 

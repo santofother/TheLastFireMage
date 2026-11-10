@@ -64,6 +64,7 @@ var alive_override := true
 var _local: Node
 var _phase: int = Enums.Phase.LOBBY
 var _hunt_time := 0.0
+var _intro_time := 0.0 ## seconds since ROLE_REVEAL; the cheer theme fades out over it
 var _stage := 0
 var _tiers := {} # mage peer id -> tier
 var _bus_base := {} # bus -> base dB
@@ -646,6 +647,7 @@ func _on_phase_changed(phase: int, _duration: float) -> void:
 	if phase == Enums.Phase.ROLE_REVEAL:
 		Sfx.play_2d(&"stinger_round_start", &"Stingers")
 		_props_dirty = true
+		_intro_time = 0.0
 	if phase == Enums.Phase.HUNT:
 		_hunt_time = 0.0
 	if phase == Enums.Phase.LOBBY or phase == Enums.Phase.ROLE_REVEAL:
@@ -676,10 +678,12 @@ func _target_match_dread() -> float:
 
 
 func _update_music(delta: float) -> void:
+	_intro_time += delta
 	match_dread = move_toward(match_dread, _target_match_dread(), tuning.dread_rate * delta)
 	var d := match_dread
 	if _music_stream:
-		_music_stream.set_sync_stream_volume(0, _lin_db(1.0 - smoothstep(0.15, 0.7, d)))
+		_music_stream.set_sync_stream_volume(0, _lin_db(1.0 - smoothstep(0.15, 0.7, d)) + tuning.intro_music_db
+			+ linear_to_db(1.0 - smoothstep(tuning.intro_music_hold, tuning.intro_music_hold + tuning.intro_music_fade, _intro_time) + 0.0001))
 		_music_stream.set_sync_stream_volume(1, _lin_db(smoothstep(0.2, 0.75, d)))
 		_music_stream.set_sync_stream_volume(2, _lin_db(smoothstep(0.55, 1.0, d)))
 		_music.volume_db = 0.0

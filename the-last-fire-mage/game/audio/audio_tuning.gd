@@ -60,6 +60,9 @@ extends Tuning
 @export var hunt_time_ramp := 120.0 # TUNE
 @export var stage_dread := 0.5 # TUNE at the final firestorm stage
 @export var tier_dread := 0.25 # TUNE at the top mage tier
+@export var intro_music_db := -9.0 # TUNE: extra cut on the cheerful theme stem at match start
+@export var intro_music_hold := 12.0 # TUNE: seconds the theme plays after the round starts
+@export var intro_music_fade := 6.0 # TUNE: seconds it then fades out
 @export var dread_rate := 0.05 # TUNE: match_dread moves at most this much per second
 @export var music_lowpass_min_hz := 2200.0 # TUNE at full dread
 @export var music_pitch_min := 0.94 # TUNE at full dread (slower, lower)

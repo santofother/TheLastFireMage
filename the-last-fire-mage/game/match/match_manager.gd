@@ -49,6 +49,8 @@ var _slot_layout_count := -1
 @onready var _count: SpinBox = $UI/Lobby/Content/MageCountRow/MageCount
 @onready var _start: Button = $UI/Lobby/Content/Start
 @onready var _status: Label = $UI/Lobby/Content/Status
+var _settings_panel: PanelContainer
+var _settings_btn: Button
 @onready var _blind: ColorRect = $UI/Blind
 @onready var _blind_text: Label = $UI/Blind/Message
 
@@ -115,6 +117,19 @@ func _ready() -> void:
 		_portraits.append(atlas)
 	_build_lobby_cards()
 	_layout_lobby()
+	_settings_panel = preload("res://game/match/game_settings_panel.gd").new()
+	_settings_panel.changed.connect(_on_settings_changed)
+	$UI.add_child(_settings_panel)
+	_settings_btn = Button.new()
+	_settings_btn.text = "GAME SETTINGS"
+	_settings_btn.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_settings_btn.offset_left = 20
+	_settings_btn.offset_top = -70
+	_settings_btn.offset_right = 240
+	_settings_btn.offset_bottom = -20
+	UiStyle.style_primary(_settings_btn, 18)
+	_settings_btn.pressed.connect(func() -> void: _settings_panel.visible = not _settings_panel.visible)
+	$UI.add_child(_settings_btn)
 
 
 func _process(delta: float) -> void:
@@ -368,6 +383,7 @@ func _send_snapshots() -> void:
 		if Players.get_player(id) == null or not multiplayer.get_peers().has(id):
 			continue
 		_rpc_mage_count.rpc_id(id, mage_count)
+		_rpc_settings.rpc_id(id, GameSettings.mults)
 		_rpc_snapshot.rpc_id(id, roles, mage_id, phase, time_left, _winner, _reason)
 		_snapshots.erase(id)
 
@@ -460,6 +476,18 @@ func _rpc_mage_count(count: int) -> void:
 	mage_count = clampi(count, 1, MAX_MAGES)
 
 
+@rpc("authority", "call_local", "reliable")
+func _rpc_settings(mults: Dictionary) -> void:
+	GameSettings.set_mults(mults)
+	if _settings_panel:
+		_settings_panel.show_mults(mults)
+
+
+func _on_settings_changed(mults: Dictionary) -> void:
+	if Net.is_server(self) and phase == Enums.Phase.LOBBY:
+		Net.broadcast(self, &"_rpc_settings", [mults])
+
+
 func _on_mage_count_changed(value: float) -> void:
 	if Net.is_server(self) and phase == Enums.Phase.LOBBY:
 		Net.broadcast(self, &"_rpc_mage_count", [int(value)])
@@ -515,6 +543,9 @@ func _update_ui() -> void:
 	_pick.visible = host
 	_start.visible = host
 	_invite.visible = host
+	_settings_btn.visible = host and _lobby.visible
+	if not _lobby.visible:
+		_settings_panel.visible = false
 	var roster := Players.all()
 	_update_lobby_cards(roster)
 	var key := ""

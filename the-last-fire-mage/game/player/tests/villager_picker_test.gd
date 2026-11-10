@@ -11,15 +11,8 @@ func _ready() -> void:
 func _run() -> void:
 	var main := GameEvents.system(&"main")
 	var menu: Node = main.get_node("Menu")
-	var option := main.find_child("VillagerSkin", true, false) as OptionButton
-	if option == null or option.item_count != VillagerSkins.NAMES.size():
-		_fail("picker missing or wrong item count")
-		return
-	option.select(1)
-	option.item_selected.emit(1)
-	if VillagerSkins.local != 1:
-		_fail("picking Blue should set the local skin")
-		return
+	# The host-screen dropdown was removed (character is picked in the lobby); set the skin directly.
+	VillagerSkins.local = 1
 	menu._port_edit.text = str(NetworkManager.args.get("port"))
 	menu._on_host_lan()
 	await get_tree().create_timer(0.5).timeout

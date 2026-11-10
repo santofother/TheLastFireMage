@@ -18,6 +18,7 @@ static func load_tuning(path: String, section: String) -> Tuning:
 		return null
 	var copy := res.duplicate(true) as Tuning
 	copy.apply_overrides(section, _cli_tune_arg())
+	GameSettings.register(copy) # host lobby balance multipliers
 	return copy
 
 
