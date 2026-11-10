@@ -93,12 +93,24 @@ func request_slow(target: Node, mult: float, seconds: float) -> void:
 	print("[Counterplay] slowed %d to %.2f for %.1fs" % [target.peer_id, mult, seconds])
 
 
-## NET: server only. Applies the effect of `item` hitting `mage`.
+## Living players a stun from `source_id` can hit: every mage, plus other villagers when the source is a
+## living villager (villagers can stun each other, never themselves; ghosts and mages only stun mages).
+static func stun_targets(source_id: int) -> Array:
+	var targets: Array = Players.alive_with_role(Enums.Role.MAGE)
+	var source := Players.get_player(source_id)
+	if source != null and source.is_alive and source.role == Enums.Role.VILLAGER:
+		for v in Players.alive_with_role(Enums.Role.VILLAGER):
+			if v != source:
+				targets.append(v)
+	return targets
+
+
+## NET: server only. Applies the effect of `item` hitting `mage` (any stun target, villagers included).
 func apply_item_hit(item: CounterItem, mage: Node) -> void:
 	match item.kind:
 		&"bucket":
 			request_stun(mage, tuning.stun_duration, item.thrower_id)
-			var abilities := mage.get_ability(&"MageAbilities") as Node
+			var abilities := mage.get_ability(&"MageAbilities") as Node if mage.has_method(&"get_ability") else null
 			if abilities and abilities.has_method(&"extinguish"):
 				abilities.call(&"extinguish")
 		&"pot":
@@ -113,7 +125,7 @@ func net_burst(item: CounterItem, center: Vector3) -> int:
 	if not Net.is_server(self):
 		return 0
 	var caught := 0
-	for mage in Players.alive_with_role(Enums.Role.MAGE):
+	for mage in stun_targets(item.thrower_id):
 		var offset: Vector3 = mage.global_position - center
 		if absf(offset.y) > tuning.net_reach_y + float(mage.tuning.height if mage.tuning else 1.4):
 			continue
@@ -185,7 +197,7 @@ func _build_dead_spots() -> void:
 		low = Vector2(minf(low.x, p.x), minf(low.y, p.y))
 		high = Vector2(maxf(high.x, p.x), maxf(high.y, p.y))
 	var spectator := GameEvents.system(&"spectator") as SpectatorManager
-	var y := spectator.tuning.camera_height if spectator else 30.0
+	var y := spectator.tuning.camera_height if spectator else 24.0
 	for i in tuning.dead_item_count:
 		var marker := Marker3D.new()
 		add_child(marker)

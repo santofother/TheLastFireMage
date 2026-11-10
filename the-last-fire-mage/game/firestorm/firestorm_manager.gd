@@ -1,17 +1,19 @@
 class_name FirestormManager
 extends Node3D
 ## Shrinking safe zone and mage power threshold. Owner: S14.
+## Rings (Fortnite-style): `tuning.ring_count` circles, ring 1 covers ~first_ring_fraction of the map at a random
+## spot, each next ring is a random circle inside the previous one, and the last covers final_ring_fraction of
+## the map (it never closes to a point). Stage k = the storm closing from ring k-1 onto ring k.
 ## NET: server decides the plan, stages, warnings and damage. Peers animate the current shrink from reliable snapshots.
-## Public API: stage, zone_center, zone_radius, final_zone_center, final_zone_radius, is_inside(),
-## required_power(), and GameEvents.firestorm_stage / firestorm_warning.
+## Public API: stage, ring_count(), zone_center, zone_radius, final_zone_center, final_zone_radius, is_inside(),
+## required_power(), ring_fraction(k), and GameEvents.firestorm_stage / firestorm_warning.
 
 const _VISUAL := preload("res://game/firestorm/firestorm_visual.gd")
 const _CAUSE := &"firestorm"
 const _DAMAGE_INTERVAL := 0.5
 const _INACTIVE_RADIUS := 1000.0
-const _AREA_FRACTIONS := [0.8, 0.6, 0.25]
-const _FINAL_STAGE := 3
 const _FALLBACK_THRESHOLDS := [0.0, 3.0, 6.0]
+const _MAX_THRESHOLD_INDEX := 2 # WHY: the last ring keeps the old final-stage requirement (tier 3), whatever the ring count
 
 ## Current stage (0 = storm not started).
 var stage := 0
@@ -27,6 +29,7 @@ var final_zone_radius := 0.0
 var tuning: FirestormTuning
 
 var _visual: Node3D
+var _map_origin := Vector3.ZERO
 var _start_center := Vector3.ZERO
 var _start_radius := 0.0
 var _target_center := Vector3.ZERO
@@ -40,6 +43,7 @@ var _warned_stage := 0
 var _damage_time := 0.0
 var _below_threshold := 0.0
 var _mage_tick := 0.0
+var _final_stage := 3 # NET: server copy of ring_count for this round; peers learn it in _rpc_stage
 
 
 func _enter_tree() -> void:
@@ -68,6 +72,20 @@ func required_power() -> float:
 	return _required
 
 
+## Number of rings (stages) this round.
+func ring_count() -> int:
+	return _final_stage
+
+
+## Fraction of tuning.map_area that ring `k` (1-based) covers: geometric from first to final fraction.
+func ring_fraction(k: int) -> float:
+	var n := maxi(1, tuning.ring_count)
+	if n == 1:
+		return tuning.final_ring_fraction
+	var t := float(clampi(k, 1, n) - 1) / float(n - 1)
+	return tuning.first_ring_fraction * pow(tuning.final_ring_fraction / tuning.first_ring_fraction, t)
+
+
 func _on_phase(phase: int, duration: float) -> void:
 	if phase != Enums.Phase.HUNT:
 		_reset()
@@ -78,34 +96,40 @@ func _on_phase(phase: int, duration: float) -> void:
 	var main := GameEvents.system(&"main")
 	var map: Node3D = main.get_map() if main else null
 	var origin := map.global_position if map else global_position
+	_final_stage = maxi(1, tuning.ring_count)
 	var start := maxf(0.0, tuning.start_time)
-	var second := start + clampf(tuning.second_stage_delay, 0.0, (duration - start) * 0.4)
-	var hold := clampf(tuning.final_hold_time, 0.0, (duration - second) / 3.0)
-	_boundaries = [start, second, duration - 2.0 * hold, duration - hold]
+	var hold := clampf(tuning.final_hold_time, 0.0, (duration - start) * 0.5)
+	var closed := duration - hold
+	# Rings close one after another, evenly spread from start_time until the final hold.
+	_boundaries.clear()
+	for i in _final_stage + 1:
+		_boundaries.append(lerpf(start, closed, float(i) / float(_final_stage)))
+	_map_origin = origin
 	_target_center = origin
 	_target_radius = maxf(1.0, tuning.start_radius)
 	set_process(true)
 
 
-func _choose_destination(origin: Vector3, max_offset: float) -> Vector3:
-	# Spawn markers give reachable final areas. Limit travel to keep each disk inside the last one.
-	var candidates: Array[Vector3] = []
-	for marker in get_tree().get_nodes_in_group(&"villager_spawn"):
-		if marker is Node3D:
-			var pos: Vector3 = marker.global_position
-			pos.y = origin.y
-			if pos.distance_squared_to(origin) <= max_offset * max_offset:
-				candidates.append(pos)
-	return origin if candidates.is_empty() else candidates.pick_random()
+## Random center for a ring of `radius` inside the disk (center, outer). Prefers centers on the playable
+## rectangle (tuning.map_size around the map origin) so rings don't drift out over the sea.
+func _random_center(center: Vector3, outer: float, radius: float) -> Vector3:
+	var max_offset := maxf(0.0, outer - radius)
+	var half := tuning.map_size * 0.5
+	for i in 32:
+		var angle := randf() * TAU
+		var pos := center + Vector3(cos(angle), 0.0, sin(angle)) * max_offset * sqrt(randf())
+		if absf(pos.x - _map_origin.x) <= half.x and absf(pos.z - _map_origin.z) <= half.y:
+			return pos
+	return center
 
 
 func _process(delta: float) -> void:
 	_stage_elapsed += delta
 	if Net.is_server(self):
 		_hunt_elapsed += delta
-		while stage < _FINAL_STAGE and _hunt_elapsed >= _boundaries[stage]:
+		while stage < _final_stage and _hunt_elapsed >= _boundaries[stage]:
 			_start_next_stage()
-		if stage < _FINAL_STAGE and _warned_stage != stage + 1:
+		if stage < _final_stage and _warned_stage != stage + 1:
 			var seconds := _boundaries[stage] - _hunt_elapsed
 			if seconds <= tuning.warning_time:
 				Net.broadcast(self, &"_rpc_warning", [stage + 1, seconds])
@@ -121,13 +145,10 @@ func _process(delta: float) -> void:
 
 func _start_next_stage() -> void:
 	var next := stage + 1
-	var radius := clampf(sqrt(maxf(0.0, tuning.map_area) * _AREA_FRACTIONS[stage] / PI),
-		0.5, _target_radius)
-	var center := _target_center
-	if next == _FINAL_STAGE:
-		center = _choose_destination(center, _target_radius - radius)
+	var radius := clampf(sqrt(maxf(0.0, tuning.map_area) * ring_fraction(next) / PI), 0.5, _target_radius)
+	var center := _random_center(_target_center, _target_radius, radius)
 	Net.broadcast(self, &"_rpc_stage", [next, _threshold_for(next), _target_center, _target_radius,
-		center, radius, _boundaries[next] - _boundaries[stage], _hunt_elapsed - _boundaries[stage]])
+		center, radius, _boundaries[next] - _boundaries[stage], _hunt_elapsed - _boundaries[stage], _final_stage])
 
 
 func _update_zone() -> void:
@@ -139,11 +160,15 @@ func _update_zone() -> void:
 
 
 func _threshold_for(number: int) -> float:
+	# Spread the rings over power tiers 1..3 (index 0..2) so more rings don't demand more power.
+	var index := _MAX_THRESHOLD_INDEX
+	if _final_stage > 1:
+		index = roundi(float(number - 1) * _MAX_THRESHOLD_INDEX / float(_final_stage - 1))
 	var power := GameEvents.system(&"power") as PowerManager
 	if power and not power.tuning.tier_thresholds.is_empty():
 		var thresholds := power.tuning.tier_thresholds
-		return thresholds[mini(number - 1, thresholds.size() - 1)]
-	return _FALLBACK_THRESHOLDS[mini(number - 1, _FALLBACK_THRESHOLDS.size() - 1)]
+		return thresholds[mini(index, thresholds.size() - 1)]
+	return _FALLBACK_THRESHOLDS[mini(index, _FALLBACK_THRESHOLDS.size() - 1)]
 
 
 func _damage_outside(delta: float) -> void:
@@ -181,7 +206,7 @@ func _on_registered(id: int, _player_name: String) -> void:
 		return
 	if stage > 0:
 		_rpc_stage.rpc_id(id, stage, _required, _start_center, _start_radius, _target_center,
-			_target_radius, _shrink_time, _stage_elapsed)
+			_target_radius, _shrink_time, _stage_elapsed, _final_stage)
 	if _warned_stage == stage + 1:
 		_rpc_warning.rpc_id(id, _warned_stage, maxf(0.0, _boundaries[stage] - _hunt_elapsed))
 
@@ -210,8 +235,9 @@ func _reset() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _rpc_stage(next: int, threshold: float, origin: Vector3, radius: float,
-		target: Vector3, target_radius: float, shrink_time: float, elapsed: float) -> void:
+		target: Vector3, target_radius: float, shrink_time: float, elapsed: float, rings: int) -> void:
 	stage = next
+	_final_stage = rings
 	_required = threshold
 	_start_center = origin
 	_start_radius = radius
@@ -219,12 +245,12 @@ func _rpc_stage(next: int, threshold: float, origin: Vector3, radius: float,
 	_target_radius = target_radius
 	_shrink_time = maxf(0.001, shrink_time)
 	_stage_elapsed = elapsed
-	if stage == _FINAL_STAGE:
+	if stage == _final_stage:
 		final_zone_center = target
 		final_zone_radius = target_radius
 	set_process(true)
 	_update_zone()
-	var until_next := maxf(0.0, shrink_time - elapsed) if stage < _FINAL_STAGE else 0.0
+	var until_next := maxf(0.0, shrink_time - elapsed) if stage < _final_stage else 0.0
 	GameEvents.firestorm_stage.emit(stage, target, target_radius, _required, until_next)
 
 
