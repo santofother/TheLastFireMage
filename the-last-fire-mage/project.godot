@@ -26,6 +26,7 @@ driver/enable_input=true
 NetworkManager="*res://core/network_manager.gd"
 SteamManager="*res://core/steam_manager.gd"
 VoiceManager="*res://core/voice_manager.gd"
+GraphicsSettings="*res://core/graphics_settings.gd"
 DebugOverlay="*res://core/debug_overlay.gd"
 GameEvents="*res://game/common/game_events.gd"
 

@@ -30,6 +30,15 @@ var _mic_bar: ProgressBar
 # FIX(S18, Claude): user asked for separate game / player-voice / mic volume settings.
 var _volume_sliders: Dictionary = {} # &"game"|&"player"|&"mic" -> HSlider
 var _status: Label
+# lower-settings: graphics quality controls (Settings page); refreshed from GraphicsSettings.
+var _gfx_preset: OptionButton
+var _gfx_shadows: OptionButton
+var _gfx_aa: OptionButton
+var _gfx_fps: OptionButton
+var _gfx_scale: HSlider
+var _gfx_scale_lbl: Label
+var _gfx_lights: CheckButton
+var _gfx_effects: CheckButton
 
 
 func _ready() -> void:
@@ -319,6 +328,7 @@ func _build_ui() -> void:
 	settings.add_child(_volume_row("Game", &"game", "Music, effects and ambience"))
 	settings.add_child(_volume_row("Players", &"player", "Other players' voices"))
 	settings.add_child(_volume_row("My mic", &"mic", "How loud others hear you"))
+	_build_graphics(settings)
 	var back := _button("BACK", func():
 		_show(false)
 		if not NetworkManager.is_in_session():
@@ -400,6 +410,79 @@ func _volume_row(caption: String, kind: StringName, tip: String) -> HBoxContaine
 	var row := _row(caption, slider)
 	row.add_child(pct)
 	return row
+
+
+## Graphics section of the Settings page. Everything goes through GraphicsSettings (saved to graphics.cfg).
+func _build_graphics(page: VBoxContainer) -> void:
+	page.add_child(UiStyle.heading("GRAPHICS", 20))
+	# WHY: scroll box keeps the panel inside a 720p window with all the extra rows.
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 190)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(scroll)
+	var settings := VBoxContainer.new()
+	settings.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	settings.add_theme_constant_override("separation", 8)
+	scroll.add_child(settings)
+	_gfx_preset = _gfx_option(GraphicsSettings.PRESET_NAMES + ["Custom"])
+	_gfx_preset.item_selected.connect(func(i: int):
+		if i < GraphicsSettings.PRESETS.size():
+			GraphicsSettings.apply_preset(i))
+	settings.add_child(_row("Quality", _gfx_preset))
+	_gfx_shadows = _gfx_option(GraphicsSettings.SHADOW_NAMES)
+	_gfx_shadows.item_selected.connect(func(i: int): GraphicsSettings.set_value("shadows", i))
+	settings.add_child(_row("Shadows", _gfx_shadows))
+	_gfx_aa = _gfx_option(GraphicsSettings.AA_NAMES)
+	_gfx_aa.item_selected.connect(func(i: int): GraphicsSettings.set_value("aa", i))
+	settings.add_child(_row("Anti-alias", _gfx_aa))
+	_gfx_scale = HSlider.new()
+	_gfx_scale.min_value = 50
+	_gfx_scale.max_value = 100
+	_gfx_scale.step = 5
+	_gfx_scale.tooltip_text = "Lower = blurrier but much faster"
+	_gfx_scale.custom_minimum_size = Vector2(160, 0)
+	_gfx_scale_lbl = _label("100%")
+	_gfx_scale_lbl.custom_minimum_size = Vector2(48, 0)
+	_gfx_scale.value_changed.connect(func(v: float):
+		_gfx_scale_lbl.text = "%d%%" % roundi(v)
+		if roundi(v) != int(GraphicsSettings.values["scale"]):
+			GraphicsSettings.set_value("scale", roundi(v)))
+	var scale_row := _row("3D scale", _gfx_scale)
+	scale_row.add_child(_gfx_scale_lbl)
+	settings.add_child(scale_row)
+	_gfx_lights = CheckButton.new()
+	_gfx_lights.text = "Torch / lantern lights"
+	_gfx_lights.toggled.connect(func(on: bool): GraphicsSettings.set_value("lights", on))
+	settings.add_child(_gfx_lights)
+	_gfx_effects = CheckButton.new()
+	_gfx_effects.text = "Particle effects (embers)"
+	_gfx_effects.toggled.connect(func(on: bool): GraphicsSettings.set_value("effects", on))
+	settings.add_child(_gfx_effects)
+	_gfx_fps = _gfx_option(GraphicsSettings.FPS_NAMES)
+	_gfx_fps.item_selected.connect(func(i: int): GraphicsSettings.set_value("fps", i))
+	settings.add_child(_row("FPS cap", _gfx_fps))
+	GraphicsSettings.changed.connect(_refresh_graphics)
+	_refresh_graphics()
+
+
+func _gfx_option(items: Array) -> OptionButton:
+	var o := OptionButton.new()
+	for it: String in items:
+		o.add_item(it)
+	UiStyle.style_field(o)
+	return o
+
+
+func _refresh_graphics() -> void:
+	var v: Dictionary = GraphicsSettings.values
+	_gfx_preset.select(GraphicsSettings.preset if GraphicsSettings.preset >= 0 else GraphicsSettings.PRESETS.size())
+	_gfx_shadows.select(v["shadows"])
+	_gfx_aa.select(v["aa"])
+	_gfx_fps.select(v["fps"])
+	_gfx_scale.set_value_no_signal(v["scale"])
+	_gfx_scale_lbl.text = "%d%%" % int(v["scale"])
+	_gfx_lights.set_pressed_no_signal(v["lights"])
+	_gfx_effects.set_pressed_no_signal(v["effects"])
 
 
 func _row(caption: String, control: Control) -> HBoxContainer:
