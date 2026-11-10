@@ -5,6 +5,9 @@ const SETTINGS_PATH := "user://settings.cfg"
 
 var _root: CenterContainer
 var _landing: Control
+var _menu_backdrop: TextureRect
+var _pages: Dictionary = {}
+var _page_title: Label
 var _name_edit: LineEdit
 # FIX(S07, Codex): expose server bots for editor playtests without CLI arguments.
 var _bot_count: SpinBox
@@ -59,17 +62,22 @@ func _process(_delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode == KEY_ESCAPE and NetworkManager.is_in_session():
+		if not _root.visible:
+			_select_page("settings")
 		_show(not _root.visible)
 		get_viewport().set_input_as_handled()
 
 
 func _show(on: bool) -> void:
 	_root.visible = on
+	_menu_backdrop.visible = on and not NetworkManager.is_in_session()
 	if _landing:
 		_landing.visible = false
 	_refresh_buttons()
 	if DisplayServer.get_name() != "headless":
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED
+		var match_system := GameEvents.system(&"match")
+		var in_lobby: bool = match_system != null and match_system.phase == Enums.Phase.LOBBY and not match_system._exploring
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on or not NetworkManager.is_in_session() or in_lobby else Input.MOUSE_MODE_CAPTURED
 
 
 # ---------------------------------------------------------------- actions
@@ -181,116 +189,127 @@ func _save_settings() -> void:
 # ---------------------------------------------------------------- UI construction
 
 func _build_ui() -> void:
+	_menu_backdrop = TextureRect.new()
+	_menu_backdrop.texture = load("res://game/ui/art/village-background.png")
+	_menu_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_menu_backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_menu_backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_menu_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_menu_backdrop.visible = false
+	add_child(_menu_backdrop)
 	_root = CenterContainer.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(520, 0)
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("351c2aeF"), Color("c78b42"), 2))
+	panel.custom_minimum_size = Vector2(550, 0)
+	panel.add_theme_stylebox_override("panel", _panel_style(Color("351c2af2"), Color("d19a50"), 2))
 	_root.add_child(panel)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
+		margin.add_theme_constant_override("margin_" + side, 22)
 	panel.add_child(margin)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
+	v.add_theme_constant_override("separation", 10)
 	margin.add_child(v)
-
-	var title := Label.new()
-	title.text = "THE LAST FIRE MAGE"
-	title.add_theme_color_override("font_color", Color("ffd081"))
-	title.add_theme_font_size_override("font_size", 22)
-	v.add_child(title)
-
+	_page_title = _label("HOST GAME")
+	_page_title.add_theme_color_override("font_color", Color("ffd080"))
+	_page_title.add_theme_font_size_override("font_size", 27)
+	v.add_child(_page_title)
 	_name_edit = LineEdit.new()
 	_name_edit.placeholder_text = "Player name"
 	_name_edit.max_length = 20
 	v.add_child(_row("Name", _name_edit))
-
-	var host_title := _label("HOST GAME  ·  Choose Steam or Local below")
-	host_title.add_theme_color_override("font_color", Color("f6bd69"))
-	v.add_child(host_title)
+	for key in ["host", "join", "settings"]:
+		var section := VBoxContainer.new()
+		section.add_theme_constant_override("separation", 8)
+		_pages[key] = section
+		v.add_child(section)
+	var host: VBoxContainer = _pages["host"]
+	var hint := _label("Choose how friends will connect")
+	hint.add_theme_color_override("font_color", Color("f6bd69"))
+	host.add_child(hint)
 	_mage_count = SpinBox.new()
 	_mage_count.name = "MageCount"
 	_mage_count.min_value = 1
 	_mage_count.max_value = 5
 	_mage_count.step = 1
 	_mage_count.value = 1
-	_mage_count.tooltip_text = "Number of mages; at least one villager is required."
-	v.add_child(_row("Mages", _mage_count))
-
-	# Shared by Steam and LAN hosting; CLI automation keeps its supplied count.
+	host.add_child(_row("Mages", _mage_count))
 	_bot_count = SpinBox.new()
 	_bot_count.name = "BotCount"
 	_bot_count.min_value = 0
 	_bot_count.max_value = 5
 	_bot_count.step = 1
 	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
-	_bot_count.tooltip_text = "Computer players to add when you host (0–5)."
-	v.add_child(_row("Bots", _bot_count))
-
-	v.add_child(HSeparator.new())
-	_steam_label = Label.new()
-	v.add_child(_steam_label)
+	host.add_child(_row("Bots", _bot_count))
+	_steam_label = _label("")
+	host.add_child(_steam_label)
 	_host_steam_btn = _button("Host Steam lobby", _on_host_steam)
 	_host_lan_btn = _button("Host LAN", _on_host_lan)
-	_host_steam_btn.tooltip_text = "Host online through Steam and invite friends."
-	_host_lan_btn.tooltip_text = "Host locally or on a LAN using the port below."
-	v.add_child(_hbox([_host_steam_btn, _host_lan_btn]))
-	_invite_btn = _button("Invite Steam friends", SteamManager.invite_friends)
-	v.add_child(_invite_btn)
-	_refresh_btn = _button("Refresh lobby list", SteamManager.request_lobby_list)
-	_join_lobby_btn = _button("Join selected lobby", _on_join_lobby)
-	v.add_child(_hbox([_refresh_btn, _join_lobby_btn]))
-	_lobby_list = ItemList.new()
-	_lobby_list.custom_minimum_size = Vector2(0, 90)
-	_lobby_list.item_activated.connect(func(_i): _on_join_lobby())
-	v.add_child(_lobby_list)
-
-	v.add_child(HSeparator.new())
+	host.add_child(_hbox([_host_steam_btn, _host_lan_btn]))
 	_port_edit = LineEdit.new()
 	_port_edit.text = str(NetworkManager.DEFAULT_PORT)
-	_port_edit.custom_minimum_size = Vector2(80, 0)
-	v.add_child(_row("LAN port", _port_edit))
+	var port_row := _row("LAN port", _port_edit)
+	v.add_child(port_row)
+	v.move_child(port_row, 2)
+	_invite_btn = _button("Invite Steam friends", SteamManager.invite_friends)
+	host.add_child(_invite_btn)
+	var join: VBoxContainer = _pages["join"]
+	_refresh_btn = _button("Refresh Steam lobbies", SteamManager.request_lobby_list)
+	_join_lobby_btn = _button("Join selected lobby", _on_join_lobby)
+	join.add_child(_hbox([_refresh_btn, _join_lobby_btn]))
+	_lobby_list = ItemList.new()
+	_lobby_list.custom_minimum_size = Vector2(0, 120)
+	_lobby_list.item_activated.connect(func(_i): _on_join_lobby())
+	join.add_child(_lobby_list)
 	_ip_edit = LineEdit.new()
 	_ip_edit.text = "127.0.0.1"
 	_ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_join_ip_btn = _button("Join IP", _on_join_ip)
-	v.add_child(_hbox([_ip_edit, _join_ip_btn]))
-
-	v.add_child(HSeparator.new())
+	join.add_child(_hbox([_ip_edit, _join_ip_btn]))
+	var join_port := _label("Enter a host address and the LAN port above.")
+	join.add_child(join_port)
+	var settings: VBoxContainer = _pages["settings"]
 	_mic_option = OptionButton.new()
 	for d in VoiceManager.get_input_devices():
 		_mic_option.add_item(d)
 	_mic_option.item_selected.connect(func(i):
 		VoiceManager.set_input_device(_mic_option.get_item_text(i))
 		_save_settings())
-	v.add_child(_row("Mic", _mic_option))
-	var note := _label("Steam voice uses the mic chosen in Steam > Settings > Voice.")
-	note.add_theme_font_size_override("font_size", 12)
-	v.add_child(note)
+	settings.add_child(_row("Mic", _mic_option))
 	_ptt_check = CheckButton.new()
-	_ptt_check.text = "Push-to-talk (hold V). Off = open mic"
+	_ptt_check.text = "Push-to-talk (hold V)"
 	_ptt_check.toggled.connect(func(on):
 		VoiceManager.push_to_talk = on
 		_save_settings())
-	v.add_child(_ptt_check)
+	settings.add_child(_ptt_check)
 	_mic_bar = ProgressBar.new()
 	_mic_bar.show_percentage = false
 	_mic_bar.custom_minimum_size = Vector2(0, 14)
-	v.add_child(_row("Mic level", _mic_bar))
-
-	v.add_child(HSeparator.new())
-	var back := _button("Back to main menu", func():
+	settings.add_child(_row("Mic level", _mic_bar))
+	var back := _button("Back", func():
+		_show(false)
 		if not NetworkManager.is_in_session():
-			_show(false)
 			_landing.visible = true)
+	back.name = "BackButton"
 	v.add_child(back)
 	_leave_btn = _button("Leave game", _on_leave)
 	v.add_child(_leave_btn)
-	_status = _label("Ready. F3 = debug overlay, Esc = menu in game.")
+	_status = _label("Ready")
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD
 	v.add_child(_status)
+	_select_page("host")
+
+
+func _select_page(page: String) -> void:
+	for key in _pages:
+		_pages[key].visible = key == page
+	_page_title.text = {"host": "HOST GAME", "join": "JOIN GAME", "settings": "SETTINGS"}.get(page, "MENU")
+
+
+func _open_page(page: String) -> void:
+	_select_page(page)
+	_show(true)
 
 
 func _button(text: String, cb: Callable) -> Button:
@@ -338,7 +357,7 @@ func _panel_style(bg: Color, border: Color, width: int) -> StyleBoxFlat:
 	style.content_margin_bottom = 5
 	if width == 3:
 		style.shadow_color = Color("ff821b99")
-		style.shadow_size = 8
+		style.shadow_size = 3
 	return style
 
 
@@ -347,42 +366,39 @@ func _build_landing() -> void:
 	_landing.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_landing)
 	var picture := TextureRect.new()
-	picture.texture = load("res://game/ui/art/start.png")
+	picture.texture = load("res://game/ui/art/village-background.png")
 	picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_landing.add_child(picture)
-	# The supplied image contains button labels, so transparent hit targets preserve its artwork.
-	var canvas := Control.new()
-	canvas.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	canvas.offset_left = -640
-	canvas.offset_top = -360
-	canvas.offset_right = 640
-	canvas.offset_bottom = 360
-	_landing.add_child(canvas)
-	var footer := ColorRect.new()
-	footer.position = Vector2(83, 607)
-	footer.size = Vector2(300, 38)
-	footer.color = Color("301a25")
-	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	canvas.add_child(footer)
-	for spec in [["Host game", 263, func(): _show(true)], ["Join game", 345, func(): _show(true)], ["Settings", 420, func(): _show(true)], ["Quit", 496, func(): get_tree().quit()]]:
-		var hit := Button.new()
-		hit.tooltip_text = spec[0]
-		hit.position = Vector2(94, spec[1])
-		hit.size = Vector2(300, 65)
-		var clear := StyleBoxEmpty.new()
-		hit.add_theme_stylebox_override("normal", clear)
-		hit.add_theme_stylebox_override("pressed", clear)
-		var glow := StyleBoxFlat.new()
-		glow.bg_color = Color("ff9a2428")
-		glow.border_color = Color("ffce68")
-		glow.set_border_width_all(3)
-		glow.set_corner_radius_all(7)
-		glow.shadow_color = Color("ff7e1aaa")
-		glow.shadow_size = 12
-		hit.add_theme_stylebox_override("hover", glow)
-		hit.add_theme_stylebox_override("focus", clear)
-		hit.pressed.connect(spec[2])
-		canvas.add_child(hit)
+	var panel := PanelContainer.new()
+	panel.anchor_left = 0.035
+	panel.anchor_right = 0.35
+	panel.anchor_top = 0.08
+	panel.anchor_bottom = 0.92
+	panel.add_theme_stylebox_override("panel", _panel_style(Color("301725ed"), Color("d79b50"), 2))
+	_landing.add_child(panel)
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 28)
+	panel.add_child(margin)
+	var content := VBoxContainer.new()
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 16)
+	margin.add_child(content)
+	var title := Label.new()
+	title.text = "THE LAST\nFIRE MAGE"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 40)
+	title.add_theme_color_override("font_color", Color("ffd080"))
+	content.add_child(title)
+	var ornament := _label("✦    ━━━━━    ✦")
+	ornament.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ornament.add_theme_color_override("font_color", Color("d99a4e"))
+	content.add_child(ornament)
+	for spec in [["HOST GAME", func(): _open_page("host")], ["JOIN GAME", func(): _open_page("join")], ["SETTINGS", func(): _open_page("settings")], ["QUIT", func(): get_tree().quit()]]:
+		var button := _button(spec[0], spec[1])
+		button.custom_minimum_size = Vector2(0, 54)
+		button.add_theme_font_size_override("font_size", 24)
+		content.add_child(button)

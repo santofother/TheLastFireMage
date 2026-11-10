@@ -33,6 +33,8 @@ const MAGE_TUNING := "res://game/player/tuning_mage.tres"
 
 ## Owning peer id (bots: >= Players.BOT_ID_BASE). Set by the spawner before entering the tree.
 var peer_id := 1
+## The owning player's selected villager appearance (0 red, 1 blue), replicated to peers.
+@export var character_variant := 0
 ## Display name shown above the character.
 var display_name := "Player"
 ## True for a server-side local bot (S07). Bots have authority 1 and never take the camera.

@@ -31,6 +31,9 @@ var _bot_count: SpinBox
 var _lobby_background: TextureRect
 var _roster_label: Label
 var _invite: Button
+var _portrait: TextureRect
+var _portraits: Array[AtlasTexture] = []
+var _character_button: Button
 
 @onready var _lobby: PanelContainer = $UI/Lobby
 @onready var _pick: OptionButton = $UI/Lobby/Content/MagePick
@@ -89,10 +92,10 @@ func _ready() -> void:
 	$UI/Lobby/Content.move_child(_bot_count, 6)
 	_style_lobby()
 	_lobby_background = TextureRect.new()
-	_lobby_background.texture = load("res://game/ui/art/host.png")
+	_lobby_background.texture = load("res://game/ui/art/village-background.png")
 	_lobby_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_lobby_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_lobby_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_lobby_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_lobby_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lobby_background.visible = false
 	$UI.add_child(_lobby_background)
@@ -108,6 +111,22 @@ func _ready() -> void:
 	_invite.add_theme_stylebox_override("hover", _start.get_theme_stylebox("hover"))
 	_invite.pressed.connect(SteamManager.invite_friends)
 	$UI/Lobby/Content.add_child(_invite)
+	var sheet: Texture2D = load("res://game/ui/art/portraits.png")
+	for index in 2:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = sheet
+		atlas.region = Rect2(sheet.get_width() * 0.5 * index, 0, sheet.get_width() * 0.5, sheet.get_height())
+		_portraits.append(atlas)
+	_portrait = TextureRect.new()
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	$UI/Lobby/Content.add_child(_portrait)
+	_character_button = Button.new()
+	_character_button.text = "CHANGE CHARACTER"
+	_character_button.add_theme_stylebox_override("normal", _start.get_theme_stylebox("normal"))
+	_character_button.add_theme_stylebox_override("hover", _start.get_theme_stylebox("hover"))
+	_character_button.pressed.connect(_change_character)
+	$UI/Lobby/Content.add_child(_character_button)
 	_layout_lobby()
 
 
@@ -462,6 +481,19 @@ func _update_ui() -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		elif was_visible and not _lobby.visible and NetworkManager.is_in_session():
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	var host := Net.is_server(self)
+	$UI/Lobby/Content/Title.text = "HOST LOBBY" if host else "JOINED LOBBY"
+	$UI/Lobby/Content/MageCountLabel.visible = host
+	$UI/Lobby/Content/BotCountLabel.visible = host
+	_mage_count.visible = host
+	_bot_count.visible = host
+	_pick.visible = host
+	_start.visible = host
+	_invite.visible = host
+	var local := Players.local_player()
+	_character_button.disabled = local == null
+	if local != null:
+		_portrait.texture = _portraits[clampi(local.character_variant, 0, 1)]
 	var roster := Players.all()
 	var key := ""
 	var roster_names: Array[String] = []
@@ -528,7 +560,9 @@ func _layout_lobby() -> void:
 	var content := $UI/Lobby/Content
 	_place(content.get_node("Title"), Vector2(0, 0), Vector2(864, 44))
 	_place(_status, Vector2(20, 52), Vector2(470, 32))
-	_place(_roster_label, Vector2(20, 100), Vector2(440, 220))
+	_place(_roster_label, Vector2(20, 95), Vector2(440, 65))
+	_place(_portrait, Vector2(20, 160), Vector2(145, 145))
+	_place(_character_button, Vector2(180, 205), Vector2(250, 44))
 	_place(content.get_node("MageCountLabel"), Vector2(500, 55), Vector2(325, 24))
 	_place(_mage_count, Vector2(500, 80), Vector2(325, 36))
 	_place(content.get_node("BotCountLabel"), Vector2(500, 124), Vector2(325, 24))
@@ -543,3 +577,9 @@ func _layout_lobby() -> void:
 func _place(control: Control, pos: Vector2, dimensions: Vector2) -> void:
 	control.position = pos
 	control.size = dimensions
+
+
+func _change_character() -> void:
+	var local := Players.local_player()
+	if local != null:
+		local.character_variant = 1 - clampi(local.character_variant, 0, 1)

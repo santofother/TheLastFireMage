@@ -10,6 +10,15 @@ func _run() -> void:
 	NetworkManager.args["mages"] = 2
 	NetworkManager.host_enet(int(NetworkManager.args.get("port")))
 	await get_tree().create_timer(0.5).timeout
+	var local = Players.local_player()
+	var visual = local.get_node("VillagerVisual")
+	local.character_variant = 1
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if visual._blue_meshes.is_empty() or not visual._blue_meshes[0].visible or visual._red_meshes[0].visible:
+		print("[TEST] FAIL character selection did not show blue villager")
+		get_tree().quit(1)
+		return
 	var match_system = GameEvents.system(&"match")
 	var bot_manager = GameEvents.system(&"bots")
 	bot_manager.set_lobby_count(2)

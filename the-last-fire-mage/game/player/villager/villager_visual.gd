@@ -54,6 +54,9 @@ const MAX_STRAFE_YAW := PI / 3.0 # TUNE: how far the body turns toward strafing
 ## Clip currently selected.
 var clip: StringName = &""
 
+var _variant := -1
+var _red_meshes: Array[MeshInstance3D] = []
+var _blue_meshes: Array[MeshInstance3D] = []
 var _player: Player
 var _anim: AnimationPlayer
 var _skeleton: Skeleton3D
@@ -76,6 +79,18 @@ func _ready() -> void:
 	_player = get_parent() as Player
 	_anim = find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_skeleton = find_child("Skeleton3D", true, false) as Skeleton3D
+	for child in _skeleton.get_children():
+		if child is MeshInstance3D:
+			_red_meshes.append(child)
+	var blue: Node = (load("res://game/player/villager/blue-villager-mesh.glb") as PackedScene).instantiate()
+	var blue_skeleton := blue.find_child("Skeleton3D", true, false) as Skeleton3D
+	for child in blue_skeleton.get_children():
+		if child is MeshInstance3D:
+			blue_skeleton.remove_child(child)
+			_skeleton.add_child(child)
+			child.skeleton = NodePath("..")
+			_blue_meshes.append(child)
+	blue.free()
 	_left_hand = _skeleton.find_bone("hand.L")
 	_right_hand = _skeleton.find_bone("hand.R")
 	_last_position = _player.global_position
@@ -96,6 +111,12 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	if _variant != _player.character_variant:
+		_variant = _player.character_variant
+		for mesh in _red_meshes:
+			mesh.visible = _variant != 1
+		for mesh in _blue_meshes:
+			mesh.visible = _variant == 1
 	if visible and _carrying:
 		_place_carry_socket()
 
