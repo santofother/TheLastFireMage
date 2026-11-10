@@ -29,6 +29,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S14 | Firestorm | 3 | DONE (2026-11-08) | fix-s14-firestorm |
 | S15 | Villager stuns / counterplay | 3 | DONE (2026-11-08) | s15-counterplay |
 | S16 | Scoring + Mage rotation | 3 | DONE (2026-11-08) | s16-scoring |
+| S18 | Sound design (rooms, mage hunt, dread, storm direction) | 4 | DONE (2026-11-09) | game-audio-revamp |
 | P1 | Playtest 1 (user + friends) | — | TODO | after wave 3 |
 | S17 | Playtest triage + next plan | — | TODO | after P1 |
 
