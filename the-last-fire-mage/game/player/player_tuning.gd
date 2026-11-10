@@ -9,6 +9,9 @@ extends Tuning
 ## TUNE: Capsule radius, metres.
 @export var radius := 0.3
 
+## TUNE: Relative body mass. Mass x impact speed is the momentum that breaks furniture.
+@export var body_mass := 1.0
+
 ## TUNE: Ground running speed, m/s.
 @export var walk_speed := 4.0
 
@@ -60,6 +63,19 @@ extends Tuning
 ## TUNE: Crouched speed, m/s.
 @export var crouch_speed := 2.0
 
+## TUNE: Metres the feet lift for a mid-air crouch at takeoff or on a fast fall (poorly timed).
+@export var crouch_jump_lift_min := 0.1
+## TUNE: Metres the feet lift for a mid-air crouch timed at the top of the jump.
+@export var crouch_jump_lift_max := 0.3
+## TUNE: Tallest ledge the player runs over without jumping, metres.
+@export var step_max_height := 0.42
+## TUNE: Rises below this are too small to catch the capsule. Keep low so small notches never snag players.
+@export var step_min_height := 0.02
+## TUNE: Slowest ground speed that steps up, m/s.
+@export var step_min_speed := 0.3
+## TUNE: How fast the model and camera catch up after a step, per second.
+@export var step_smoothing := 16.0
+
 ## TUNE: Minimum ledge height above takeoff feet, metres.
 @export var mantle_min_height := 1.2
 
@@ -73,7 +89,7 @@ extends Tuning
 @export var mantle_inset := 0.08
 
 ## TUNE: Quick pull-up duration, seconds.
-@export var mantle_duration := 0.28
+@export var mantle_duration := 0.6
 
 ## TUNE: Portion of mantle spent rising before moving onto ledge.
 @export var mantle_lift_fraction := 0.65
@@ -113,6 +129,9 @@ extends Tuning
 
 ## TUNE: seconds a villager must hold E to revive a downed player.
 @export var revive_hold_time := 4.0
+
+## TUNE: seconds a downed villager lasts before bleeding out (paused while someone is reviving them).
+@export var bleed_out_time := 30.0
 
 ## TUNE: hp while downed (any damage kills).
 @export var downed_hp := 1.0

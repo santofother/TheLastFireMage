@@ -6,6 +6,7 @@
 script = ExtResource("1")
 height = 1.4
 radius = 0.35
+body_mass = 1.05
 walk_speed = 4.5
 sprint_speed = 6.0
 ground_acceleration = 24.0
@@ -21,7 +22,7 @@ mantle_min_height = 1.2
 mantle_max_height = 2.0
 mantle_reach = 0.55
 mantle_inset = 0.08
-mantle_duration = 0.28
+mantle_duration = 0.6
 mantle_lift_fraction = 0.65
 mantle_probe_height = 0.2
 collision_clearance = 0.025

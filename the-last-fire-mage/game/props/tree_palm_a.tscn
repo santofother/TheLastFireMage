@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/palm_tree_1.res" id="1_jrvwc"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_ycdx6"]
+height = 2.4
+radius = 0.26
+
+[node name="TreePalmA" type="StaticBody3D" unique_id=11874573]
+collision_layer = 256
+collision_mask = 0
+metadata/footprint = Vector2(5.5877614, 5.42797)
+metadata/height = 5.6
+
+[node name="Model" type="Node3D" parent="." unique_id=465123688]
+transform = Transform3D(1.0973134, 0, 0, 0, 1.0973134, 0, 0, 0, 1.0973134, -0.014217913, -0.011472632, -0.014217913)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=1459919784]
+transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
+mesh = ExtResource("1_jrvwc")
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=932890909]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("CylinderShape3D_ycdx6")

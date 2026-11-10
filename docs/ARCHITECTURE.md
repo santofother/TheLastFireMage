@@ -60,8 +60,9 @@ live in `game/<sys>/tests/` (scenes) + `tools/tests/<sys>_test.sh` (runner).
 
 ## Physics layers (named in project.godot)
 1 world (static map) · 2 players · 3 chickens · 4 interact (Area3D query volumes, no collision) ·
-5 props (thrown items, rigid props) · 6 hitboxes (server queries) · 7 triggers (zones) · 8 spectator.
-Player: layer 2, mask 1+2+5. Chicken: layer 3, mask 1+5. Dead players: layer 0 (still stand on the floor).
+5 props (thrown items, rigid props) · 6 hitboxes (server queries) · 7 triggers (zones) · 8 spectator ·
+9 furniture (town props: blocks players and bakes into the navmesh; flame and the camera pass through).
+Player: layer 2, mask 1+2+5+9. Chicken: layer 3, mask 1+5. Dead players: layer 0 (still stand on the floor).
 
 ## GameEvents
 `game/common/game_events.gd`. A local signal bus plus a registry (`register_system`, `system(name)`).
@@ -103,6 +104,12 @@ instanced from `MAP_SCENE_PATH = res://game/map/town.tscn`, override `--map=`), 
 markers. `main.spawn_player(id, name, is_bot)` (server) is how S07 adds local bots. Lighting stays in
 main.tscn; S14 tints it at runtime through the groups.
 
+## Breakable furniture
+`game/props/breakable_manager.gd` (`Systems/Breakables`, system `&"breakables"`) decides breaks on the server:
+`report_impact(player, prop, momentum)` from the mover, `burn_cone(origin, aim, reach, angle_deg)` from S09. Momentum is
+`tuning.body_mass` x speed into the surface. `BreakableProp` is the visual side on every peer. Late joiners get a snapshot;
+`phase_changed(ROLE_REVEAL)` restores everything.
+
 ## Player
 `game/player/player.tscn` (`class_name Player`, CharacterBody3D, group `players`, node name = peer id).
 S02 wrote the contract; S03 owns the file and must keep all of this working:
@@ -133,11 +140,12 @@ push_to_talk (V), scoreboard (Tab), debug (F3), menu (Esc). `core/` still reads 
 game-agnostic; S12 may switch voice to the `push_to_talk` action with a key fallback.
 
 ## Match
-`MatchManager` (`game/match/`): `phase`, `time_left` (synced), `mage_id`, `roles`, `tuning`;
-server `start_round(mage_id = 0)`, `end_round(winner, reason)`; `get_role(id)`, `is_round_active()`.
+`MatchManager` (`game/match/`): `phase`, `time_left` (synced), `mage_id` (lobby pick / first mage), `mage_count`,
+`roles`, `tuning`; server `start_round(mage_id = 0)`, `end_round(winner, reason)`; `get_role(id)`, `mage_ids()`,
+`is_round_active()`. A round has 1 to 4 mages; code that means "a mage" must use the role, not `mage_id`.
 Uses Player hooks for spawning (`teleport` to `villager_spawn`/`mage_spawn`), freezing (`set_input_lock`),
-and `Health.revive()` / `invulnerable` for resets. Ends the round on `player_died` (any cause, including
-firestorm) and on mage disconnect. The host lobby UI lives inside the match scene.
+and `Health.revive()` / `invulnerable` for resets. Ends the round once every mage has died (any cause, including
+firestorm) or disconnected. The host lobby UI lives inside the match scene.
 
 ## Map
 Map scene root: Node3D with static geometry on layer 1, a baked `NavigationRegion3D` (chickens), no
@@ -169,8 +177,8 @@ targets (find with `Health.find_on`). `power_multiplier` (default 1.0) is update
 `power_changed`. HUD reads `cooldown_left(&"knife"|&"ignite"|&"fire_wave")`, `is_ignited()`.
 
 ## Power
-`PowerManager`: server counts kills from `chicken_killed` / `player_died` (killer = mage), applies
-tier/decay from `tuning_power.tres`, fires `power_changed`. `current_power()`, `current_tier()`,
+`PowerManager`: server counts kills from `chicken_killed` / `player_died` (killer = any mage) into one shared
+pool, applies tier/decay from `tuning_power.tres`, fires `power_changed` once per mage. `current_power()`, `current_tier()`,
 `multiplier()`; `add_power()` for tests. Calls `VoiceManager.set_speaker_effect(mage_id, "mage", strength)`
 once S12 provides it.
 

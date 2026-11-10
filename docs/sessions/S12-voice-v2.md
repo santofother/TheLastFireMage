@@ -19,6 +19,8 @@ game-agnostic.
   nearby, or as the GDD says). Keep the rule table data-driven.
 - Jitter buffer so packets arriving unevenly don't crackle.
 
+-theres been speaker issues, with voices being too quiet which have been fixed so confrim not to revert voice chat
+
 ## Tests
 Headless synthetic-voice test still passes with the codec on; measured kbit/s drops ≥ 50%.
 Manual for the user: Mac↔Windows talk test, mage distortion audible, dead/alive routing.

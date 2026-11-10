@@ -5,7 +5,7 @@ extends Node3D
 ## NET: authority = owning peer reads `player.input.interact_pressed` / `drop_pressed` / `primary_pressed`
 ## (villager primary = throw carried thing) and RPCs the server, which validates and acts.
 ## Emits GameEvents.interact_prompt_changed on the local peer.
-## Public API: `find_target() -> Interactable`.
+## Public API: `find_target() -> Interactable`, `hold_progress() -> float` (owner peer, 0..1, for the HUD bar).
 
 const PROMPT_INTERVAL := 0.1
 ## Targets further than this must be roughly in front of the player.
@@ -30,6 +30,15 @@ func _exit_tree() -> void:
 var hold_target: Interactable = null
 var hold_elapsed := 0.0
 var _sent_hold := NodePath()
+var _local_hold_elapsed := 0.0
+var _local_hold_time := 0.0
+
+
+## Owner peer: 0..1 progress of the hold-interaction (revive) E is on right now; 0 when not holding.
+func hold_progress() -> float:
+	if _sent_hold.is_empty() or _local_hold_time <= 0.0:
+		return 0.0
+	return clampf(_local_hold_elapsed / _local_hold_time, 0.0, 1.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -45,12 +54,20 @@ func _physics_process(delta: float) -> void:
 			_prompt_left = PROMPT_INTERVAL
 			_refresh_prompt()
 	if not _player.can_control():
+		_local_hold_elapsed = 0.0
+		if not _sent_hold.is_empty():
+			_sent_hold = NodePath()
+			_send(&"_rpc_hold", [_sent_hold])
 		return
 	var held := find_target() if _player.input.interact_held else null
 	var want := held.get_path() if held and held.hold_time > 0.0 else NodePath()
 	if want != _sent_hold:
 		_sent_hold = want
+		_local_hold_elapsed = 0.0
 		_send(&"_rpc_hold", [want])
+	if not want.is_empty():
+		_local_hold_time = held.hold_time
+		_local_hold_elapsed += delta
 	if _player.input.interact_pressed:
 		var target := find_target()
 		if target and target.hold_time <= 0.0:
@@ -125,6 +142,8 @@ func _tick_hold(delta: float) -> void:
 		hold_target = null
 		return
 	hold_elapsed += delta
+	if hold_target.kind == &"revive" and hold_target.get_parent().has_method(&"note_revive_hold"):
+		hold_target.get_parent().call(&"note_revive_hold")
 	if hold_elapsed >= hold_target.hold_time:
 		var done := hold_target
 		hold_target = null

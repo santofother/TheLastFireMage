@@ -108,7 +108,7 @@ func _run() -> void:
 			var kind: String = route.get_meta("kind")
 			var mantle := kind == "window_mantle"
 			var roof := _town.find_child(String(route.name).trim_suffix("RoofLanding"), true, false) if kind == "roof_landing" else null
-			var entered := await _jump(start, takeoff, finish, mantle, kind == "boat_sprint", roof)
+			var entered := await _jump(start, takeoff, finish, mantle, kind == "boat_sprint", roof, kind == "roof_block")
 			_check(entered, label)
 			if kind.begins_with("roof_"):
 				if entered and role == Enums.Role.MAGE:
@@ -143,7 +143,7 @@ func _run() -> void:
 
 
 func _contracts() -> void:
-	_check(_town.get_meta("layout_version") == "salmara-party-walls-v4", "new village is the production town")
+	_check(_town.get_meta("layout_version") == "salmara-party-walls-v5", "new village is the production town")
 	var apron := _town.find_child("MarketApron", true, false) as StaticBody3D
 	var quay := _town.find_child("QuayDeck", true, false) as StaticBody3D
 	var pier := _town.find_child("DockDeck", true, false) as StaticBody3D
@@ -162,20 +162,25 @@ func _contracts() -> void:
 	_check(get_tree().get_nodes_in_group("map_boat").size() >= 4, "playable boats")
 	var templates: Dictionary = {}
 	var heights: Dictionary = {}
+	var sealed := 0
 	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
 		templates[house.get_meta("template")] = true
 		heights[house.get_meta("storeys")] = true
 		var storeys := int(house.get_meta("storeys"))
-		if storeys >= 2:
-			var stair := house.get_node("Storey%d" % (storeys - 1)).has_node("Stairs")
-			var walk_up := house.name in [&"Dyeworks", &"WatchHouse"]
-			_check(stair == walk_up and _town.has_node(String(house.name) + "RoofLanding") != walk_up,
-				"%s has its intended roof access" % house.name)
+		_check(not house.get_node("Storey%d" % (storeys - 1)).has_node("Stairs") and
+			_town.has_node(String(house.name) + "RoofLanding"), "%s reaches its roof by parkour only" % house.name)
+		if house.get_meta("sealed"):
+			sealed += 1
+			_check(house.get_node("Storey0").find_children("StreetDoor", "Marker3D", false, false).is_empty() and
+				_town.has_node(String(house.name) + "RearWindowIn"), "%s is entered only by its upstairs window" % house.name)
+	_check(sealed >= 3, "some houses have no street door")
 	_check(templates.size() == 4 and heights.size() == 3, "four interior layouts and one to three storeys")
 	for node in _town.find_children("*", "StaticBody3D", true, false):
-		if node.collision_layer != 1:
+		# Furniture has its own layer so flame and the camera ignore it; cliff trees have no collision at all.
+		if not node.collision_layer in [1, 256, 0]:
 			_check(false, "world collision layer " + str(node.get_path()))
-	_check(_town.find_children("*", "Light3D", true, false).is_empty(), "lighting stays in main")
+	_check(_town.find_children("*", "DirectionalLight3D", true, false).is_empty(), "sun and sky lighting stays in main")
+	_check_furnishing()
 	var region := _town.get_node("ChickenNavigation") as NavigationRegion3D
 	_check(region.navigation_mesh.get_polygon_count() > 0 and
 		is_equal_approx(region.navigation_mesh.cell_size, NavigationServer3D.map_get_cell_size(_nav)),
@@ -250,7 +255,7 @@ func _walk(start: Vector3, finish: Vector3) -> bool:
 	return ok
 
 
-func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool, sprint := false, roof: Node = null) -> bool:
+func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool, sprint := false, roof: Node = null, short_hop := false) -> bool:
 	var direction := _flat(finish - start).normalized()
 	await _place(start, direction)
 	if not _player.is_on_floor():
@@ -271,13 +276,19 @@ func _jump(start: Vector3, takeoff: Vector3, finish: Vector3, needs_mantle: bool
 		was_airborne = was_airborne or not _player.is_on_floor()
 		pulled = pulled or _player.is_mantling
 		var position := _player.global_position
-		if jumped and was_airborne and _player.is_on_floor() and _flat(finish - position).dot(direction) < 0.38:
+		# WHY: a street block is 1.2 m long. A player lets go of forward over it; holding it overshoots.
+		if short_hop and jumped and _flat(finish - position).dot(direction) < 0.65:
+			_driver.moving = false
+		if jumped and was_airborne and _player.is_on_floor() and (short_hop or _flat(finish - position).dot(direction) < 0.38):
 			var at_height := absf(position.y - finish.y) < 0.13
 			if roof != null:
 				# The final jump can land on the flat eave or higher on that house's pitched tiles.
 				var hit := _ray(position + Vector3.UP * 0.1, position - Vector3.UP * 0.24)
 				var surface: Node = hit.get("collider")
 				at_height = position.y >= finish.y - 0.04 and surface != null and roof.is_ancestor_of(surface)
+			# On a low roof the block's own face is mantle height, so a climb can skip straight past it.
+			if short_hop and pulled and position.y > finish.y + 0.4:
+				at_height = true
 			if at_height:
 				ok = not needs_mantle or pulled
 				break
@@ -444,6 +455,31 @@ func _ray(from: Vector3, to: Vector3) -> Dictionary:
 
 func _flat(v: Vector3) -> Vector3:
 	return Vector3(v.x, 0, v.z)
+
+
+func _check_furnishing() -> void:
+	var furniture := get_tree().get_nodes_in_group("map_furniture")
+	var breakable := get_tree().get_nodes_in_group(BreakableProp.GROUP)
+	var foliage := get_tree().get_nodes_in_group("map_foliage")
+	var trees := foliage.filter(func(node: Node) -> bool: return String(node.name).begins_with("Tree"))
+	print("[Map] Furniture %d, breakable %d, lights %d, foliage %d, trees %d" % [furniture.size(), breakable.size(),
+		get_tree().get_nodes_in_group("map_light").size(), foliage.size(), trees.size()])
+	_check(furniture.size() >= 600, "rooms are furnished")
+	_check(breakable.size() >= 300, "wooden furniture can break")
+	_check(get_tree().get_nodes_in_group("map_light").size() >= 150, "rooms have torches or lanterns")
+	_check(foliage.size() >= 300 and trees.size() >= 15, "town has trees, bushes and flowers")
+	_check(not get_tree().get_nodes_in_group("map_vines").is_empty(), "buildings have vines")
+	for house: Node3D in get_tree().get_nodes_in_group("map_house"):
+		var count := house.find_children("*", "Node3D", true, false).filter(func(node: Node) -> bool:
+			return node.is_in_group("map_furniture")).size()
+		_check(count >= 3, "%s has furniture" % house.name)
+	# Furniture must never crowd a doorway the route tests below rely on.
+	var doors := get_tree().get_nodes_in_group("map_house_exit") + get_tree().get_nodes_in_group("map_room_opening")
+	for door: Node3D in doors:
+		for prop: Node3D in furniture:
+			if absf(prop.global_position.y - door.global_position.y) < 1.5 and \
+					Vector2(prop.global_position.x - door.global_position.x, prop.global_position.z - door.global_position.z).length() < 0.6:
+				_check(false, "%s clears %s" % [prop.name, door.get_path()])
 
 
 func _check(ok: bool, label: String) -> void:

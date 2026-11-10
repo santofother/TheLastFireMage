@@ -54,9 +54,6 @@ const MAX_STRAFE_YAW := PI / 3.0 # TUNE: how far the body turns toward strafing
 ## Clip currently selected.
 var clip: StringName = &""
 
-var _variant := -1
-var _red_meshes: Array[MeshInstance3D] = []
-var _blue_meshes: Array[MeshInstance3D] = []
 var _player: Player
 var _anim: AnimationPlayer
 var _skeleton: Skeleton3D
@@ -73,35 +70,39 @@ var _carrying := false
 var _timed_clip: StringName = &""
 var _timed_left := 0.0
 var _timed_rate := 1.0
+var _skin := 0 # The player scene starts with the red body.
+var _overlay: BodyPoseOverlay
 
 
 func _ready() -> void:
 	_player = get_parent() as Player
 	_anim = find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_skeleton = find_child("Skeleton3D", true, false) as Skeleton3D
-	for child in _skeleton.get_children():
-		if child is MeshInstance3D:
-			_red_meshes.append(child)
-	var blue: Node = (load("res://game/player/villager/blue-villager-mesh.glb") as PackedScene).instantiate()
-	var blue_skeleton := blue.find_child("Skeleton3D", true, false) as Skeleton3D
-	for child in blue_skeleton.get_children():
-		if child is MeshInstance3D:
-			blue_skeleton.remove_child(child)
-			_skeleton.add_child(child)
-			child.skeleton = NodePath("..")
-			_blue_meshes.append(child)
-	blue.free()
 	_left_hand = _skeleton.find_bone("hand.L")
 	_right_hand = _skeleton.find_bone("hand.R")
 	_last_position = _player.global_position
 	_player.stunned.connect(_on_stunned)
 	_player.revived.connect(_on_revived)
 	GameEvents.carry_changed.connect(_on_carry_changed)
+	_overlay = BodyPoseOverlay.new()
+	_skeleton.add_child(_overlay)
+
+
+## Shows the body for a `VillagerSkins` id. Clips and skeleton are unaffected.
+func set_skin(id: int) -> void:
+	if id == _skin:
+		return
+	_skin = id
+	VillagerMeshSwap.apply(_skeleton, VillagerSkins.scene(id))
+	if _overlay != null:
+		_skeleton.move_child(_overlay, -1) # WHY: keeps the body mesh as the skeleton's first child.
+	print("[Game] Villager skin %d -> %s %s" % [_player.peer_id, VillagerSkins.NAMES[id], _skeleton.get_child(0).name])
 
 
 func _physics_process(delta: float) -> void:
 	if not visible or _player.tuning == null:
 		return
+	position.y = _player.visual_y_offset
 	_sample_motion(delta)
 	_update_strafe_yaw(delta)
 	_stun_left = maxf(0.0, _stun_left - delta)
@@ -111,12 +112,6 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	if _variant != _player.character_variant:
-		_variant = _player.character_variant
-		for mesh in _red_meshes:
-			mesh.visible = _variant != 1
-		for mesh in _blue_meshes:
-			mesh.visible = _variant == 1
 	if visible and _carrying:
 		_place_carry_socket()
 
@@ -192,7 +187,7 @@ func _select_ground_clip() -> void:
 	elif _carrying:
 		_play(CARRY_WALK, direction * minf(speed / CARRY_NATIVE_SPEED, MAX_SLOW_CLIP_RATE))
 	elif _player.is_crouching or speed < RUN_MIN_SPEED:
-		# TODO(villager model): no crouch clip was authored; crouching uses the slow walk at full height.
+		# WHY: no crouch clip exists; BodyPoseOverlay bends the legs on top of the slow walk.
 		_play(WALK, direction * minf(speed / WALK_NATIVE_SPEED, MAX_SLOW_CLIP_RATE))
 	elif speed >= SPRINT_MIN_SPEED:
 		_play(SPRINT, direction * speed / SPRINT_NATIVE_SPEED)

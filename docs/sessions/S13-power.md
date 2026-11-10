@@ -15,6 +15,8 @@ Kills feed the mage's fire; effectiveness decays so the mage must keep hunting.
   `multiplier` itself.
 - Calls `VoiceManager.set_speaker_effect(mage_id, "mage", strength)` if S12 is merged (otherwise TODO).
 - Exposes `current_power()` for the firestorm threshold (S14).
+-addiontal adon in the ui for the mage abilities, right in the keybind for them as well
+
 
 ## Tests
 Headless: scripted kills and time skips → power values match the tuning table within tolerance.

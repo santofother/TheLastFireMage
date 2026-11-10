@@ -134,7 +134,7 @@ func _on_player_died(id: int, killer: int, _cause: StringName) -> void:
 	if match_system.get_role(id) != Enums.Role.VILLAGER:
 		return
 	_dead_at[id] = _survived()
-	if killer != 0 and killer == match_system.mage_id:
+	if killer != 0 and match_system.get_role(killer) == Enums.Role.MAGE:
 		_add(killer, tuning.mage_per_kill)
 
 
@@ -151,7 +151,8 @@ func _settle(winner: int, total_time: float) -> void:
 		return
 	_round_open = false
 	if winner == Enums.Winner.MAGE:
-		_add(match_system.mage_id, tuning.mage_win_bonus)
+		for mage: int in match_system.mage_ids():
+			_add(mage, tuning.mage_win_bonus)
 	for id in match_system.roles:
 		if match_system.get_role(id) != Enums.Role.VILLAGER:
 			continue

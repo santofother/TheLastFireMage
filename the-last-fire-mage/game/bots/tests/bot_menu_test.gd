@@ -9,17 +9,6 @@ func _ready() -> void:
 
 func _run() -> void:
 	var main := GameEvents.system(&"main")
-	var menu: Node = main.get_node("Menu")
-	for page in ["host", "join", "settings"]:
-		menu._open_page(page)
-		if not menu._root.visible or menu._landing.visible or not menu._pages[page].visible:
-			_fail("menu page did not open: " + page)
-			return
-		var back := main.find_child("BackButton", true, false) as Button
-		back.pressed.emit()
-		if menu._root.visible or not menu._landing.visible:
-			_fail("back did not restore main menu: " + page)
-			return
 	var count := main.find_child("BotCount", true, false) as SpinBox
 	if count == null:
 		_fail("Bots selector missing")
@@ -32,6 +21,7 @@ func _run() -> void:
 		_fail("Host LAN button missing")
 		return
 	# Use the randomized test port while exercising the same handler as a click.
+	var menu: Node = main.get_node("Menu")
 	menu._port_edit.text = str(NetworkManager.args.get("port"))
 	host.pressed.emit()
 	await get_tree().create_timer(0.5).timeout

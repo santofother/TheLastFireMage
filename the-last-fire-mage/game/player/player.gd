@@ -17,6 +17,7 @@ extends CharacterBody3D
 ## - local (call on every peer): `set_role(role)`, `is_local()`, `can_control()`, `get_ability(name)`
 ## - server only: `stun(s)`, `set_input_lock(reason, on)`, `teleport(pos)`, `apply_knockback(v)`,
 ##   `set_speed_modifier(source, mult)`
+## - downed villagers: `bleed_out_left`, `being_revived` (all peers), `stun_time_left()`
 ## - signals: `role_changed(role)`, `stunned(seconds)`, `died(killer_id, cause)`, `revived`
 
 ## Role changed on this peer (after abilities were rebuilt). Fires on all peers.
@@ -33,12 +34,17 @@ const MAGE_TUNING := "res://game/player/tuning_mage.tres"
 
 ## Owning peer id (bots: >= Players.BOT_ID_BASE). Set by the spawner before entering the tree.
 var peer_id := 1
-## The owning player's selected villager appearance (0 red, 1 blue), replicated to peers.
-@export var character_variant := 0
 ## Display name shown above the character.
 var display_name := "Player"
 ## True for a server-side local bot (S07). Bots have authority 1 and never take the camera.
 var is_bot := false
+## Villager body (`VillagerSkins` id). Cosmetic, so the owner sets it and the synchronizer sends it.
+# NET: owner peer writes; every peer applies. Values are clamped because they come from clients.
+var villager_skin := 0:
+	set(value):
+		villager_skin = VillagerSkins.clamp_id(value)
+		if is_node_ready():
+			_villager_visual.set_skin(villager_skin)
 ## Current role (Enums.Role). Change only through `set_role()`.
 var role: int = Enums.Role.NONE
 ## Alive flag (from Health; synced).
@@ -68,11 +74,11 @@ var tuning: PlayerTuning
 ## Positional voice playback node.
 @onready var voice: AudioStreamPlayer3D = $Voice
 @onready var _spring: SpringArm3D = $CameraRig/SpringArm
-@onready var _nameplate: Label3D = $Nameplate
 @onready var _speaking_icon: Label3D = $Speaking
 # WHY: the capsule is still the mage's body. Villagers hide it and show $VillagerVisual instead.
 @onready var _body_mesh: MeshInstance3D = $Body
 @onready var _villager_visual: VillagerVisual = $VillagerVisual
+@onready var _mage_visual: MageVisual = $MageVisual
 @onready var _collision: CollisionShape3D = $Collision
 
 ## Replicated stance flag; remote peers resize their own collision and visuals.
@@ -87,7 +93,20 @@ var is_sprinting := false
 var stamina := 0.0
 ## Replicated: the owner's controller is off the floor. Remote peers cannot ask is_on_floor() themselves.
 var is_airborne := false
+## Replicated: metres the feet are currently pulled up by a mid-air crouch (0 = not tucked).
+# NET: owner peer writes; every peer sizes its capsule and offsets its visuals from it.
+var air_tuck_lift := 0.0
+## Vertical offset for the character model: keeps the head still during a tuck and smooths step-ups.
+var visual_y_offset := 0.0
+## Seconds until a downed villager bleeds out. Counts on every peer for the HUD; the server decides the death.
+var bleed_out_left := 0.0
+## True while a villager is holding revive on this downed player (bleed-out pauses). Set by the server.
+var being_revived := false
+var _revive_ping_msec := -1000000 # NET: server. Last tick an Interactor channelled a revive on us.
+var _stun_fx: Node3D
 
+var _step_offset := 0.0
+var _step_distance_debt := 0.0
 var _coyote_left := 0.0
 var _jump_buffer_left := 0.0
 var _mantle_armed := false
@@ -119,7 +138,6 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	add_to_group(&"players")
-	_nameplate.text = display_name
 	_spring.add_excluded_object(get_rid())
 	_default_layer = collision_layer
 	var mat := StandardMaterial3D.new()
@@ -127,6 +145,9 @@ func _ready() -> void:
 	_body_mesh.material_override = mat
 	_apply_tuning(VILLAGER_TUNING, "villager")
 	_update_role_visual()
+	if is_multiplayer_authority():
+		villager_skin = posmod(peer_id, VillagerSkins.NAMES.size()) if is_bot else VillagerSkins.local
+	_villager_visual.set_skin(villager_skin)
 	health.damaged.connect(func(a: float, src: int, c: StringName) -> void:
 		GameEvents.player_damaged.emit(peer_id, a, src, c))
 	health.died.connect(_on_died)
@@ -134,9 +155,9 @@ func _ready() -> void:
 	health.downed.connect(_on_downed)
 	health.recovered.connect(_on_recovered)
 	_add_revive_interactable()
+	_build_stun_fx()
 	if is_local():
 		camera.current = true
-		_nameplate.visible = false
 		VoiceManager.listener = self
 		GameEvents.local_player_ready.emit(self)
 	else:
@@ -179,6 +200,11 @@ func set_role(new_role: int) -> void:
 		abilities.add_child(node)
 		node.set_multiplayer_authority(get_multiplayer_authority(), true)
 	role_changed.emit(role)
+
+
+## Seconds of stun left (accurate on the owning peer and the server; other peers count down too).
+func stun_time_left() -> float:
+	return _stun_left
 
 
 ## Ability node by its scene root name (e.g. &"MageAbilities"), or null.
@@ -280,12 +306,13 @@ func _on_died(killer_id: int, cause: StringName) -> void:
 	collision_layer = 0 # CONTRACT: dead bodies don't block or get hit; they still rest on the floor
 	_body_mesh.rotation.x = -PI / 2.0
 	_body_mesh.position.y = tuning.radius
-	_nameplate.visible = false
 	died.emit(killer_id, cause)
 	GameEvents.player_died.emit(peer_id, killer_id, cause)
 
 
 func _on_downed() -> void:
+	bleed_out_left = tuning.bleed_out_time
+	being_revived = false
 	_reset_movement()
 	is_crouching = false
 	_update_stance()
@@ -317,12 +344,69 @@ func _add_revive_interactable() -> void:
 	add_child(node)
 
 
+## NET: server only. An Interactor calls this every tick it channels a revive on this player.
+func note_revive_hold() -> void:
+	_revive_ping_msec = Time.get_ticks_msec()
+
+
+# A downed villager dies after `bleed_out_time` unless revived. A revive in progress pauses the clock.
+func _tick_bleed_out(delta: float) -> void:
+	if not health.is_downed or not is_alive:
+		return
+	if Net.is_server(self):
+		var reviving := Time.get_ticks_msec() - _revive_ping_msec < 250
+		if reviving != being_revived:
+			Net.broadcast(self, &"_rpc_bleed", [bleed_out_left, reviving])
+	if being_revived:
+		return
+	bleed_out_left = maxf(0.0, bleed_out_left - delta)
+	if Net.is_server(self) and bleed_out_left <= 0.0:
+		print("[Game] %s bled out" % name)
+		health.kill(0, &"bled_out")
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_bleed(left: float, reviving: bool) -> void:
+	if Net.from_server(self):
+		bleed_out_left = left
+		being_revived = reviving
+
+
+# Three little stars circling the head while stunned, so everyone can see a stun land.
+func _build_stun_fx() -> void:
+	_stun_fx = Node3D.new()
+	_stun_fx.name = "StunFx"
+	_stun_fx.visible = false
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.9, 0.3)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.85, 0.2)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.07
+	mesh.height = 0.14
+	for i in 3:
+		var star := MeshInstance3D.new()
+		star.mesh = mesh
+		star.material_override = mat
+		var a := TAU * i / 3.0
+		star.position = Vector3(cos(a) * 0.3, 0.0, sin(a) * 0.3)
+		_stun_fx.add_child(star)
+	add_child(_stun_fx)
+
+
+func _update_stun_fx(delta: float) -> void:
+	_stun_fx.visible = _stun_left > 0.0 and is_alive
+	if _stun_fx.visible:
+		_stun_fx.position.y = tuning.height + 0.25 + visual_y_offset
+		_stun_fx.rotate_y(delta * 6.0)
+
+
 func _on_revived() -> void:
 	collision_layer = _default_layer
 	_reset_movement()
 	_body_mesh.rotation.x = 0.0
 	_body_mesh.position.y = tuning.height / 2.0
-	_nameplate.visible = not is_local()
 	revived.emit()
 	GameEvents.player_revived.emit(peer_id)
 
@@ -337,9 +421,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	_update_stance()
 	_update_pose(delta)
+	_step_offset = lerpf(_step_offset, 0.0, 1.0 - exp(-tuning.step_smoothing * delta))
+	visual_y_offset = _step_offset - air_tuck_lift
+	_stun_left = maxf(0.0, _stun_left - delta)
+	_update_stun_fx(delta)
+	_tick_bleed_out(delta)
 	if not is_multiplayer_authority():
 		return
-	_stun_left = maxf(0.0, _stun_left - delta)
 	_tumble_left = maxf(0.0, _tumble_left - delta)
 	is_tumbling = _tumble_left > 0.0
 	_read_input(delta)
@@ -380,9 +468,11 @@ func _physics_process(delta: float) -> void:
 		_fall_peak_y = maxf(_fall_peak_y, global_position.y)
 		velocity += get_gravity() * delta
 
-	is_crouching = input.crouch or (is_crouching and not _has_standing_room())
+	_update_crouch(grounded)
 	_update_stance()
-	var can_jump := can_control() and not is_crouching and stamina >= tuning.jump_stamina_cost
+	# WHY: jumping out of a crouch stands first; holding crouch then tucks the legs next tick (crouch jump).
+	var can_jump := can_control() and air_tuck_lift <= 0.0 and (not is_crouching or _has_standing_room()) \
+		and stamina >= tuning.jump_stamina_cost
 	var mantle_cost := 0.0 if _jumped_in_air else tuning.jump_stamina_cost
 	if input.jump_pressed and not grounded and can_control() and not is_crouching and not _mantled_in_air and stamina >= mantle_cost:
 		if _try_space_mantle():
@@ -395,6 +485,9 @@ func _physics_process(delta: float) -> void:
 	_stamina_delay = maxf(0.0, _stamina_delay - delta)
 	if _jump_buffer_left > 0.0 and _coyote_left > 0.0 and can_jump:
 		_spend_stamina(tuning.jump_stamina_cost)
+		if is_crouching:
+			is_crouching = false
+			_update_stance()
 		velocity.y = tuning.jump_velocity
 		_jumped_in_air = true
 		_jump_sprinted = is_sprinting
@@ -409,7 +502,11 @@ func _physics_process(delta: float) -> void:
 		if stamina >= minf(tuning.sprint_recovery_stamina, tuning.max_stamina):
 			_sprint_exhausted = false
 
-	var speed := tuning.crouch_speed if is_crouching else (
+	if grounded:
+		# WHY: sliding up a ramp leaves upward speed in velocity.y; kept, it launched players off every crest
+		# and notch (a free hop plus extra distance). On the floor, slope motion comes from move_and_slide.
+		velocity.y = minf(velocity.y, 0.0)
+	var speed := tuning.crouch_speed if is_crouching and air_tuck_lift <= 0.0 else (
 		tuning.sprint_speed if is_sprinting else tuning.walk_speed)
 	var wish := global_basis * Vector3(input.move.x, 0.0, input.move.y).limit_length()
 	var planar := Vector3(velocity.x, 0.0, velocity.z)
@@ -430,10 +527,15 @@ func _physics_process(delta: float) -> void:
 	if _mantle_armed and can_control() and not is_crouching and not grounded and _try_mantle(wish):
 		is_sprinting = false
 		return
+	if grounded and can_control():
+		_try_step_up(delta)
+	else:
+		_step_distance_debt = 0.0
 	var approach := velocity
-	move_and_slide()
+	_move_paying_step_debt(delta)
 	is_airborne = not is_on_floor()
 	_bump_players(approach)
+	_smash_furniture(approach)
 	if is_on_floor() and not grounded and velocity.y <= 0.0:
 		var drop := _fall_peak_y - global_position.y
 		var sprawls := drop >= tuning.fall_tumble_height
@@ -482,7 +584,9 @@ func _apply_fall_damage(fall_height: float, sprinted: bool, jumped: bool, ledge_
 	if ledge_drop >= tuning.fall_story_height and ledge_drop <= tuning.one_story_drop_max:
 		damage *= 0.5
 	# WHY: a lethal fall downs the player (revivable by a villager) a limited number of times per round.
-	if damage >= health.hp and not health.invulnerable and health.downs_used < tuning.fall_downs_allowed:
+	# The mage never goes down: a lethal fall kills it outright.
+	if damage >= health.hp and not health.invulnerable and role == Enums.Role.VILLAGER \
+			and health.downs_used < tuning.fall_downs_allowed:
 		health.down(tuning.downed_hp)
 		return
 	health.apply_damage(damage, 0, &"fall")
@@ -510,12 +614,8 @@ func _try_space_mantle() -> bool:
 	if test_move(global_transform, lift - global_position) or test_move(
 		Transform3D(global_basis, lift), target - lift):
 		return false
-	global_position = target
-	velocity = Vector3.ZERO
-	_mantled_in_air = true
-	_mantle_armed = false
-	_jump_buffer_left = 0.0
-	_fall_peak_y = target.y
+	# WHY: this path used to set global_position directly, which read as a teleport.
+	_begin_mantle(target)
 	return true
 
 
@@ -543,14 +643,19 @@ func _try_mantle(wish: Vector3) -> bool:
 	if test_move(global_transform, lift - global_position) or test_move(
 		Transform3D(global_basis, lift), target - lift):
 		return false
+	_begin_mantle(target)
+	return true
+
+
+func _begin_mantle(target: Vector3) -> void:
 	_mantle_start = global_position
 	_mantle_target = target
 	_mantle_elapsed = 0.0
 	_mantled_in_air = true
 	_mantle_armed = false # One pull per takeoff: no wall scaling or repeated upward grabs.
+	_jump_buffer_left = 0.0
 	is_mantling = true
 	velocity = Vector3.ZERO
-	return true
 
 
 func _tick_mantle(delta: float) -> void:
@@ -572,8 +677,10 @@ func _tick_mantle(delta: float) -> void:
 func _update_role_visual() -> void:
 	var mage := role == Enums.Role.MAGE
 	_villager_visual.visible = not mage
-	_body_mesh.visible = mage
-	$Nose.visible = mage
+	# FIX(mage model): the capsule and nose are replaced by the mage model.
+	_mage_visual.visible = mage
+	_body_mesh.visible = false
+	$Nose.visible = false
 
 
 func _ray(from: Vector3, to: Vector3) -> Dictionary:
@@ -597,10 +704,106 @@ func _has_standing_room() -> bool:
 	return _capsule_clear(global_position + Vector3.UP * tuning.collision_clearance, tuning.height)
 
 
+# Ground crouch shortens the capsule from the top. Air crouch pulls the feet up instead (head stays put),
+# so a tuck timed near the apex clears a slightly taller ledge. CONTRACT: only the authority calls this.
+func _update_crouch(grounded: bool) -> void:
+	if grounded:
+		if air_tuck_lift > 0.0:
+			_step_offset -= air_tuck_lift
+			air_tuck_lift = 0.0
+		is_crouching = input.crouch or (is_crouching and not _has_standing_room())
+	elif input.crouch and air_tuck_lift <= 0.0 and not is_crouching:
+		_tuck_legs()
+	elif not input.crouch and air_tuck_lift > 0.0:
+		_untuck_legs()
+
+
+func _tuck_legs() -> void:
+	var apex := 1.0 - clampf(absf(velocity.y) / maxf(tuning.jump_velocity, 0.01), 0.0, 1.0)
+	var lift := minf(lerpf(tuning.crouch_jump_lift_min, tuning.crouch_jump_lift_max, apex),
+		tuning.height - tuning.radius * 2.0 - 0.01)
+	if lift <= 0.0:
+		return
+	global_position.y += lift
+	air_tuck_lift = lift
+	is_crouching = true
+	camera_rig.position.y -= lift
+
+
+func _untuck_legs() -> void:
+	# Feet may be over a ledge now; then they stay up until landing.
+	if test_move(global_transform.translated(Vector3.UP * tuning.collision_clearance), Vector3.DOWN * air_tuck_lift):
+		return
+	global_position.y -= air_tuck_lift
+	camera_rig.position.y += air_tuck_lift
+	air_tuck_lift = 0.0
+	is_crouching = false
+
+
+# Runs over kerbs and low ledges instead of stopping dead. Solid world geometry only: players, chickens and
+# breakable furniture still block, and steep rock is rejected by the floor-angle check.
+func _try_step_up(delta: float) -> void:
+	var planar := Vector3(velocity.x, 0.0, velocity.z)
+	if planar.length() < tuning.step_min_speed or velocity.y > 0.1:
+		return
+	var direction := planar.normalized()
+	var hit := KinematicCollision3D.new()
+	if not test_move(global_transform, direction * maxf(planar.length() * delta, 0.05), hit):
+		return
+	var collider := hit.get_collider()
+	if collider is CharacterBody3D or collider is BreakableProp:
+		return
+	# WHY: a walkable contact (ramp, rounded kerb edge) is handled by move_and_slide. Stepping there turned
+	# every ramp into a run of tiny teleports that hopped and jittered the camera.
+	if hit.get_normal().dot(Vector3.UP) >= cos(floor_max_angle) - 0.01:
+		return
+	var up := Vector3.UP * (tuning.step_max_height + tuning.collision_clearance)
+	if test_move(global_transform, up):
+		return
+	var raised := global_transform.translated(up)
+	var nudge := direction * tuning.radius * 0.6
+	if test_move(raised, nudge):
+		return
+	var above := raised.translated(nudge)
+	var down := KinematicCollision3D.new()
+	if not test_move(above, Vector3.DOWN * (up.length() + 0.05), down):
+		return
+	var rise: float = above.origin.y - down.get_travel().length() - global_position.y
+	if rise < tuning.step_min_height or rise > tuning.step_max_height:
+		return
+	var point := down.get_position() + direction * 0.03
+	var top := _ray(point + Vector3.UP * 0.3, point + Vector3.DOWN * 0.3)
+	if top.is_empty() or (top.normal as Vector3).dot(Vector3.UP) < cos(floor_max_angle):
+		return
+	global_position += nudge + Vector3.UP * (rise + 0.005)
+	_step_distance_debt += nudge.length()
+	_step_offset -= rise
+	camera_rig.position.y -= rise
+
+
+# WHY: a step-up nudges the player forward. Those metres come out of the next ticks of normal movement,
+# otherwise every notch on a ramp adds distance on top of the run speed.
+func _move_paying_step_debt(delta: float) -> void:
+	var planar := Vector2(velocity.x, velocity.z)
+	var travel := planar.length() * delta
+	if _step_distance_debt <= 0.0 or travel <= 0.0:
+		move_and_slide()
+		return
+	var paid := minf(_step_distance_debt, travel)
+	_step_distance_debt -= paid
+	var scaled := planar * (1.0 - paid / travel)
+	velocity.x = scaled.x
+	velocity.z = scaled.y
+	move_and_slide()
+	velocity.x = planar.x
+	velocity.z = planar.y
+
+
 func _update_stance() -> void:
 	if tuning == null:
 		return
-	var height := tuning.crouch_height if is_crouching and is_alive else tuning.height
+	var crouched := tuning.height - air_tuck_lift if air_tuck_lift > 0.0 else tuning.crouch_height
+	var height := crouched if is_crouching and is_alive else tuning.height
 	if is_equal_approx(_standing_height, height):
 		return
 	_standing_height = height
@@ -622,9 +825,29 @@ func _update_pose(delta: float) -> void:
 
 func _update_camera(delta: float) -> void:
 	var blend := 1.0 - exp(-tuning.camera_response * delta)
-	var height := tuning.camera_height - (tuning.height - tuning.crouch_height if is_crouching else 0.0)
+	var drop := air_tuck_lift if air_tuck_lift > 0.0 else (tuning.height - tuning.crouch_height if is_crouching else 0.0)
+	var height := tuning.camera_height - drop
 	camera_rig.position.y = lerpf(camera_rig.position.y, height, blend)
 	camera.fov = lerpf(camera.fov, tuning.camera_fov + (tuning.sprint_fov_kick if is_sprinting else 0.0), blend)
+
+
+# Charging into wooden furniture breaks it; the server confirms. Keeps the player's run going on a hit.
+func _smash_furniture(approach: Vector3) -> void:
+	if not is_alive:
+		return
+	var breakables := GameEvents.system(&"breakables") as BreakableManager
+	if breakables == null:
+		return
+	for i in get_slide_collision_count():
+		var hit := get_slide_collision(i)
+		var prop := hit.get_collider() as BreakableProp
+		if prop == null:
+			continue
+		var momentum := -approach.dot(hit.get_normal()) * tuning.body_mass
+		if breakables.report_impact(self, prop, momentum):
+			velocity.x = approach.x
+			velocity.z = approach.z
+			return
 
 
 func _bump_players(approach: Vector3) -> void:
@@ -673,6 +896,9 @@ func _reset_movement() -> void:
 	_mantled_in_air = false
 	_jumped_in_air = false
 	_jump_sprinted = false
+	air_tuck_lift = 0.0
+	_step_offset = 0.0
+	_step_distance_debt = 0.0
 	velocity = Vector3.ZERO
 	_knockback = Vector3.ZERO
 	_coyote_left = 0.0
@@ -723,6 +949,9 @@ func _apply_tuning(path: String, section: String) -> void:
 	_standing_height = 0.0
 	floor_snap_length = tuning.floor_snap
 	floor_max_angle = deg_to_rad(tuning.floor_max_angle_degrees)
+	# WHY: same speed up and down ramps, and a near head-on wall contact slides instead of sticking.
+	floor_constant_speed = true
+	wall_min_slide_angle = 0.0
 	_spring.spring_length = tuning.camera_distance
 	_spring.position.x = tuning.camera_shoulder
 	_spring.margin = tuning.camera_margin
@@ -740,7 +969,6 @@ func _apply_tuning(path: String, section: String) -> void:
 	_body_mesh.position.y = tuning.height / 2.0
 	$Nose.position = Vector3(0, tuning.height * 0.8, -tuning.radius - 0.05)
 	camera_rig.position.y = tuning.camera_height
-	_nameplate.position.y = tuning.height + 0.35
 	_speaking_icon.position.y = tuning.height + 0.7
 	voice.position.y = tuning.height * 0.85
 	carry_socket.position = Vector3(0, tuning.height * 0.6, -tuning.radius - 0.25)

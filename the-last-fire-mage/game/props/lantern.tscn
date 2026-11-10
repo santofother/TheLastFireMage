@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/shelf_01.glb" id="1_6i1ii"]
+[ext_resource type="PackedScene" path="res://game/map/props/third_party/zappypixel_interior/candlestick_01.glb" id="2_xdxcp"]
+
+[node name="Lantern" type="Node3D" unique_id=1120727040]
+metadata/footprint = Vector2(0.42, 0.2909912)
+metadata/height = 0.32987666
+
+[node name="Bracket" type="Node3D" parent="." unique_id=669941607 instance=ExtResource("1_6i1ii")]
+transform = Transform3D(0.24429874, 0, 0, 0, 0.12214937, 0, 0, 0, 0.6351767, 0, -3.640335e-09, -0.10757348)
+
+[node name="Model" type="Node3D" parent="." unique_id=2016901818 instance=ExtResource("2_xdxcp")]
+transform = Transform3D(0.65837866, 0, 0, 0, 0.65837866, 0, 0, 0, 0.65837866, 0.009073287, 0.04987667, 0)
+
+[node name="Glow" type="OmniLight3D" parent="." unique_id=2106188198]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0.16)
+light_color = Color(1, 0.62, 0.32, 1)
+light_energy = 0.95
+distance_fade_enabled = true
+distance_fade_begin = 16.0
+distance_fade_length = 6.0
+omni_range = 4.6
+omni_attenuation = 1.4

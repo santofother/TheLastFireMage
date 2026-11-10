@@ -66,6 +66,7 @@ func _ready() -> void:
 	add_child(fake_player)
 	GameEvents.local_player_ready.emit(fake_player)
 	_check(_label("Cooldowns").text.contains("Fire Wave · 4.5s"), "live cooldown API")
+	_check(_label("Cooldowns").text.contains("[R] Locate · READY"), "locate keybind and cooldown on the HUD")
 	_check(_label("Health").text == "HEALTH 100 / 100", "initial health")
 	health.apply_damage(35, 2, &"test")
 	_hud.call("_refresh")

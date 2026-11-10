@@ -16,6 +16,7 @@ A shrinking safe zone that makes choices, plus the mage's "control the storm" pr
 - Visuals: cheap: a cylinder wall with an emissive shader + ember particles; tinted sky/fog as stages pass.
 - `GameEvents.firestorm_stage(stage, center, radius, required_power, time_to_next)` and
   `firestorm_warning(next_stage, seconds_until)` for the HUD. Tint the sky via group `world_environment`.
+-Use a chat sub model at a lower model, to design the riunes in the fire and that animation, using create image
 
 ## Tests
 Headless with short timings: stages advance, a bot outside the zone takes damage, a mage below threshold dies

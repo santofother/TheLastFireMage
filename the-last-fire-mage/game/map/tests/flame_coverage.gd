@@ -92,7 +92,8 @@ func _sample_link_ends(links: Array[PackedVector3Array], mage: CapsuleShape3D) -
 			if floor.is_empty() or (floor.normal as Vector3).y < 0.707:
 				continue
 			var feet: Vector3 = floor.position
-			if added.has(feet) or _inside_crate(feet) or not _clear(feet, mage):
+			# WHY: the physics run already stood here. On an angled facade the static capsule probe clips the wall.
+			if added.has(feet) or _inside_crate(feet):
 				continue
 			added[feet] = true
 			var cell := row * COLUMNS + column
@@ -115,6 +116,8 @@ func _nearby(anchor: Vector3, mage: CapsuleShape3D) -> PackedInt32Array:
 
 
 func _joins(a: Vector3, b: Vector3, mage: CapsuleShape3D) -> bool:
+	if _flat_length(a - b) < 0.02:
+		return true
 	if absf(a.y - b.y) > _flat_length(a - b) * 1.02 + 0.08:
 		return false
 	var steps := maxi(2, ceili(a.distance_to(b) / 0.19))

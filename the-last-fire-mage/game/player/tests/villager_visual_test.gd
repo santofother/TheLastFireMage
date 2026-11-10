@@ -135,10 +135,12 @@ func _run() -> void:
 	_check(_visual.clip == &"idle", "revive stands back up")
 
 	_player.set_role(Enums.Role.MAGE)
-	_check(not _visual.visible and _player.get_node("Body").visible, "mage keeps the capsule body")
+	_check(not _visual.visible and _player.get_node("MageVisual").visible and not _player.get_node("Body").visible,
+		"mage shows the mage model, not the capsule")
 	await _ticks(5) # WHY: mage abilities finish their deferred setup before being removed.
 	_player.set_role(Enums.Role.VILLAGER)
-	_check(_visual.visible and not _player.get_node("Body").visible, "villager role shows the model again")
+	_check(_visual.visible and not _player.get_node("MageVisual").visible and not _player.get_node("Body").visible,
+		"villager role shows the model again")
 
 	print("[TEST] VILLAGER VISUAL %s (%d failures)" % ["PASSED" if _fails == 0 else "FAILED", _fails])
 	get_tree().quit(0 if _fails == 0 else 1)

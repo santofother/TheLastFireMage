@@ -10,8 +10,8 @@ This is the user's guide. Agents don't need to read it (their rules are in `AGEN
 4. The session builds, tests, writes `docs/handoffs/Sxx.md`, then **lands its own work on `main`**: it pulls the
    latest `main` into its branch, reruns all tests on the combined code, updates its row in `STATUS.md` and
    pushes. It shouldn't need to ask you anything unless it's blocked.
-5. Only if a builder couldn't land (its STATUS row says `REVIEW (needs merge session: …)`), run a
-   **merge session**. That's the exception, not every card.
+5. Only if a builder couldn't land (its STATUS row says `REVIEW (needs merge session: …)`), or you want to
+   merge a branch yourself, run a **merge session** (prompt below). That's the exception, not every card.
 6. After each wave, export a build and play it (alone with 2 machines, or with friends at the checkpoints).
    Feed what you noticed into the next merge or triage session.
 
@@ -20,23 +20,38 @@ starts from a 2-page card and ends after one feature stays cheap; a session that
 re-reads all of them every turn. Handoff files carry what's needed from one session to the next.
 
 ## Prompts
+Each prompt is self-contained: it says exactly what to read, so the agent doesn't wander. Replace the
+`<...>` parts. `AGENTS.md` is only for sessions that write code (builder, fix); merge and question
+sessions don't need it.
 
-**Builder prompt** (any agent, any card):
+**Builder prompt** (any agent, any card; new worktree):
 ```text
-You're a builder on The Last Fire Mage. Read AGENTS.md, then do card docs/sessions/S06-chickens.md on branch s06-chickens. Follow the card's Owns list, run the tests, write the handoff, and land it on main yourself following AGENTS.md step 8, without asking me. Only stop to ask if you're blocked.
-```
-Change the card file and branch name. That's it.
-
-**Merge prompt** (only when a STATUS row says `REVIEW (needs merge session: …)`. Claude Code, Sonnet 5.5,
-medium, or Codex GPT-6.1 Sol, medium; normal session in the main folder, not a worktree):
-```text
-You're head engineer on The Last Fire Mage, doing a merge session. Read AGENTS.md and docs/STATUS.md. Find every card whose STATUS row is REVIEW, and for each read its handoff and land its branch on main: merge main into it, resolve conflicts (keep both sides' intent; ask me if unsure), run tools/run_tests.sh, update STATUS.md (row + merge log). List any "Contract change requested" items for me with your recommendation before changing a contract. Push main when tests pass.
+You're a builder on The Last Fire Mage. Read AGENTS.md, then do card docs/sessions/<S06-chickens>.md on branch <s06-chickens>. Follow the card's Owns list, run the tests, write the handoff, and land it on main yourself following AGENTS.md step 8, without asking me. Only stop to ask if you're blocked.
 ```
 
-**Question prompt** (for general questions, so you don't continue a long chat. New Claude session in the
-`LastMage` folder, no worktree; Sonnet 5.5, medium, or Codex GPT-6.1 Sol, medium):
+**Merge prompt** (Claude Code, Sonnet 5.5, medium, or Codex GPT-6.1 Sol, medium; normal session in the
+`LastMage` folder, not a worktree). Use it when a STATUS row says `REVIEW (needs merge session: ...)`, or any
+time you want something merged by hand. Say what to merge in the `<...>` part, one of:
+- a local worktree/branch: `branch s05-map (checked out in worktree ../lm-s05)`
+- a GitHub branch or PR: `PR 12` or `origin/s05-map`
+- everything waiting: `every branch whose STATUS row is REVIEW`
 ```text
-You're the head engineer on The Last Fire Mage, answering a question (no code changes unless I ask). Read AGENTS.md and docs/STATUS.md first; open other files only if the question needs them. My question: <question>
+You're head engineer on The Last Fire Mage, doing a merge session. Merge into main: <branch s05-map | PR 12 | every branch whose STATUS row is REVIEW>.
+
+For each branch, one at a time:
+1. Make sure main is clean and up to date: `git checkout main && git pull origin main`. If the branch is only on GitHub, `git fetch origin` first and use `origin/<branch>`; if it's in a local worktree, use the local branch name (commit nothing in that worktree).
+2. Read its handoff docs/handoffs/<Sxx>.md (if it has one) and its STATUS.md row.
+3. `git merge <branch>` into main. On conflicts, keep both sides' intent. If you're unsure which side wins, stop and ask me.
+4. Run tools/run_tests.sh (after adding or moving files, first run the import: `$GODOT --headless --path the-last-fire-mage --import`). Everything must pass. If something fails, fix it only if it's an obvious merge mistake, otherwise stop and tell me.
+5. Update docs/STATUS.md: set the card's row to DONE with today's date and the branch, flip TODO rows to READY when all their dependencies are now DONE, and add a line to the merge log. Commit.
+
+When all are merged and tests pass, run `git push origin main` (never force-push). Then list any "Contract change requested" items from the handoffs, each with your recommendation (don't change contracts yourself).
+```
+
+**Question prompt** (general questions about the project, so you don't continue a long chat. New Claude
+session in the `LastMage` folder, no worktree; Sonnet 5.5, medium, or Codex GPT-6.1 Sol, medium):
+```text
+You're the head engineer on The Last Fire Mage, answering a question. Make no code changes unless I ask. Open only the files the question needs; docs/STATUS.md (the board) and docs/ARCHITECTURE.md (module map) are the usual starting points. My question: <question>
 ```
 
 **Fix prompt** (when a playtest finds a bug; Codex GPT-6.1 Sol medium / Luna high, or Claude Sonnet 5.5 medium):

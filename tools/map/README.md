@@ -4,14 +4,15 @@ Run the Godot project, host LAN, and choose **Explore town** in the lobby. Use W
 
 - Start on the quay. Take the middle street through the attached houses; it climbs, dips and bends back toward the chapel. Try reversing direction around its tightest corners.
 - Cross from the middle street to the lower lane via **Limekiln Stair**, or to the upper lane via **Potters Cut**. Their stairs run beside the stone cuts. All three streets meet again at the quay and the chapel court.
-- Try **PigeonHouse**, **LimeHouse**, or **Chapel**. Take the stairs to the top room, step onto the stone sill, then use short jumps to the flower box, plank, and roof. Jump from **RopeHouse** to the **Salt Loft** roof or from **Chapel** down to the **Bell Loft** roof. **Dyeworks** and **WatchHouse** retain a roof flight from the third floor.
+- No stairs lead onto a roof. Try **PigeonHouse**, **LimeHouse**, or **Chapel**: take the stairs to the top room, step onto the stone sill, then use short jumps to the flower box, plank, and roof. One-storey houses such as **LimeKiln** or **BellWalk** start from the street: jump onto the stone block by the wall, up to the plank, then onto the roof. **Fishers** and **Porters** are reached by jumping across from the roof next door (Netmakers and FishHall). Jump from **RopeHouse** to the **Salt Loft** roof or from **Chapel** down to the **Bell Loft** roof.
+- **WoolHouse**, **FishHall**, and **Coopers** have boarded-up street doors. Go round to the lane behind them, jump onto the block, up to the ledge, and in through the top-floor window; the stairs inside lead down to the rest of the house. **Salt Loft** and **Bell Loft** are window-only too.
 - On the arched pier, the small timber tide landing is the way onto Gull. Jump toward its broadside, then sprint and jump from Gull's stern to Otter. Sandpiper and Evening Star sit apart from that route. If you miss, the shallow shelf leads back to the east quay steps or up the sandy crescent.
 
 ## Authoring and verification
 
 `layout.json` gives each lane independent (z, x, elevation, width) stations in metres. Four parcel bands occupy the ground between those lanes and the uneven cliff edges. A lot has z limits, storey count, street-facing side, room arrangement, facade colour, and roof style. Adjacent lots share a boundary; the generator samples the same bends for the street and the adjoining facade. Blank lots in that fabric are green courts. The two gaps in the middle bands are the rock cuts. The quay and chapel courts close the street loops.
 
-Openings and terrain use world collision layer 1. Doors are 1.14 m wide and 1.76 m tall. Visible stone treads have smooth collision underneath. Two-storey roofs have exterior access. In `layout.json`, `tall_roof_stairs` lists the three-storey buildings with a roof flight. The hulls were built in Blender with `tools/map/build_fishing_boats.py`. Godot uses a separate collision shape for each working deck. The generator packs the collision and navigation into `town_geometry.scn`, which the game loads through `town.tscn`. The baked chicken routes are connected to the public streets.
+Openings and terrain use world collision layer 1. Doors are 1.14 m wide and 1.76 m tall. Visible stone treads have smooth collision underneath. Every roof has parkour access only. In `layout.json`, `sealed_doors` lists the houses with no street door and a rear top-floor window. Those need a real lane behind them, one that sits about 2 to 2.5 m below the window sill. The hulls were built in Blender with `tools/map/build_fishing_boats.py`. Godot uses a separate collision shape for each working deck. The generator packs the collision and navigation into `town_geometry.scn`, which the game loads through `town.tscn`. The baked chicken routes are connected to the public streets.
 
 From the village checkout:
 
@@ -24,7 +25,17 @@ python3 tools/map/draw_plan.py ../village-brainstorm/layout-a-v7.svg
 
 The map regression uses the real character controller for street, door, stair and jump traversal. Both roles test the roof jumps, and the mage checks the new window approaches and the waterfront paving seams. The test also covers spawn and navigation connectivity, camera retraction, water recovery and Fire Wave damage. A live chase is still the right test for corner visibility, pace and the feel of the two differently sized characters.
 
-## After layout approval
+## Furnishing
 
-- Furnish rooms at villager scale: chairs, tables, barrels and beds; add torches and lanterns. The imported [prop library](../../the-last-fire-mage/game/map/props/third_party/ASSET_SOURCES.md) already has several starting models.
-- Dress the designated courts and street edges with pots, flowers, bushes and trees. Leave the authored door and stair clearances free.
+`tools/map/build_props.gd` turns the third-party models into `game/props/*.tscn`: size, footprint and collision. Run it after changing the catalogue, then import.
+`tools/map/furnish.gd` runs inside the generator after the walls exist. It picks a room type per storey (from the four interior templates), then places each item against real collision, floor support and the door, stair and route markers. Change `RECIPES` to re-dress rooms; furniture never needs placing by hand.
+
+```sh
+"$GODOT" --headless --path the-last-fire-mage --script ../tools/map/build_props.gd -- --no-steam
+"$GODOT" --headless --path the-last-fire-mage --import
+"$GODOT" --headless --path the-last-fire-mage --script ../tools/map/generate.gd -- --no-steam
+```
+
+Wooden furniture is `BreakableProp`. Sprinting into it (or falling on it) breaks it, as do Fire Wave and ignited swings. A new round restores it.
+
+Streets use `game/map/textures/cobble_*.png`, written by `tools/map/build_cobble.gd`. `furnish.gd` also adds collision-free wall dressing and rugs per room (`WALL_DECOR`).

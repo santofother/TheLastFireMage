@@ -5,9 +5,9 @@ Read only the section your card names. Put tunables in tuning resources (`# TUNE
 Pillars: chaotic, social (proximity voice), risky parkour, escalating mage, compact (small map, short rounds), distinctive (rune-fire, coastal fantasy).
 
 ## Match flow
-- 1 Mage + up to 5 Villagers (6 players max). Private friend lobbies, no matchmaking.
+- Up to 10 players. 1 Mage by default; the host can choose up to 4, always leaving at least one Villager. Private friend lobbies, no matchmaking.
 - Villagers get a head start; the Mage doesn't know where they spawned. Then firestorm advances while Mage hunts.
-- Villagers win: timer expires, or the Mage dies to the firestorm. Mage wins: all Villagers dead before the timer.
+- Villagers win: timer expires, or every Mage dies to the firestorm. Mages win: all Villagers dead before the timer. Mages share one power pool and cannot hurt each other.
 - Final stage is a chaotic last stand.
 
 | Number | Value |

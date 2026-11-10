@@ -19,7 +19,9 @@ extends Tuning
 @export var wave_angle_deg := 60.0 ## TUNE: deg
 @export var wave_knockback := 6.0 ## TUNE: m/s impulse
 
-## FIX(S14, Codex): TUNE: Maximum distance to a villager for a locator pulse, in meters.
+## FIX(S14, Codex): TUNE: Maximum distance to a villager for Locate, in meters.
 @export var locator_range := 20.0
-## TUNE: Seconds between locator pulses.
-@export var locator_interval := 4.0
+## TUNE: Seconds between Locate casts.
+@export var locator_cooldown := 10.0
+## TUNE: Seconds the Locate markers stay on screen.
+@export var locator_show_time := 2.5

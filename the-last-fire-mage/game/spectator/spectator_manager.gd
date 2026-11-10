@@ -47,6 +47,7 @@ var _yaw := 0.0
 var _pitch := -0.45
 var _prev_listener: Node3D
 var _own_peer := 0
+var _hint: Label
 
 
 func _enter_tree() -> void:
@@ -76,6 +77,7 @@ func enter_spectator() -> void:
 	_build_ghost_model(me)
 	_ghost.visible = true
 	_glass.visible = true
+	_hint.visible = true
 	_update_view()
 	camera.make_current()
 	VoiceManager.listener = camera # WHY: dead players keep proximity voice, heard from where they watch
@@ -99,6 +101,7 @@ func exit_spectator() -> void:
 	_set_voice_group(&"alive")
 	_ghost.visible = false
 	_glass.visible = false
+	_hint.visible = false
 	set_process(false)
 	print("[Spectator] exit peer=%d" % _own_peer)
 	spectating_changed.emit(false)
@@ -134,6 +137,32 @@ func _ensure_nodes() -> void:
 	_glass.visible = false
 	_glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_glass)
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	_hint = Label.new()
+	_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_hint.position.y -= 120.0
+	_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_hint.add_theme_font_size_override(&"font_size", 22)
+	_hint.visible = false
+	layer.add_child(_hint)
+
+
+# Dead players grab items off the glass (E) and throw them down at the living (left mouse).
+func _update_items() -> void:
+	var manager := GameEvents.system(&"counterplay") as CounterplayManager
+	if manager == null:
+		return
+	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	if manager.ghost_held_kind != &"":
+		_hint.text = "[Left click] Throw %s" % manager.ghost_held_kind
+		if captured and Input.is_action_just_pressed(&"primary"):
+			manager.ghost_throw(focus, -camera.global_basis.z)
+		return
+	var item := manager.ghost_nearest_item(focus)
+	_hint.text = "[E] Grab %s" % item.kind if item else ""
+	if item and captured and Input.is_action_just_pressed(&"interact"):
+		manager.ghost_pickup(item, focus)
 
 
 ## Rebuild the ghost from the player's own villager model, so future model choices carry over.
@@ -147,6 +176,9 @@ func _build_ghost_model(me: Player) -> void:
 	if src != null and src.scene_file_path != "":
 		var model := (load(src.scene_file_path) as PackedScene).instantiate() as Node3D
 		model.transform = src.transform
+		# FIX(villager picker, Claude): the file path is always the red GLB, so reapply the player's chosen body.
+		if me.villager_skin != 0:
+			VillagerMeshSwap.apply(model.find_child("Skeleton3D", true, false) as Skeleton3D, VillagerSkins.scene(me.villager_skin))
 		_ghost.add_child(model)
 		_ghost_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 		return
@@ -196,6 +228,7 @@ func _process(delta: float) -> void:
 		var basis := Basis(Vector3.UP, _yaw)
 		focus += basis * Vector3(dir.x, 0.0, dir.y) * speed * delta
 	_update_view()
+	_update_items()
 	_animate_ghost(delta)
 	_last_focus = focus
 

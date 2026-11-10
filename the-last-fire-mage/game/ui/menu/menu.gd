@@ -12,6 +12,8 @@ var _name_edit: LineEdit
 # FIX(S07, Codex): expose server bots for editor playtests without CLI arguments.
 var _bot_count: SpinBox
 var _mage_count: SpinBox
+var _skin_option: OptionButton
+var _saved_skin := 0
 var _steam_label: Label
 var _host_steam_btn: Button
 var _invite_btn: Button
@@ -90,7 +92,7 @@ func _apply_name() -> void:
 func _on_host_steam() -> void:
 	_apply_name()
 	NetworkManager.args["bots"] = int(_bot_count.value)
-	NetworkManager.args["mages"] = int(_mage_count.value)
+	NetworkManager.args["mage-count"] = int(_mage_count.value)
 	SteamManager.host_lobby()
 
 
@@ -106,7 +108,7 @@ func _on_join_lobby() -> void:
 func _on_host_lan() -> void:
 	_apply_name()
 	NetworkManager.args["bots"] = int(_bot_count.value)
-	NetworkManager.args["mages"] = int(_mage_count.value)
+	NetworkManager.args["mage-count"] = int(_mage_count.value)
 	NetworkManager.host_enet(int(_port_edit.text))
 
 
@@ -152,6 +154,7 @@ func _refresh_buttons() -> void:
 	_host_lan_btn.disabled = in_s
 	_join_ip_btn.disabled = in_s
 	_name_edit.editable = not in_s
+	_skin_option.disabled = in_s
 	_bot_count.editable = not in_s
 	_mage_count.editable = not in_s
 	_invite_btn.disabled = not (steam and SteamManager.lobby_id != 0)
@@ -168,6 +171,11 @@ func _load_settings() -> void:
 		default_name = NetworkManager.args["name"]
 	_name_edit.text = cfg.get_value("player", "name", default_name) if not NetworkManager.args.has("name") else default_name
 	NetworkManager.local_name = _name_edit.text
+	_saved_skin = VillagerSkins.clamp_id(cfg.get_value("player", "villager", 0))
+	# WHY: --villager is for tests and must not overwrite the choice saved in the player's settings.
+	var skin: int = VillagerSkins.id_from_name(NetworkManager.args["villager"]) if NetworkManager.args.has("villager") else _saved_skin
+	VillagerSkins.local = skin
+	_skin_option.select(skin)
 	VoiceManager.push_to_talk = cfg.get_value("voice", "push_to_talk", true)
 	_ptt_check.button_pressed = VoiceManager.push_to_talk
 	var dev: String = cfg.get_value("voice", "input_device", "Default")
@@ -181,6 +189,9 @@ func _load_settings() -> void:
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("player", "name", _name_edit.text)
+	if not NetworkManager.args.has("villager"):
+		_saved_skin = VillagerSkins.local
+	cfg.set_value("player", "villager", _saved_skin)
 	cfg.set_value("voice", "push_to_talk", VoiceManager.push_to_talk)
 	cfg.set_value("voice", "input_device", AudioServer.input_device)
 	cfg.save(SETTINGS_PATH)
@@ -235,12 +246,23 @@ func _build_ui() -> void:
 	_mage_count.step = 1
 	_mage_count.value = 1
 	host.add_child(_row("Mages", _mage_count))
+
+	# TODO: replace with the full character screen when the menus are redone.
+	_skin_option = OptionButton.new()
+	_skin_option.name = "VillagerSkin"
+	for skin_name: String in VillagerSkins.NAMES:
+		_skin_option.add_item(skin_name)
+	_skin_option.item_selected.connect(func(i: int) -> void:
+		VillagerSkins.local = i
+		_save_settings())
+	host.add_child(_row("Villager", _skin_option))
+
 	_bot_count = SpinBox.new()
 	_bot_count.name = "BotCount"
 	_bot_count.min_value = 0
-	_bot_count.max_value = 5
+	_bot_count.max_value = NetworkManager.MAX_PLAYERS - 1
 	_bot_count.step = 1
-	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
+	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, NetworkManager.MAX_PLAYERS - 1)
 	host.add_child(_row("Bots", _bot_count))
 	_steam_label = _label("")
 	host.add_child(_steam_label)

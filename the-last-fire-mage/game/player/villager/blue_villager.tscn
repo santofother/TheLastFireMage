@@ -1,0 +1,9 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://game/player/villager/red-villager-animations.glb" id="1_rig"]
+[ext_resource type="Script" path="res://game/player/villager/villager_mesh_swap.gd" id="2_swap"]
+[ext_resource type="PackedScene" path="res://game/player/villager/blue/blue-villager-mesh.glb" id="3_mesh"]
+
+[node name="BlueVillager" instance=ExtResource("1_rig")]
+script = ExtResource("2_swap")
+mesh_scene = ExtResource("3_mesh")

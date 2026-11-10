@@ -7,7 +7,9 @@ extends Node3D
 ## nodes in group `dead_item_spawn` (the dead players' overhead area; those items break on the ground with
 ## `tuning.dead_break_chance`). A taken/broken item is replaced after `tuning.item_respawn_time`.
 ## Public API: `request_stun(target, seconds, source_id)`, `request_slow(target, mult, seconds)`,
-## `spawn_item(kind, pos, break_chance)`, `apply_item_hit(item, mage)`, `clear_items()`, `tuning`.
+## `spawn_item(kind, pos, break_chance)`, `apply_item_hit(item, mage)`, `clear_items()`, `tuning`,
+## ghost side (any peer, local player only): `ghost_nearest_item(focus)`, `ghost_pickup(item, focus)`,
+## `ghost_throw(focus, aim)`, `ghost_held_kind`.
 ## Environment scenes (place on the map): `tippable_cart.tscn`, `laundry_line.tscn`.
 
 const ITEM_SCENE := preload("res://game/counterplay/counter_item.tscn")
@@ -20,6 +22,12 @@ var _last_stun_by_source := {} # NET: server. source_id -> msec of its last stun
 var _stun_log := {} # NET: server. target peer_id -> Array[float] msec of recent stuns
 var _slow_ends := {} # NET: server. target peer_id -> msec when the net slow ends
 var _respawn: Array[Dictionary] = [] # NET: server. {"at": msec, "marker": Node3D, "dead": bool}
+var _ghost_held := {} # NET: server. peer_id -> CounterItem
+var _ghost_throw_ms := {} # NET: server. peer_id -> msec of the last throw
+var _dead_spots_built := false # NET: server
+
+## Kind of item the local ghost holds (&"" = none). Updated by the server.
+var ghost_held_kind: StringName = &""
 
 @onready var items_root: Node3D = $Items
 @onready var spawner: MultiplayerSpawner = $ItemSpawner
@@ -96,7 +104,26 @@ func apply_item_hit(item: CounterItem, mage: Node) -> void:
 		&"pot":
 			request_stun(mage, tuning.pot_stun, item.thrower_id)
 		&"net":
-			request_slow(mage, tuning.net_slow, tuning.net_slow_time)
+			net_burst(item, item.global_position)
+
+
+## NET: server only. A thrown net opened at `center`: every living mage inside `net_radius` is stunned for
+## `net_stun` and slowed afterwards. Area effect, so a near miss still catches. Returns mages caught.
+func net_burst(item: CounterItem, center: Vector3) -> int:
+	if not Net.is_server(self):
+		return 0
+	var caught := 0
+	for mage in Players.alive_with_role(Enums.Role.MAGE):
+		var offset: Vector3 = mage.global_position - center
+		if absf(offset.y) > tuning.net_reach_y + float(mage.tuning.height if mage.tuning else 1.4):
+			continue
+		if Vector2(offset.x, offset.z).length() > tuning.net_radius:
+			continue
+		request_stun(mage, tuning.net_stun, item.thrower_id)
+		request_slow(mage, tuning.net_slow, tuning.net_slow_time)
+		caught += 1
+	print("[Counterplay] net opened at %s, caught %d" % [center, caught])
+	return caught
 
 
 ## NET: server only. Spawns one item. Returns the node.
@@ -114,6 +141,10 @@ func clear_items() -> void:
 		c.queue_free()
 	_respawn.clear()
 	_generation += 1
+	_ghost_held.clear()
+	ghost_held_kind = &""
+	if Net.is_online(self) and multiplayer.is_server():
+		_rpc_ghost_reset.rpc()
 
 
 func _spawn_all() -> void:
@@ -121,6 +152,7 @@ func _spawn_all() -> void:
 		return
 	for m in get_tree().get_nodes_in_group(&"item_spawn"):
 		_spawn_at_marker(m, false)
+	_build_dead_spots()
 	for m in get_tree().get_nodes_in_group(&"dead_item_spawn"):
 		_spawn_at_marker(m, true)
 
@@ -136,6 +168,120 @@ func _spawn_at_marker(marker: Node3D, dead: bool) -> void:
 		if is_inside_tree() and Net.is_server(self) and gen == _generation:
 			_respawn.append({"at": Time.get_ticks_msec() + int(tuning.item_respawn_time * 1000.0),
 				"marker": marker, "dead": dead}))
+
+
+# WHY: the layer is a flat plane, so spots come from the town's extent instead of hand-placed map markers.
+func _build_dead_spots() -> void:
+	if _dead_spots_built:
+		return
+	var spots := get_tree().get_nodes_in_group(&"villager_spawn") + get_tree().get_nodes_in_group(&"item_spawn")
+	if spots.is_empty():
+		return
+	_dead_spots_built = true
+	var low := Vector2(INF, INF)
+	var high := -low
+	for s: Node3D in spots:
+		var p := Vector2(s.global_position.x, s.global_position.z)
+		low = Vector2(minf(low.x, p.x), minf(low.y, p.y))
+		high = Vector2(maxf(high.x, p.x), maxf(high.y, p.y))
+	var spectator := GameEvents.system(&"spectator") as SpectatorManager
+	var y := spectator.tuning.camera_height if spectator else 30.0
+	for i in tuning.dead_item_count:
+		var marker := Marker3D.new()
+		add_child(marker)
+		marker.global_position = Vector3(randf_range(low.x - 5.0, high.x + 5.0), y + 0.05, randf_range(low.y - 5.0, high.y + 5.0))
+		marker.add_to_group(&"dead_item_spawn")
+
+
+# ------------------------------------------------------------------ dead players' items
+
+## Closest item the local ghost can grab from `focus`, or null.
+func ghost_nearest_item(focus: Vector3) -> CounterItem:
+	var best: CounterItem = null
+	var best_distance := tuning.dead_pickup_range
+	for c in items_root.get_children():
+		var item := c as CounterItem
+		if item == null or not item.in_dead_layer():
+			continue
+		var d := Vector2(item.global_position.x - focus.x, item.global_position.z - focus.z).length()
+		if d <= best_distance:
+			best = item
+			best_distance = d
+	return best
+
+
+## Local ghost asks to grab `item`. The server validates.
+func ghost_pickup(item: CounterItem, focus: Vector3) -> void:
+	if Net.is_server(self):
+		_rpc_ghost_pickup(item.name, focus)
+	else:
+		_rpc_ghost_pickup.rpc_id(1, item.name, focus)
+
+
+## Local ghost asks to throw its held item along `aim`. The server validates.
+func ghost_throw(focus: Vector3, aim: Vector3) -> void:
+	if Net.is_server(self):
+		_rpc_ghost_throw(focus, aim)
+	else:
+		_rpc_ghost_throw.rpc_id(1, focus, aim)
+
+
+func _is_ghost(peer_id: int) -> bool:
+	var p := Players.get_player(peer_id)
+	return p != null and (not p.is_alive or p.role == Enums.Role.SPECTATOR)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_ghost_pickup(item_name: StringName, focus: Vector3) -> void:
+	# NET: server. The ghost's position is local-only, so `focus` is client-claimed; only the role is validated.
+	var id := Net.sender_id(self)
+	var item := items_root.get_node_or_null(NodePath(item_name)) as CounterItem
+	if not Net.is_server(self) or not _is_ghost(id) or _ghost_held.has(id) or item == null or not item.in_dead_layer():
+		return
+	if Vector2(item.global_position.x - focus.x, item.global_position.z - focus.z).length() > tuning.dead_pickup_range + 1.0:
+		return
+	item.take_by_ghost(id)
+	_ghost_held[id] = item
+	_send_ghost_held(id, item.kind)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_ghost_throw(focus: Vector3, aim: Vector3) -> void:
+	var id := Net.sender_id(self)
+	if not Net.is_server(self) or not _is_ghost(id) or not _ghost_held.has(id):
+		return
+	var now := Time.get_ticks_msec()
+	if now - int(_ghost_throw_ms.get(id, -100000)) < int(tuning.dead_throw_cooldown * 1000.0):
+		return
+	var item := _ghost_held[id] as CounterItem
+	_ghost_held.erase(id)
+	_send_ghost_held(id, &"")
+	if not is_instance_valid(item) or not aim.is_finite() or aim.is_zero_approx():
+		return
+	_ghost_throw_ms[id] = now
+	var direction := aim.normalized()
+	direction.y = minf(direction.y, -0.35) # A throw always goes down through the glass.
+	item.throw_by_ghost(focus + Vector3.DOWN * 0.5, direction.normalized() * tuning.dead_throw_speed)
+	print("[Counterplay] ghost %d threw %s" % [id, item.kind])
+
+
+func _send_ghost_held(id: int, kind: StringName) -> void:
+	if not Net.is_online(self) or id == multiplayer.get_unique_id():
+		ghost_held_kind = kind
+	else:
+		_rpc_ghost_held.rpc_id(id, kind)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_ghost_held(kind: StringName) -> void:
+	if Net.from_server(self):
+		ghost_held_kind = kind
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_ghost_reset() -> void:
+	if Net.from_server(self):
+		ghost_held_kind = &""
 
 
 func _spawn_item(data: Dictionary) -> Node: # every peer (spawner)

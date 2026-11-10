@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://game/counterplay/counterplay_manager.tscn" id="10_counterplay"]
 [ext_resource type="PackedScene" path="res://game/scoring/scoring_manager.tscn" id="11_scoring"]
 [ext_resource type="PackedScene" path="res://game/ui/hud/hud.tscn" id="12_hud"]
+[ext_resource type="Script" path="res://game/props/breakable_manager.gd" id="13_breakables"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 
@@ -55,6 +56,9 @@ spawn_path = NodePath("../Players")
 [node name="Counterplay" parent="Systems" instance=ExtResource("10_counterplay")]
 
 [node name="Scoring" parent="Systems" instance=ExtResource("11_scoring")]
+
+[node name="Breakables" type="Node" parent="Systems"]
+script = ExtResource("13_breakables")
 
 [node name="Spectator" parent="Systems" instance=ExtResource("7_spectator")]
 

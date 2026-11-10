@@ -47,7 +47,10 @@ func _enter_tree() -> void:
 
 ## NET: server only. Lowers hp; kills at 0. `source_id` = attacker peer id (0 = environment).
 func apply_damage(amount: float, source_id: int, cause: StringName) -> void:
-	if not Net.is_server(self) or not is_alive or invulnerable or amount <= 0.0:
+	if not Net.is_server(self) or not is_alive or amount <= 0.0:
+		return
+	if invulnerable:
+		print("[Health] ignored %.1f %s on %s: invulnerable" % [amount, cause, get_parent().name])
 		return
 	var new_hp := maxf(0.0, hp - amount)
 	_broadcast(new_hp, amount, source_id, cause, new_hp <= 0.0)

@@ -84,6 +84,19 @@ func _run() -> void:
 	await _wait(0.6)
 	_check(is_equal_approx(mage.speed_multiplier(), 1.0), "net slow wears off")
 	_check(not is_instance_valid(net) or net.is_queued_for_deletion(), "net broke on the mage")
+	# Net near miss: it opens where it lands and still stuns the mage (area effect). Far away: no catch.
+	var stun_count := stuns.size()
+	var near := manager.spawn_item(&"net", mage.global_position + Vector3(1.5, 1.0, 0.0), 0.0) as CounterItem
+	near.thrower_id = 0
+	near.on_dropped(near.global_position, Vector3(0, -2, 0))
+	var far := manager.spawn_item(&"net", mage.global_position + Vector3(7.0, 1.0, 0.0), 0.0) as CounterItem
+	far.thrower_id = 0
+	far.on_dropped(far.global_position, Vector3(0, -2, 0))
+	await _wait(1.0)
+	_check(stuns.size() == stun_count + 1, "a net landing next to the mage stuns it")
+	_check(not is_instance_valid(near) or near.is_queued_for_deletion(), "the catching net is used up")
+	_check(is_instance_valid(far) and far.state == CounterItem.State.IDLE, "a far net misses and stays on the ground")
+	far.queue_free()
 	# Miss: item thrown away from the mage lands; break chance 0 = stays, 1 = breaks.
 	var floor_item := manager.spawn_item(&"pot", Vector3(15, 1.0, 15), 0.0) as CounterItem
 	floor_item.on_dropped(floor_item.global_position, Vector3.ZERO)
@@ -107,5 +120,25 @@ func _run() -> void:
 	var line := $Laundry as LaundryLine
 	(line.get_node(^"Interactable") as Interactable).interact(a)
 	_check(line.sheet_up and line.get_node(^"Sheet").visible, "laundry sheet blocks sight")
+	# A dead player's item: caught by a living villager it survives; ghosts grab and throw through the server.
+	a.global_position = Vector3(25, 0, 25)
+	var caught := manager.spawn_item(&"pot", Vector3(25, 3, 25), 1.0) as CounterItem
+	caught.on_dropped(caught.global_position, Vector3.DOWN)
+	await _wait(1.0)
+	_check(is_instance_valid(caught) and not caught.is_queued_for_deletion() and caught.break_chance == 0.0,
+		"item hitting a living villager does not break")
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_server(20000 + randi() % 20000)
+	multiplayer.multiplayer_peer = peer
+	var glass := manager.spawn_item(&"net", Vector3(40, 30.1, 40), 0.9) as CounterItem
+	await get_tree().physics_frame
+	_check(manager.ghost_nearest_item(Vector3(41, 30, 40)) == glass, "ghost finds an item on the glass")
+	manager.ghost_pickup(glass, Vector3(41, 30, 40))
+	_check(glass.state == CounterItem.State.IDLE, "living players cannot use ghost pickup")
+	mage.health.kill(0, &"test")
+	manager.ghost_pickup(glass, Vector3(41, 30, 40))
+	_check(manager.ghost_held_kind == &"net", "dead player grabs the item")
+	manager.ghost_throw(Vector3(41, 30, 40), Vector3(0, -1, 0))
+	_check(glass.state == CounterItem.State.AIR and manager.ghost_held_kind == &"", "dead player throws it down")
 	print("[TEST] COUNTERPLAY %s" % ["FAILED" if failed else "PASSED"])
 	get_tree().quit(1 if failed else 0)

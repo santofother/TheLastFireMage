@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://game/map/props/third_party/stylized_nature_pack/meshes/plant_1.res" id="1_lcjm0"]
+
+[node name="Fern" type="Node3D" unique_id=1653681370]
+metadata/footprint = Vector2(0.6167711, 0.63656914)
+metadata/height = 0.33999997
+
+[node name="Model" type="Node3D" parent="." unique_id=392571942]
+transform = Transform3D(0.3871501, 0, 0, 0, 0.3871501, 0, 0, 0, 0.3871501, -0.010950893, 0.07085429, -0.037418216)
+
+[node name="Mesh" type="MeshInstance3D" parent="Model" unique_id=1381397306]
+transform = Transform3D(96.35418, -25.205795, 8.974378, -1.4901161e-06, 33.541824, 94.206924, -26.75578, -90.77231, 32.318947, 0, 0, 0)
+mesh = ExtResource("1_lcjm0")

@@ -13,7 +13,7 @@ signal status_changed(text: String)
 enum Mode { OFFLINE, ENET, STEAM }
 
 const DEFAULT_PORT := 24680
-const MAX_PLAYERS := 6
+const MAX_PLAYERS := 10
 
 var mode: Mode = Mode.OFFLINE
 var local_name := "Player"

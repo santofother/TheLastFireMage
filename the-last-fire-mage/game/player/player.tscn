@@ -4,6 +4,8 @@
 [ext_resource type="PackedScene" path="res://game/common/health.tscn" id="2_health"]
 [ext_resource type="Script" path="res://game/player/villager/villager_visual.gd" id="3_visual"]
 [ext_resource type="PackedScene" path="res://game/player/villager/red-villager-animations.glb" id="4_model"]
+[ext_resource type="Script" path="res://game/player/mage/mage_visual.gd" id="5_mage"]
+[ext_resource type="PackedScene" path="res://game/player/mage/mage-animations.glb" id="6_mage"]
 
 [sub_resource type="CapsuleShape3D" id="shape"]
 radius = 0.4
@@ -39,13 +41,16 @@ properties/5/replication_mode = 1
 properties/6/path = NodePath(".:is_airborne")
 properties/6/spawn = true
 properties/6/replication_mode = 1
-properties/7/path = NodePath(".:character_variant")
+properties/7/path = NodePath(".:villager_skin")
 properties/7/spawn = true
 properties/7/replication_mode = 1
+properties/8/path = NodePath(".:air_tuck_lift")
+properties/8/spawn = true
+properties/8/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D" groups=["players"]]
 collision_layer = 2
-collision_mask = 19
+collision_mask = 275
 script = ExtResource("1_script")
 
 [node name="Collision" type="CollisionShape3D" parent="."]
@@ -66,18 +71,17 @@ script = ExtResource("3_visual")
 [node name="Model" parent="VillagerVisual" instance=ExtResource("4_model")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="Nameplate" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
-billboard = 1
-no_depth_test = true
-font_size = 48
-outline_size = 10
+[node name="MageVisual" type="Node3D" parent="."]
+visible = false
+script = ExtResource("5_mage")
+
+[node name="Model" parent="MageVisual" instance=ExtResource("6_mage")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0, 0)
 
 [node name="Speaking" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
 visible = false
 billboard = 1
-no_depth_test = true
 modulate = Color(0.3, 1, 0.4, 1)
 text = "SPEAKING"
 font_size = 36

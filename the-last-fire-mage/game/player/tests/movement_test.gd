@@ -26,7 +26,7 @@ var _driver := Driver.new()
 
 
 func _ready() -> void:
-	get_tree().create_timer(40.0).timeout.connect(func() -> void:
+	get_tree().create_timer(110.0).timeout.connect(func() -> void:
 		print("[TEST] FAIL movement timeout"); get_tree().quit(1))
 	_box(Vector3(0, -0.5, 0), Vector3(100, 1, 100))
 	_run.call_deferred()
@@ -140,7 +140,8 @@ func _run() -> void:
 
 	await _reset()
 	_driver.crouch = true
-	await _ticks(2)
+	# WHY: _reset leaves the feet 4 cm up; crouching in the air is a leg tuck, so settle on the floor first.
+	await _ticks(12)
 	_check(_player.is_crouching and is_equal_approx((_player.get_node("Collision").shape as CapsuleShape3D).height,
 		_player.tuning.crouch_height), "crouch resizes collision")
 	var ceiling := _box(Vector3(0, 0.9, 0), Vector3(3, 0.25, 3))
@@ -277,8 +278,157 @@ func _run() -> void:
 	_check(_player.collision_layer == 2 and _player.get_node("Body").rotation.x == 0.0,
 		"revive restores upright body")
 	await _check_stamina()
+	await _check_step_and_tuck()
 	print("[TEST] MOVEMENT %s (%d failures)" % ["PASSED" if _fails == 0 else "FAILED", _fails])
 	get_tree().quit(0 if _fails == 0 else 1)
+
+
+func _jump_peak(tuck_near_apex: bool, tuck_at_takeoff: bool) -> float:
+	await _reset(Vector3(30, 0.04, 0))
+	await _ticks(10)
+	_driver.jump = true
+	await _ticks(1)
+	var peak := 0.0
+	for i in 70:
+		if tuck_at_takeoff or (tuck_near_apex and _player.velocity.y < 0.5):
+			_driver.crouch = true
+		await _ticks(1)
+		peak = maxf(peak, _player.position.y)
+	_driver.crouch = false
+	return peak
+
+
+# Notches must neither catch the player nor make crossing them faster than a flat run.
+func _notched_distance(notch: float) -> float:
+	var boxes: Array[StaticBody3D] = []
+	if notch > 0.0:
+		for i in 24:
+			boxes.append(_box(Vector3(60, notch * (i + 1) / 2.0, -4.0 - 0.5 * i), Vector3(6, notch * (i + 1), 0.5)))
+	await _reset(Vector3(60, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	await _ticks(45)
+	var start := _player.position.z
+	await _ticks(60)
+	var distance := absf(_player.position.z - start)
+	_driver.move = Vector2.ZERO
+	for b in boxes:
+		b.queue_free()
+	await _ticks(2)
+	return distance
+
+
+func _check_notched_slope() -> void:
+	var flat: float = await _notched_distance(0.0)
+	for notch: float in [0.03, 0.06, 0.1, 0.2]:
+		var distance: float = await _notched_distance(notch)
+		print("[TEST] 60-tick distance flat=%.2f notch %.2f m=%.2f" % [flat, notch, distance])
+		_check(distance <= flat * 1.03, "%.2f m notches give no speed boost" % notch)
+		_check(distance >= flat * 0.85, "%.2f m notches do not catch the player" % notch)
+
+
+# Running up a ramp onto a plateau: never airborne at the crest, never faster than the flat.
+func _ramp_run(degrees: float) -> Array:
+	var boxes: Array[StaticBody3D] = []
+	var a := deg_to_rad(degrees)
+	var length := 8.0
+	if degrees > 0.0:
+		var top_mid := Vector3(-30, length / 2.0 * sin(a), -1.0 - length / 2.0 * cos(a))
+		var ramp := _box(top_mid - Vector3(0, cos(a), sin(a)) * 0.1, Vector3(6, 0.2, length))
+		ramp.rotation.x = a
+		boxes.append(ramp)
+		var h := length * sin(a)
+		boxes.append(_box(Vector3(-30, h / 2.0, -1.0 - length * cos(a) - 4.0), Vector3(6, h, 8)))
+	await _reset(Vector3(-30, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	var airborne := 0
+	for i in 180:
+		await _ticks(1)
+		if not _player.is_on_floor():
+			airborne += 1
+	var distance := absf(_player.position.z)
+	_driver.move = Vector2.ZERO
+	for b in boxes:
+		b.queue_free()
+	await _ticks(2)
+	return [distance, airborne]
+
+
+# Sprinting up tight stairs (town steps): never faster than a flat sprint, never airborne for long.
+func _stair_run(rise: float, tread: float, sprint: bool) -> Array:
+	var boxes: Array[StaticBody3D] = []
+	if rise > 0.0:
+		for i in 40:
+			# Each box runs from its riser to the top of the flight, so the treads have no seams.
+			var h := rise * (i + 1)
+			var depth := tread * (40 - i)
+			boxes.append(_box(Vector3(-15, h / 2.0, -2.0 - tread * i - depth / 2.0), Vector3(4, h, depth)))
+	await _reset(Vector3(-15, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	_driver.sprint = sprint
+	var airborne := 0
+	for i in 90:
+		await _ticks(1)
+		if not _player.is_on_floor():
+			airborne += 1
+	var distance := absf(_player.position.z)
+	_driver.move = Vector2.ZERO
+	_driver.sprint = false
+	for b in boxes:
+		b.queue_free()
+	await _ticks(2)
+	return [distance, airborne]
+
+
+func _check_ramps() -> void:
+	for sprint: bool in [false, true]:
+		var flat_stairs: Array = await _stair_run(0.0, 0.3, sprint)
+		# TODO(S17): box stairs with treads under ~0.3 m (e.g. 0.25) climb slowly when walking (not sprinting).
+		# Town stairs use ramp colliders, so the map never hits this.
+		for step: Vector2 in [Vector2(0.08, 0.3), Vector2(0.15, 0.3), Vector2(0.2, 0.3)]:
+			var run: Array = await _stair_run(step.x, step.y, sprint)
+			print("[TEST] stairs rise %.2f tread %.2f sprint %s: %.2f m (flat %.2f), airborne %d" % [
+				step.x, step.y, sprint, run[0], flat_stairs[0], run[1]])
+			_check(run[0] <= flat_stairs[0] * 1.02, "stairs %.2f/%.2f give no speed boost" % [step.x, step.y])
+			_check(run[0] >= flat_stairs[0] * 0.7, "stairs %.2f/%.2f do not catch the player" % [step.x, step.y])
+	var flat: Array = await _ramp_run(0.0)
+	for degrees: float in [12.0, 25.0]:
+		var run: Array = await _ramp_run(degrees)
+		print("[TEST] ramp %d deg: distance %.2f (flat %.2f), airborne ticks %d" % [degrees, run[0], flat[0], run[1]])
+		_check(run[0] <= flat[0] * 1.02, "%d deg ramp gives no speed boost" % degrees)
+		_check(run[0] >= flat[0] * 0.8, "%d deg ramp does not catch the player" % degrees)
+		_check(run[1] <= 1, "%d deg ramp crest does not launch the player" % degrees)
+
+
+func _check_step_and_tuck() -> void:
+	var curb := _box(Vector3(30, 0.15, -6), Vector3(4, 0.3, 9))
+	await _reset(Vector3(30, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	await _ticks(70)
+	_check(_player.position.y > 0.27 and _player.position.z < -2.0, "runs up a 0.3 m ledge without jumping")
+	curb.queue_free()
+	var wall := _box(Vector3(30, 0.3, -3), Vector3(4, 0.6, 3))
+	await _reset(Vector3(30, 0.04, 0))
+	_driver.move = Vector2(0, -1)
+	await _ticks(70)
+	_check(_player.position.y < 0.1 and _player.position.z > -1.6, "a 0.6 m ledge still needs a jump")
+	wall.queue_free()
+	await _reset(Vector3(30, 0.04, 0))
+	await _check_notched_slope()
+	await _check_ramps()
+	var plain: float = await _jump_peak(false, false)
+	var timed: float = await _jump_peak(true, false)
+	var early: float = await _jump_peak(false, true)
+	print("[TEST] jump peak plain=%.2f early-tuck=%.2f apex-tuck=%.2f" % [plain, early, timed])
+	_check(timed > plain + 0.2, "crouching at the top of a jump lifts the feet higher")
+	_check(early < timed - 0.05, "a badly timed tuck gains less")
+	await _reset(Vector3(30, 0.04, 0))
+	await _ticks(10)
+	_driver.crouch = true
+	await _ticks(10)
+	_driver.jump = true
+	await _ticks(2)
+	_check(_player.velocity.y > 0.0, "can jump out of a crouch")
+	_driver.crouch = false
 
 
 func _check_stamina() -> void:

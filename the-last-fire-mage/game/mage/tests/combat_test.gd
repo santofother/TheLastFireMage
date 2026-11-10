@@ -3,6 +3,7 @@ extends Node3D
 
 var mage: Player
 var victim: Player
+var ally: Player
 var combat: MageAbilities
 var chicken: Chicken
 var died_by := 0
@@ -25,6 +26,7 @@ func _ready() -> void:
 	add_child(chicken)
 	chicken.set_physics_process(false)
 	combat = mage.get_ability(&"MageAbilities") as MageAbilities
+	ally = _player(1000001, Vector3(0.3, 0, -1.2), Enums.Role.MAGE)
 	GameEvents.player_died.connect(func(id: int, killer: int, _cause: StringName) -> void:
 		if id == victim.peer_id: died_by = killer)
 	if hosting:
@@ -53,13 +55,38 @@ func _cast(ability: StringName) -> void:
 	if ability == &"knife": mage.input.primary_pressed = true
 	if ability == &"ignite": mage.input.ability_1_pressed = true
 	if ability == &"fire_wave": mage.input.ability_2_pressed = true
+	if ability == &"locate": mage.input.ability_3_pressed = true
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	mage.input.clear()
 
+# The real binding, through PlayerInput, to the server's answer on the owning peer.
+func _check_locate_key() -> void:
+	_check(InputMap.has_action(&"ability_3"), "locate has an input action")
+	var key := InputMap.action_get_events(&"ability_3")[0] as InputEventKey
+	_check(key != null and key.physical_keycode == KEY_R, "locate is bound to R")
+	var input := PlayerInput.new()
+	Input.action_press(&"ability_3") # WHY: "just pressed" only holds within the frame of the press.
+	input.fill_from_devices()
+	Input.action_release(&"ability_3")
+	_check(input.ability_3_pressed, "pressing the key reaches PlayerInput")
+	mage.is_bot = false # is_local() must be true so the host mage receives its own result
+	victim.position = Vector3(0, 0, -5)
+	combat.last_locator_points = PackedVector3Array()
+	await _cast(&"locate")
+	_check(combat.last_locator_points.size() == 1, "pressing locate marks the nearby villager")
+	_check(combat.cooldown_left(&"locate") > 0.0, "locate starts its cooldown")
+	combat.last_locator_points = PackedVector3Array()
+	await _cast(&"locate")
+	_check(combat.last_locator_points.is_empty(), "locate is rejected during cooldown")
+	mage.is_bot = true
+
+
 # FIX(S14, Codex): Cover Wave balance, chicken hits, and the locator range in the combat harness.
 func _run() -> void:
 	await get_tree().create_timer(0.4).timeout
+	await _check_locate_key()
+	victim.position = Vector3(0, 0, -1.2)
 	combat.tuning.knife_cooldown = 0.15
 	combat.tuning.wave_cooldown = 0.15
 	combat.tuning.ignite_duration = 0.4
@@ -113,6 +140,7 @@ func _run() -> void:
 	await get_tree().create_timer(0.2).timeout
 	await _cast(&"fire_wave")
 	_check(victim.health.hp == 15 and victim._knockback.length() > 0, "wave damage and knockback")
+	_check(ally.health.hp == 100 and ally._knockback == Vector3.ZERO, "fellow mage is immune to fire and knives")
 	await _cast(&"knife")
 	_check(died_by == mage.peer_id, "kill attribution")
 	_check(combat._nearby_villager_positions().is_empty(), "locator excludes dead villagers")

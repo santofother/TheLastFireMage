@@ -45,6 +45,31 @@ func _ready() -> void:
 	p.health.revive()
 	await get_tree().physics_frame
 	_check(p.is_alive and p.health.downs_used == 0, "round reset restores downs")
+	# Nobody revives: a downed villager bleeds out. A revive in progress pauses the clock.
+	p.health.hp = 10.0
+	p._report_fall(6.2, false, true)
+	_check(p.health.is_downed and is_equal_approx(p.bleed_out_left, p.tuning.bleed_out_time),
+		"going down starts the bleed-out clock")
+	p.bleed_out_left = 0.1
+	for i in 20:
+		p.note_revive_hold()
+		await get_tree().physics_frame
+	_check(p.is_alive and p.being_revived, "a revive in progress pauses the bleed-out")
+	p._revive_ping_msec = -1000000
+	for i in 30:
+		await get_tree().physics_frame
+	_check(not p.is_alive and not p.health.is_downed, "downed villager bleeds out")
+	p.health.revive()
+	await get_tree().physics_frame
+	# The mage never goes down: a lethal fall kills it outright.
+	# WHY: only the role field matters here; set_role() would spin up mage abilities this test doesn't need.
+	p.role = Enums.Role.MAGE
+	p.health.hp = 10.0
+	p._report_fall(6.2, false, true)
+	_check(not p.is_alive and not p.health.is_downed, "mage dies from a lethal fall without going down")
+	p.health.revive()
+	p.role = Enums.Role.VILLAGER
+	await get_tree().physics_frame
 	p.health.kill(0, &"test")
 	await get_tree().physics_frame
 	_check(not p.is_alive, "player dead")
