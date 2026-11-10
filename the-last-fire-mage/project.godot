@@ -17,6 +17,8 @@ config/icon="res://icon.svg"
 
 [audio]
 
+; FIX(S18, Claude): approved exception - audio bus layout (Master <- World/SFX/Music/Ambience/Dread/Stingers/UI)
+buses/default_bus_layout="res://default_bus_layout.tres"
 driver/enable_input=true
 
 [autoload]

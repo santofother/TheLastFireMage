@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://game/scoring/scoring_manager.tscn" id="11_scoring"]
 [ext_resource type="PackedScene" path="res://game/ui/hud/hud.tscn" id="12_hud"]
 [ext_resource type="Script" path="res://game/props/breakable_manager.gd" id="13_breakables"]
+[ext_resource type="PackedScene" path="res://game/audio/audio_director.tscn" id="14_audio"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 
@@ -59,6 +60,8 @@ spawn_path = NodePath("../Players")
 
 [node name="Breakables" type="Node" parent="Systems"]
 script = ExtResource("13_breakables")
+
+[node name="Audio" parent="Systems" instance=ExtResource("14_audio")]
 
 [node name="Spectator" parent="Systems" instance=ExtResource("7_spectator")]
 
