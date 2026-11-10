@@ -217,16 +217,22 @@ def music_cheer(rng):
 
 
 def music_dark(rng):
-    def voice(f, s, r):
-        a = tone(f * 0.5, s, "saw", detune_cents=-14, vib=0.006, vib_rate=4.3)
-        b = tone(f * 0.5, s, "saw", detune_cents=11, vib=0.006, vib_rate=3.7)
-        return [(x + y) * 0.5 * env_ad(i, n(s), 0.08, 0.7) for i, (x, y) in enumerate(zip(a, b))]
-    mel = lowpass(seq([(_to_midi(d, True), b) for d, b in MELODY], BEAT, voice, rng), 1400.0)
-    low = []
-    for root in ROOTS:
-        r = {7: 8}.get(root, root)  # V -> bVI: darker progression
-        low += tone(440.0 * 2 ** ((38 + r - 69) / 12.0), 2 * BEAT, "sine", vib=0.003)
-    return mix(gain(fit(mel, MUSIC_LEN), 0.6), gain(fit(low, MUSIC_LEN), 0.35))
+    """Soft, slow D-minor pad (no melody, no plucks: those read as repetitive clicking under the real theme).
+    Chords change every 4 bars: Dm - Bb - Gm - A, detuned saws through a low-pass, slow swells."""
+    total = MUSIC_LEN
+    out = [0.0] * total
+    chords = [(50, 53, 57), (46, 50, 53), (43, 46, 50), (45, 49, 52)]
+    seg = total // len(chords)
+    for k, chord in enumerate(chords):
+        for midi in chord:
+            f = 440.0 * 2 ** ((midi - 69) / 12.0)
+            for det in (-9.0, 8.0):
+                ff = f * 2 ** (det / 1200.0)
+                for i in range(seg):
+                    p = (ff * i / SR) % 1.0
+                    swell = math.sin(math.pi * i / seg) ** 1.5
+                    out[k * seg + i] += (2 * p - 1) * swell * 0.12
+    return lowpass(lowpass(out, 900.0), 1200.0)
 
 
 def music_drone(rng):

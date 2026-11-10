@@ -64,6 +64,9 @@ var chunks_suppressed := 0 ## silent chunks not sent (diagnostics/tests)
 var underruns := 0 ## jitter buffer ran dry (diagnostics)
 
 var mic_level := 0.0 ## 0..1, Godot mic (for the meter)
+## User mic volume (settings slider), multiplies MIC_GAIN. 1.0 = default; MIC_GAIN itself stays the contract.
+# FIX(S18, Claude): user asked for a mic volume setting; default 1.0 keeps the S12 loudness contract.
+var mic_volume := 1.0
 var local_speaking := false
 var packets_sent := 0
 var packets_received := 0
@@ -367,7 +370,7 @@ func _emit_chunk(samples: PackedFloat32Array) -> void:
 		var gained := PackedFloat32Array()
 		gained.resize(samples.size())
 		for i in samples.size():
-			gained[i] = clampf(samples[i] * MIC_GAIN, -1.0, 1.0)
+			gained[i] = clampf(samples[i] * MIC_GAIN * mic_volume, -1.0, 1.0)
 		_send(VoiceAdpcm.encode(gained), Codec.ADPCM)
 	else:
 		_send(_encode_pcm16(samples), Codec.RAW_PCM16)
@@ -377,7 +380,7 @@ func _encode_pcm16(samples: PackedFloat32Array) -> PackedByteArray:
 	var b := PackedByteArray()
 	b.resize(samples.size() * 2)
 	for i in samples.size():
-		b.encode_s16(i * 2, int(clampf(samples[i] * MIC_GAIN, -1.0, 1.0) * 32767.0))
+		b.encode_s16(i * 2, int(clampf(samples[i] * MIC_GAIN * mic_volume, -1.0, 1.0) * 32767.0))
 	return b
 
 

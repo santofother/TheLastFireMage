@@ -8,16 +8,15 @@ Steamworks "AI Generated Content" survey (pre-generated audio).
 Format for all: 44.1 kHz. SFX = mono WAV 16-bit (or OGG). Music / beds / stingers = stereo OGG ~q4. Loops must loop
 seamlessly (no fade at the ends; the generator's "loop" option or cut on a bar line). Name exactly as shown.
 
-## Music: one seaside-folk piece in three synchronized stems
-All three **must be the same length to the sample** and start on the same downbeat (they play in lock-step via
-`AudioStreamSynchronized`). Key **D major** (dark stem: D minor), **112 BPM, 2/4**, 16 or 32 bars, loop.
-Folder: `assets/audio/music/`.
+## Music: dark layers under the main theme
+`music_cheer` is now the user's own main theme (`assets/audio/music/music_cheer.mp3`, ~118 s, D-ish folk). These two fade
+in under/instead of it as the match gets scarier. They loop on their own, so length doesn't have to match the theme,
+but ideally use the theme's key and tempo. Folder: `assets/audio/music/`.
 
 | File | Prompt |
 |---|---|
-| `music_cheer.ogg` | Cheerful seaside folk tune for a cozy fishing town, accordion and mandolin melody, acoustic guitar oom-pah strum, light hand percussion and tin whistle, sunny and bouncy, D major, 112 BPM, 2/4, instrumental, seamless loop, no vocals. |
-| `music_dark.ogg` | The same folk melody re-harmonised in D minor, slow detuned accordion and bowed fiddle, wobbly tape-warped pitch, sparse plucks, uneasy and haunted but still recognisably the same tune, 112 BPM, 2/4, seamless loop, no drums, no vocals. |
-| `music_drone.ogg` | Low ominous drones on D and A, sub-bass swell, distant bowed metal, faint choir breathing, slow pulsing, horror ambience under a folk tune, 112 BPM grid, seamless loop, no melody, no percussion. |
+| `music_dark.ogg` | Dark, slow re-interpretation of a cheerful seaside folk theme: detuned accordion and bowed fiddle pads, sparse, uneasy and haunted, minor key, no drums, no plucked or clicking percussion, seamless 60 s loop, no vocals. |
+| `music_drone.ogg` | Low ominous drones, sub-bass swell, distant bowed metal, faint choir breathing, slow pulsing, horror ambience, seamless 30 s loop, no melody, no percussion. |
 
 ## Dread layers (heard only by a villager who can SEE the mage)
 Same length for the three stems (8 or 16 s), loop, stereo. Folder: `assets/audio/dread/`.

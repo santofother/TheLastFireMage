@@ -4,12 +4,14 @@ extends Tuning
 ## (e.g. `--tune=audio.dread_heartbeat_range=30`). Load with `Tuning.load_tuning(PATH, "audio")`.
 
 # ---------------------------------------------------------------- bus levels (dB). Voice must stay loudest.
-@export var music_db := -12.0 # TUNE
-@export var ambience_db := -10.0 # TUNE
-@export var sfx_db := -3.0 # TUNE
-@export var dread_db := -8.0 # TUNE
-@export var stingers_db := -6.0 # TUNE
-@export var ui_db := -8.0 # TUNE
+## Playtest 2026-11-10: everything was too loud -> all game buses 20 % quieter (-1.9 dB), music ~-6 dB total.
+## Voice / mic are NOT on these buses and were left untouched.
+@export var music_db := -18.0 # TUNE
+@export var ambience_db := -11.9 # TUNE
+@export var sfx_db := -4.9 # TUNE
+@export var dread_db := -9.9 # TUNE
+@export var stingers_db := -7.9 # TUNE
+@export var ui_db := -9.9 # TUNE
 ## Music/ambience duck while someone nearby is talking (manual duck: Godot has no sidechain).
 @export var voice_duck_db := -7.0 # TUNE
 @export var voice_duck_fade := 0.25 # TUNE seconds
@@ -31,6 +33,7 @@ extends Tuning
 @export var mage_aura_base_db := -16.0 # TUNE
 @export var mage_aura_db_per_tier := 4.0 # TUNE
 @export var mage_aura_range := 8.0 # TUNE
+@export var fire_wave_db := -6.0 # TUNE: Fire Wave cast (fun but was too loud at +2 dB)
 @export var mage_aura_range_per_tier := 4.0 # TUNE
 @export var chicken_startle_range := 8.0 # TUNE: mage this close makes a chicken squawk
 @export var chicken_squawk_range := 12.0 # TUNE (= chicken_tuning.noise_radius)
@@ -81,6 +84,7 @@ extends Tuning
 @export var ocean_direction := Vector3(0, 0, 1) # TUNE # TODO(S18): set from the map once it has a coast marker
 @export var ocean_distance := 130.0 # TUNE
 @export var ocean_range := 400.0 # TUNE
+@export var ocean_db := -8.0 # TUNE: playtest said the waves were too loud
 @export var gull_interval_min := 4.0 # TUNE
 @export var gull_interval_max := 12.0 # TUNE
 @export var prop_crackle_range := 6.0 # TUNE

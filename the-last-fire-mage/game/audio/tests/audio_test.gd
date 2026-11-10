@@ -99,13 +99,29 @@ func _check_buses_and_voice() -> void:
 	for bus in AudioDirector.BUSES:
 		_check(AudioServer.get_bus_index(bus) >= 0, "bus %s exists" % bus)
 	_check(AudioServer.get_bus_send(AudioServer.get_bus_index(&"SFX")) == &"World", "SFX sends to World")
+	_check(AudioServer.get_bus_send(AudioServer.get_bus_index(&"World")) == &"Game", "World sends to Game")
+	_check(AudioServer.get_bus_send(AudioServer.get_bus_index(&"Voices")) == &"Master", "Voices bypass the Game bus")
+	AudioDirector.set_volume(&"game", 0.5)
+	AudioDirector.set_volume(&"player", 1.5)
+	AudioDirector.set_volume(&"mic", 0.25)
+	_check(absf(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(&"Game")) - linear_to_db(0.5)) < 0.01
+		and absf(AudioDirector.get_volume(&"player") - 1.5) < 0.01 and is_equal_approx(VoiceManager.mic_volume, 0.25),
+		"game / player / mic volumes are separate")
+	AudioDirector.set_volume(&"game", 0.0)
+	_check(AudioDirector.get_volume(&"game") == 0.0, "game volume 0 mutes the Game bus")
+	for kind in [&"game", &"player", &"mic"]:
+		AudioDirector.set_volume(kind, 1.0)
 	var plain := _fake_player(901, Vector3(1000, 0, 0))
 	var fx := _fake_player(902, Vector3(1000, 0, 5))
 	var fx_bus := VoiceFx.ensure_bus(902)
 	fx.voice.bus = fx_bus
 	await _wait(0.6)
-	_check(plain.voice.bus == &"World", "plain voice routed into World")
-	_check(AudioServer.get_bus_send(AudioServer.get_bus_index(fx_bus)) == &"World", "Voice_<peer> FX bus sends to World")
+	_check(plain.voice.bus == &"Voices", "plain voice routed into Voices")
+	_check(AudioServer.get_bus_send(AudioServer.get_bus_index(fx_bus)) == &"Voices", "Voice_<peer> FX bus sends to Voices")
+	var stray := AudioStreamPlayer3D.new()
+	add_child(stray)
+	_check(stray.bus == &"SFX", "stray 3D sounds on Master are moved to SFX")
+	stray.queue_free()
 	_check(plain.get_node_or_null(^"AudioEmitter") is FootstepEmitter, "director attached a FootstepEmitter")
 	plain.queue_free()
 	fx.queue_free()

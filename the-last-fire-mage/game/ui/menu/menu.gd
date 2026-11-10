@@ -28,6 +28,8 @@ var _ip_edit: LineEdit
 var _mic_option: OptionButton
 var _ptt_check: CheckButton
 var _mic_bar: ProgressBar
+# FIX(S18, Claude): user asked for separate game / player-voice / mic volume settings.
+var _volume_sliders: Dictionary = {} # &"game"|&"player"|&"mic" -> HSlider
 var _status: Label
 
 
@@ -178,6 +180,11 @@ func _load_settings() -> void:
 	_skin_option.select(skin)
 	VoiceManager.push_to_talk = cfg.get_value("voice", "push_to_talk", true)
 	_ptt_check.button_pressed = VoiceManager.push_to_talk
+	for kind: StringName in _volume_sliders:
+		var v := float(cfg.get_value("audio", String(kind) + "_volume", 1.0))
+		AudioDirector.set_volume(kind, v)
+		_volume_sliders[kind].set_value_no_signal(v * 100.0)
+		_volume_sliders[kind].get_meta(&"pct").text = "%d%%" % roundi(v * 100.0)
 	var dev: String = cfg.get_value("voice", "input_device", "Default")
 	for i in _mic_option.item_count:
 		if _mic_option.get_item_text(i) == dev:
@@ -194,6 +201,8 @@ func _save_settings() -> void:
 	cfg.set_value("player", "villager", _saved_skin)
 	cfg.set_value("voice", "push_to_talk", VoiceManager.push_to_talk)
 	cfg.set_value("voice", "input_device", AudioServer.input_device)
+	for kind: StringName in _volume_sliders:
+		cfg.set_value("audio", String(kind) + "_volume", _volume_sliders[kind].value / 100.0)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -309,6 +318,9 @@ func _build_ui() -> void:
 	_mic_bar.show_percentage = false
 	_mic_bar.custom_minimum_size = Vector2(0, 14)
 	settings.add_child(_row("Mic level", _mic_bar))
+	settings.add_child(_volume_row("Game", &"game", "Music, effects and ambience"))
+	settings.add_child(_volume_row("Players", &"player", "Other players' voices"))
+	settings.add_child(_volume_row("My mic", &"mic", "How loud others hear you"))
 	var back := _button("Back", func():
 		_show(false)
 		if not NetworkManager.is_in_session():
@@ -358,6 +370,29 @@ func _hbox(children: Array) -> HBoxContainer:
 	for c in children:
 		h.add_child(c)
 	return h
+
+
+## Volume slider 0..max % (100 % = default) for AudioDirector.set_volume(kind); saved to settings.cfg on change.
+func _volume_row(caption: String, kind: StringName, tip: String) -> HBoxContainer:
+	var slider := HSlider.new()
+	slider.name = "Volume_%s" % kind
+	slider.min_value = 0.0
+	slider.max_value = float(AudioDirector.VOLUME_MAX[kind]) * 100.0
+	slider.step = 5.0
+	slider.value = 100.0
+	slider.tooltip_text = tip
+	slider.custom_minimum_size = Vector2(160, 0)
+	var pct := _label("100%")
+	pct.custom_minimum_size = Vector2(48, 0)
+	slider.set_meta(&"pct", pct)
+	slider.value_changed.connect(func(v: float):
+		AudioDirector.set_volume(kind, v / 100.0)
+		pct.text = "%d%%" % roundi(v)
+		_save_settings())
+	_volume_sliders[kind] = slider
+	var row := _row(caption, slider)
+	row.add_child(pct)
+	return row
 
 
 func _row(caption: String, control: Control) -> HBoxContainer:

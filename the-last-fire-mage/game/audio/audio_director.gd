@@ -15,14 +15,23 @@ extends Node
 ##   wind + muffle inside the storm. Ocean on the coast side as a compass, gulls/town bed thin out with dread.
 ## - voice: routes every remote voice (plain or `Voice_<peer>` FX bus) into `World`; ducks music under speech.
 ##
+## - player volumes (settings menu): static `set_volume(kind, linear)` / `get_volume(kind)` for `&"game"` (Game bus:
+##   every game sound), `&"player"` (Voices bus: other players' voices), `&"mic"` (VoiceManager.mic_volume).
+## Buses: Master <- Game <- {World(reverb) <- SFX, Music, Ambience, Dread, Stingers, UI}; Master <- Voices(reverb).
+##   Voices is NOT under Game, so the game slider never turns voices down.
+##
 ## Public API: `tuning`, `dread` (DreadTracker), `match_dread` 0..1, `room_enclosure`, `reverb_wet`, `in_storm`,
-## `storm_emitter`, `set_bus_volume_db(bus, db)`, static `storm_point(center, radius, from)`, `emitter_for(peer)`.
+## `storm_emitter`, `set_bus_volume_db(bus, db)`, static `storm_point(center, radius, from)`, `emitter_for(peer)`,
+## static `set_volume` / `get_volume`.
 ## Test hooks: `listener_override`, `mage_override`, `role_override`, `alive_override`.
 
 const TUNING_PATH := "res://game/audio/tuning_audio.tres"
 ## Physics layers 1 (world) + 9 (furniture): what blocks sight and sound.
 const WORLD_MASK := 1 | (1 << 8)
-const BUSES: Array[StringName] = [&"World", &"SFX", &"Music", &"Ambience", &"Dread", &"Stingers", &"UI"]
+const BUSES: Array[StringName] = [&"Game", &"World", &"SFX", &"Music", &"Ambience", &"Dread", &"Stingers", &"UI",
+	&"Voices"]
+## Settings slider ranges (linear gain, 1.0 = default).
+const VOLUME_MAX := {&"game": 1.5, &"player": 2.0, &"mic": 2.0}
 const PROP_SCENES: Array[String] = ["res://game/props/torch.tscn", "res://game/props/candles.tscn",
 	"res://game/props/lantern.tscn"]
 const MAGE_HEAD := Vector3(0, 1.5, 0)
@@ -78,6 +87,7 @@ var _storm_placed := false
 var _edge_factor := 1.0
 var _muffle := 0.0
 var _reverb: AudioEffectReverb
+var _voice_reverb: AudioEffectReverb
 var _lowpass := {} # bus -> AudioEffectLowPassFilter
 var _probe_dirs := PackedVector3Array()
 var _ray := PhysicsRayQueryParameters3D.new()
@@ -120,6 +130,7 @@ func _ready() -> void:
 	GameEvents.power_changed.connect(_on_power_changed)
 	GameEvents.firestorm_stage.connect(_on_firestorm_stage)
 	GameEvents.firestorm_warning.connect(_on_firestorm_warning)
+	get_tree().node_added.connect(_on_node_added)
 	var bank := Sfx.bank()
 	print("[Audio] director ready cues=%d placeholders=%d headless=%s" % [bank.cue_names().size(),
 		bank.placeholder_cues.size(), Sfx.headless])
@@ -131,6 +142,29 @@ func set_bus_volume_db(bus: StringName, db: float) -> void:
 	var idx := AudioServer.get_bus_index(bus)
 	if idx >= 0:
 		AudioServer.set_bus_volume_db(idx, db + (_duck if bus == &"Music" or bus == &"Ambience" else 0.0))
+
+
+## Settings volume, linear 0..VOLUME_MAX[kind] (1 = default). kind: &"game", &"player", &"mic".
+static func set_volume(kind: StringName, linear: float) -> void:
+	linear = clampf(linear, 0.0, float(VOLUME_MAX.get(kind, 1.0)))
+	match kind:
+		&"game", &"player":
+			var idx := AudioServer.get_bus_index(&"Game" if kind == &"game" else &"Voices")
+			if idx >= 0:
+				AudioServer.set_bus_volume_db(idx, linear_to_db(linear) if linear > 0.001 else SILENT_DB)
+				AudioServer.set_bus_mute(idx, linear <= 0.001)
+		&"mic":
+			VoiceManager.mic_volume = linear
+
+
+## Current settings volume (linear, 1 = default).
+static func get_volume(kind: StringName) -> float:
+	if kind == &"mic":
+		return VoiceManager.mic_volume
+	var idx := AudioServer.get_bus_index(&"Game" if kind == &"game" else &"Voices")
+	if idx < 0 or AudioServer.is_bus_mute(idx):
+		return 0.0
+	return db_to_linear(AudioServer.get_bus_volume_db(idx))
 
 
 ## The FootstepEmitter attached to a player, or null.
@@ -156,13 +190,23 @@ func _ensure_buses() -> void:
 		if AudioServer.get_bus_index(bus) < 0:
 			AudioServer.add_bus()
 			AudioServer.set_bus_name(AudioServer.bus_count - 1, bus)
-			AudioServer.set_bus_send(AudioServer.bus_count - 1, &"World" if bus == &"SFX" else &"Master")
+			var send := &"Game"
+			match bus:
+				&"SFX": send = &"World"
+				&"Game", &"Voices": send = &"Master"
+			AudioServer.set_bus_send(AudioServer.bus_count - 1, send)
 	var w := AudioServer.get_bus_index(&"World")
 	_reverb = _find_effect(w, "AudioEffectReverb") as AudioEffectReverb
 	if _reverb == null:
 		_reverb = AudioEffectReverb.new()
 		_reverb.dry = 1.0
 		AudioServer.add_bus_effect(w, _reverb)
+	var vb := AudioServer.get_bus_index(&"Voices")
+	_voice_reverb = _find_effect(vb, "AudioEffectReverb") as AudioEffectReverb
+	if _voice_reverb == null:
+		_voice_reverb = AudioEffectReverb.new()
+		_voice_reverb.dry = 1.0
+		AudioServer.add_bus_effect(vb, _voice_reverb)
 	for bus in [&"SFX", &"Ambience", &"Music"]:
 		var idx := AudioServer.get_bus_index(bus)
 		var lp := _find_effect(idx, "AudioEffectLowPassFilter") as AudioEffectLowPassFilter
@@ -209,6 +253,7 @@ func _build_players() -> void:
 		_ocean.set_meta(&"no_occlusion", true)
 		_ocean.unit_size = 60.0 # TUNE: faint everywhere, but it pans: compass anchor
 		_ocean.global_position = tuning.ocean_direction.normalized() * tuning.ocean_distance
+		Sfx.set_base_db(_ocean, tuning.ocean_db)
 	for i in tuning.prop_crackle_voices:
 		var v := Sfx.attach_loop(self, &"flame_crackle_loop", &"SFX", tuning.prop_crackle_range)
 		if v:
@@ -338,12 +383,18 @@ func _probe_room(ear: Vector3) -> void:
 		_reverb.damping = lerpf(0.3, 0.7, 1.0 - room_enclosure)
 		var avg_hit := hit_sum / hits if hits > 0 else tuning.room_probe_range
 		_reverb.predelay_msec = clampf(avg_hit * 2.0 / 343.0 * 1000.0, 5.0, 100.0)
+		if _voice_reverb: # voices share the room: mirror the shape (wet set in _update_reverb)
+			_voice_reverb.room_size = _reverb.room_size
+			_voice_reverb.damping = _reverb.damping
+			_voice_reverb.predelay_msec = _reverb.predelay_msec
 
 
 func _update_reverb(delta: float) -> void:
 	reverb_wet = lerpf(reverb_wet, reverb_target_wet, 1.0 - exp(-tuning.room_smoothing * delta))
 	if _reverb:
 		_reverb.wet = reverb_wet
+	if _voice_reverb:
+		_voice_reverb.wet = reverb_wet
 
 
 func _occlude(ear: Vector3) -> void:
@@ -391,13 +442,13 @@ func _route_voices() -> void:
 		var v := p.get(&"voice") as AudioStreamPlayer3D
 		if v == null:
 			continue
-		if v.bus == &"Master":
-			v.bus = &"World"
-		elif String(v.bus).begins_with("Voice_"):
+		if String(v.bus).begins_with("Voice_"):
 			# Voice_<peer> FX buses are made by core (VoiceFx.ensure_bus) and send to Master: re-route by name.
 			var idx := AudioServer.get_bus_index(v.bus)
-			if idx >= 0 and AudioServer.get_bus_send(idx) != &"World":
-				AudioServer.set_bus_send(idx, &"World")
+			if idx >= 0 and AudioServer.get_bus_send(idx) != &"Voices":
+				AudioServer.set_bus_send(idx, &"Voices")
+		elif v.bus != &"Voices":
+			v.bus = &"Voices"
 
 
 func _mage_nodes() -> Array:
@@ -480,7 +531,7 @@ func _on_cast(ability: StringName, pos: Vector3, is_local_mage: bool) -> void:
 		&"ignite":
 			Sfx.play_3d(&"ignite_whoosh", pos + MAGE_HEAD * 0.8, &"SFX", 18.0)
 		&"fire_wave":
-			Sfx.play_3d(&"fire_wave_cast", pos + MAGE_HEAD * 0.6, &"SFX", 30.0, 2.0)
+			Sfx.play_3d(&"fire_wave_cast", pos + MAGE_HEAD * 0.6, &"SFX", 30.0, tuning.fire_wave_db)
 		&"locate":
 			if is_local_mage:
 				Sfx.play_2d(&"locate_pulse", &"UI")
@@ -759,6 +810,13 @@ func _collect_props(n: Node) -> void:
 			_props.append(c)
 		elif c.get_child_count() > 0:
 			_collect_props(c)
+
+
+## Catch-all: sounds other systems create on Master (e.g. the mage hit blip) go to SFX so the game slider and the
+## room echo apply. Voice players (node "Voice") are left to _route_voices.
+func _on_node_added(n: Node) -> void:
+	if n is AudioStreamPlayer3D and n.name != &"Voice" and (n as AudioStreamPlayer3D).bus == &"Master":
+		(n as AudioStreamPlayer3D).bus = &"SFX"
 
 
 static func _lin_db(level: float) -> float:
