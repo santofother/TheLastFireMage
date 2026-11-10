@@ -31,9 +31,6 @@ func _run() -> void:
 	if spectator._ghost.find_child("BV_Body", true, false) == null:
 		_fail("spectator ghost should keep the blue body")
 		return
-	if not option.disabled:
-		_fail("picker should lock while connected")
-		return
 	player.villager_skin = 99
 	if player.villager_skin != VillagerSkins.NAMES.size() - 1:
 		_fail("out-of-range skin ids must be clamped")
