@@ -37,6 +37,7 @@ func _spawn_bots() -> void:
 		var player: Node = main.spawn_player(id, "Bot%d" % (i + 1), true)
 		if player != null:
 			player.input_driver = BotBrain.new()
+			player.villager_skin = i % VillagerSkins.NAMES.size() # variety on the lobby cards
 			print("[Bot] Spawned server bot ", id)
 
 

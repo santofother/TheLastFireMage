@@ -36,9 +36,13 @@ var _bot_count: SpinBox
 var _lobby_background: TextureRect
 var _roster_label: Label
 var _invite: Button
-var _portrait: TextureRect
 var _portraits: Array[AtlasTexture] = []
-var _character_button: Button
+## Six lobby slot cards (one per player seat): {panel, portrait, empty, name, sub, prev, next}.
+var _slots: Array[Dictionary] = []
+var _player_count_label: Label
+var _mage_caption: Label
+var _card_styles: Dictionary = {} # "filled"/"empty"/"you" -> StyleBoxFlat
+var _slot_layout_count := -1
 
 @onready var _lobby: PanelContainer = $UI/Lobby
 @onready var _pick: OptionButton = $UI/Lobby/Content/MagePick
@@ -94,33 +98,22 @@ func _ready() -> void:
 	_lobby_background.visible = false
 	$UI.add_child(_lobby_background)
 	$UI.move_child(_lobby_background, 0)
-	_roster_label = Label.new()
-	_roster_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_roster_label.add_theme_font_size_override("font_size", 20)
+	_roster_label = Label.new() # kept for the roster text tests/logs read; hidden in favour of the cards
+	_roster_label.visible = false
 	$UI/Lobby/Content.add_child(_roster_label)
-	$UI/Lobby/Content.move_child(_roster_label, 2)
 	_invite = Button.new()
-	_invite.text = "Invite Steam friends"
-	_invite.add_theme_stylebox_override("normal", _start.get_theme_stylebox("normal"))
-	_invite.add_theme_stylebox_override("hover", _start.get_theme_stylebox("hover"))
+	_invite.text = "INVITE FRIENDS"
 	_invite.pressed.connect(SteamManager.invite_friends)
 	$UI/Lobby/Content.add_child(_invite)
 	var sheet: Texture2D = load("res://game/ui/art/portraits.png")
 	for index in 2:
 		var atlas := AtlasTexture.new()
 		atlas.atlas = sheet
-		atlas.region = Rect2(sheet.get_width() * 0.5 * index, 0, sheet.get_width() * 0.5, sheet.get_height())
+		# Square-ish crop on the face so the small slot portraits read well.
+		var w := sheet.get_width() * 0.5
+		atlas.region = Rect2(w * index + w * 0.12, 0, w * 0.76, sheet.get_height() * 0.76)
 		_portraits.append(atlas)
-	_portrait = TextureRect.new()
-	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	$UI/Lobby/Content.add_child(_portrait)
-	_character_button = Button.new()
-	_character_button.text = "CHANGE CHARACTER"
-	_character_button.add_theme_stylebox_override("normal", _start.get_theme_stylebox("normal"))
-	_character_button.add_theme_stylebox_override("hover", _start.get_theme_stylebox("hover"))
-	_character_button.pressed.connect(_change_character)
-	$UI/Lobby/Content.add_child(_character_button)
+	_build_lobby_cards()
 	_layout_lobby()
 
 
@@ -522,11 +515,8 @@ func _update_ui() -> void:
 	_pick.visible = host
 	_start.visible = host
 	_invite.visible = host
-	var local := Players.local_player()
-	_character_button.disabled = local == null
-	if local != null:
-		_portrait.texture = _portraits[clampi(local.villager_skin, 0, 1)]
 	var roster := Players.all()
+	_update_lobby_cards(roster)
 	var key := ""
 	var roster_names: Array[String] = []
 	for p in roster:
@@ -550,60 +540,204 @@ func _update_ui() -> void:
 	var message := "Choose the Mage and start" if Net.is_server(self) else "Waiting for host"
 	if Net.is_server(self) and roster.size() < required:
 		message = "Need %d players (including at least one villager)" % required
-	_status.text = "%d players — %s" % [roster.size(), message]
+	_status.text = message
+	_player_count_label.text = "◆  ────  %d / %d PLAYERS  ────  ◆" % [roster.size(), NetworkManager.MAX_PLAYERS]
+	_mage_caption.visible = host
 
 
 func _style_lobby() -> void:
 	_lobby.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	_lobby.offset_left = -450
-	_lobby.offset_right = 450
-	_lobby.offset_top = -220
-	_lobby.offset_bottom = 220
-	$UI/Lobby/Content.add_theme_constant_override("separation", 10)
-	$UI/Lobby/Content/Title.text = "HOST LOBBY"
-	$UI/Lobby/Content/Title.add_theme_font_size_override("font_size", 30)
-	$UI/Lobby/Content/Title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var panel := StyleBoxFlat.new()
-	panel.bg_color = Color("391b2bec")
-	panel.border_color = Color("d1994f")
-	panel.set_border_width_all(2)
-	panel.set_corner_radius_all(5)
-	panel.content_margin_left = 18
-	panel.content_margin_right = 18
-	panel.content_margin_top = 14
-	panel.content_margin_bottom = 14
+	_lobby.offset_left = -600
+	_lobby.offset_right = 600
+	_lobby.offset_top = -330
+	_lobby.offset_bottom = 330
+	var theme := Theme.new()
+	theme.default_font = UiStyle.body_font()
+	theme.default_font_size = 18
+	theme.set_color(&"font_color", &"Label", Color("f2dcae"))
+	_lobby.theme = theme
+	var panel := UiStyle.panel()
+	panel.set_content_margin_all(24)
 	_lobby.add_theme_stylebox_override("panel", panel)
-	for button in [_start, $UI/Lobby/Content/Explore]:
-		var normal := StyleBoxFlat.new()
-		normal.bg_color = Color("67362f")
-		normal.border_color = Color("c6904e")
-		normal.set_border_width_all(2)
-		normal.set_content_margin_all(8)
-		var hover := normal.duplicate() as StyleBoxFlat
-		hover.bg_color = Color("a84c1f")
-		hover.border_color = Color("ffcc67")
-		hover.shadow_color = Color("ff8a2388")
-		hover.shadow_size = 8
-		button.add_theme_stylebox_override("normal", normal)
-		button.add_theme_stylebox_override("hover", hover)
-		button.add_theme_color_override("font_color", Color("ffe5b1"))
+	var content := $UI/Lobby/Content as Control
+	content.custom_minimum_size = Vector2(1152, 612)
+	var title := content.get_node("Title") as Label
+	title.text = "HOST LOBBY"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", UiStyle.title_font())
+	title.add_theme_font_size_override("font_size", 50)
+	title.add_theme_color_override("font_color", UiStyle.GOLD)
+	title.add_theme_color_override("font_outline_color", Color("5a2a10"))
+	title.add_theme_constant_override("outline_size", 5)
+	title.add_theme_color_override("font_shadow_color", Color("1a0610cc"))
+	title.add_theme_constant_override("shadow_offset_y", 3)
+	_player_count_label = UiStyle.ornament("2 / 6 PLAYERS", 22)
+	content.add_child(_player_count_label)
+	_mage_caption = UiStyle.caption("MAGE")
+	content.add_child(_mage_caption)
+	var mage_row := content.get_node("MageCountRow") as HBoxContainer
+	var mage_label := mage_row.get_node("Label") as Label
+	mage_label.text = "MAGES"
+	mage_label.add_theme_font_override("font", UiStyle.title_font())
+	mage_label.add_theme_font_size_override("font_size", 17)
+	var bots_label := content.get_node("BotCountLabel") as Label
+	bots_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bots_label.add_theme_font_override("font", UiStyle.title_font())
+	bots_label.add_theme_font_size_override("font_size", 17)
+	for field: Control in [_pick, _count, _bot_count]:
+		UiStyle.style_field(field)
+	_start.text = "START ROUND"
+	UiStyle.style_primary(_start, 30)
+	var explore := content.get_node("Explore") as Button
+	explore.text = "EXPLORE TOWN"
+	UiStyle.style_dark(explore, 18)
+	var help := content.get_node("ExploreHelp") as Label
+	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	help.add_theme_font_size_override("font_size", 14)
+	help.add_theme_color_override("font_color", Color("cfae84"))
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status.add_theme_font_override("font", UiStyle.italic_font())
+	_status.add_theme_font_size_override("font_size", 18)
+	_card_styles = {"filled": UiStyle.card(true), "empty": UiStyle.card(false), "you": UiStyle.card(true, true)}
 
 
 func _layout_lobby() -> void:
+	UiStyle.style_dark(_invite, 18)
 	var content := $UI/Lobby/Content
-	_place(content.get_node("Title"), Vector2(0, 0), Vector2(864, 44))
-	_place(_status, Vector2(20, 52), Vector2(470, 32))
-	_place(_roster_label, Vector2(20, 95), Vector2(440, 65))
-	_place(_portrait, Vector2(20, 160), Vector2(145, 145))
-	_place(_character_button, Vector2(180, 205), Vector2(250, 44))
-	_place(content.get_node("MageCountRow"), Vector2(500, 70), Vector2(325, 40))
-	_place(content.get_node("BotCountLabel"), Vector2(500, 124), Vector2(325, 24))
-	_place(_bot_count, Vector2(500, 149), Vector2(325, 36))
-	_place(_pick, Vector2(500, 195), Vector2(325, 38))
-	_place(_invite, Vector2(500, 238), Vector2(325, 36))
-	_place(_start, Vector2(500, 282), Vector2(325, 48))
-	_place(content.get_node("Explore"), Vector2(500, 340), Vector2(325, 42))
-	_place(content.get_node("ExploreHelp"), Vector2(20, 340), Vector2(450, 65))
+	var right := 790.0
+	var width := 350.0
+	_place(content.get_node("Title"), Vector2(0, -6), Vector2(1152, 62))
+	_place(_player_count_label, Vector2(0, 58), Vector2(1152, 32))
+	_place(_status, Vector2(0, 574), Vector2(1152, 34))
+	_place(_mage_caption, Vector2(right, 104), Vector2(width, 24))
+	_place(_pick, Vector2(right, 130), Vector2(width, 42))
+	_place(content.get_node("MageCountRow"), Vector2(right, 184), Vector2(width, 42))
+	_place(content.get_node("BotCountLabel"), Vector2(right, 236), Vector2(width, 24))
+	_place(_bot_count, Vector2(right, 262), Vector2(width, 42))
+	_place(_invite, Vector2(right, 320), Vector2(width, 46))
+	_place(_start, Vector2(right - 10, 380), Vector2(width + 20, 74))
+	_place(content.get_node("Explore"), Vector2(right, 468), Vector2(width, 46))
+	_place(content.get_node("ExploreHelp"), Vector2(right, 518), Vector2(width, 46))
+	_slot_layout_count = -1 # cards are placed by _layout_slots() once the roster is known
+
+
+## Builds the six player slot cards: portrait with ‹ › (own card only), name and villager line.
+func _build_lobby_cards() -> void:
+	var content := $UI/Lobby/Content
+	var slot_frames: Array[PanelContainer] = []
+	for i in NetworkManager.MAX_PLAYERS:
+		var panel := PanelContainer.new()
+		panel.name = "Slot%d" % i
+		content.add_child(panel)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		panel.add_child(row)
+		var prev := Button.new()
+		prev.text = "‹"
+		UiStyle.style_arrow(prev)
+		prev.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		prev.pressed.connect(_change_character.bind(-1))
+		row.add_child(prev)
+		var frame := PanelContainer.new()
+		var frame_style := StyleBoxFlat.new()
+		frame_style.bg_color = Color("1c0b14")
+		frame_style.border_color = UiStyle.GOLD
+		frame_style.set_border_width_all(3)
+		frame_style.set_corner_radius_all(8)
+		frame_style.set_content_margin_all(3)
+		frame.add_theme_stylebox_override("panel", frame_style)
+		slot_frames.append(frame)
+		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(frame)
+		var portrait := TextureRect.new()
+		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		frame.add_child(portrait)
+		var empty := UiStyle.heading("❦", 54)
+		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		empty.add_theme_color_override("font_color", Color("8a5d3b"))
+		frame.add_child(empty)
+		var next := Button.new()
+		next.text = "›"
+		UiStyle.style_arrow(next)
+		next.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		next.pressed.connect(_change_character.bind(1))
+		row.add_child(next)
+		var text := VBoxContainer.new()
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_child(text)
+		var name_label := UiStyle.heading("OPEN SLOT", 22)
+		name_label.add_theme_constant_override("outline_size", 0)
+		name_label.clip_text = true
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		text.add_child(name_label)
+		var sub := UiStyle.footer("", 15)
+		sub.add_theme_color_override("font_color", Color("e0c08f"))
+		text.add_child(sub)
+		_slots.append({"panel": panel, "portrait": portrait, "empty": empty, "name": name_label,
+			"sub": sub, "prev": prev, "next": next, "frame": slot_frames[i]})
+
+
+## Shows 6 cards (the design's party size), or more when more players joined, in two columns that
+## shrink to fit the left half of the panel.
+func _layout_slots(count: int) -> void:
+	if count == _slot_layout_count:
+		return
+	_slot_layout_count = count
+	var rows := ceili(count / 2.0)
+	var gap := 14.0
+	var height := (456.0 - gap * (rows - 1)) / rows
+	var portrait := clampf(height - 26.0, 48.0, 112.0)
+	for i in _slots.size():
+		var slot := _slots[i]
+		slot["panel"].visible = i < count
+		if i >= count:
+			continue
+		_place(slot["panel"], Vector2(10, 104) + Vector2((i % 2) * 380, (i / 2) * (height + gap)), Vector2(364, height))
+		slot["frame"].custom_minimum_size = Vector2(portrait, portrait)
+		slot["empty"].add_theme_font_size_override("font_size", int(portrait * 0.5))
+
+
+## Fills the slot cards from the roster: host first, then other humans, then bots. Every peer sees the
+## same cards because `villager_skin` and names are replicated on each Player.
+func _update_lobby_cards(roster: Array[Node]) -> void:
+	if _slots.is_empty():
+		return
+	_layout_slots(clampi(roster.size() + roster.size() % 2, 6, _slots.size()))
+	var ordered := roster.duplicate()
+	ordered.sort_custom(func(a: Node, b: Node) -> bool: return a.peer_id < b.peer_id)
+	for i in _slots.size():
+		var slot := _slots[i]
+		var p: Player = ordered[i] as Player if i < ordered.size() else null
+		var mine := p != null and p.is_local()
+		slot["panel"].add_theme_stylebox_override("panel", _card_styles["you" if mine else ("filled" if p else "empty")])
+		# WHY: hide arrows by alpha, not visibility, so every card's portrait sits in the same place.
+		for arrow: Button in [slot["prev"], slot["next"]]:
+			arrow.modulate.a = 1.0 if mine else 0.0
+			arrow.disabled = not mine
+			arrow.mouse_filter = Control.MOUSE_FILTER_STOP if mine else Control.MOUSE_FILTER_IGNORE
+		slot["portrait"].visible = p != null
+		slot["empty"].visible = p == null
+		if p == null:
+			slot["name"].text = "OPEN SLOT"
+			slot["name"].add_theme_color_override("font_color", Color("c99a6a"))
+			slot["sub"].text = ""
+			continue
+		var skin := VillagerSkins.clamp_id(p.villager_skin)
+		slot["portrait"].texture = _portraits[clampi(skin, 0, _portraits.size() - 1)]
+		slot["name"].text = p.display_name.to_upper()
+		slot["name"].add_theme_color_override("font_color", UiStyle.GOLD)
+		var tags: Array[String] = []
+		if p.peer_id == 1:
+			tags.append("Host")
+		if mine:
+			tags.append("You")
+		if p.is_bot:
+			tags.append("Bot")
+		var who := "  ◆  ".join(tags)
+		slot["sub"].text = "%s Villager%s" % [VillagerSkins.NAMES[skin], ("\n" + who) if who != "" else ""]
 
 
 func _place(control: Control, pos: Vector2, dimensions: Vector2) -> void:
@@ -611,9 +745,11 @@ func _place(control: Control, pos: Vector2, dimensions: Vector2) -> void:
 	control.size = dimensions
 
 
-func _change_character() -> void:
+## Cycles the local player's villager body; the synchronizer shows it on everyone's lobby cards.
+func _change_character(direction := 1) -> void:
 	var local := Players.local_player()
-	if local != null:
-		var next: int = (local.villager_skin + 1) % mini(VillagerSkins.NAMES.size(), 2)
+	if local != null and phase == Enums.Phase.LOBBY:
+		var count := mini(VillagerSkins.NAMES.size(), _portraits.size())
+		var next: int = posmod(local.villager_skin + direction, count)
 		VillagerSkins.local = next
 		local.villager_skin = next

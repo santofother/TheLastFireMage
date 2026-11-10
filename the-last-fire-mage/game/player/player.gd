@@ -372,34 +372,14 @@ func _rpc_bleed(left: float, reviving: bool) -> void:
 		being_revived = reviving
 
 
-# Three little stars circling the head while stunned, so everyone can see a stun land.
+# Cartoon stars circling the head while stunned, so everyone can see a stun land (see StunStars).
 func _build_stun_fx() -> void:
-	_stun_fx = Node3D.new()
-	_stun_fx.name = "StunFx"
-	_stun_fx.visible = false
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.9, 0.3)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.85, 0.2)
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.07
-	mesh.height = 0.14
-	for i in 3:
-		var star := MeshInstance3D.new()
-		star.mesh = mesh
-		star.material_override = mat
-		var a := TAU * i / 3.0
-		star.position = Vector3(cos(a) * 0.3, 0.0, sin(a) * 0.3)
-		_stun_fx.add_child(star)
+	_stun_fx = StunStars.new()
 	add_child(_stun_fx)
 
 
 func _update_stun_fx(delta: float) -> void:
-	_stun_fx.visible = _stun_left > 0.0 and is_alive
-	if _stun_fx.visible:
-		_stun_fx.position.y = tuning.height + 0.25 + visual_y_offset
-		_stun_fx.rotate_y(delta * 6.0)
+	(_stun_fx as StunStars).tick(delta, _stun_left > 0.0 and is_alive, tuning.height + visual_y_offset)
 
 
 func _on_revived() -> void:

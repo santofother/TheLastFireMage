@@ -52,6 +52,11 @@ func apply_damage(amount: float, source_id: int, cause: StringName) -> void:
 	if invulnerable:
 		print("[Health] ignored %.1f %s on %s: invulnerable" % [amount, cause, get_parent().name])
 		return
+	# WHY: a downed player is finished off by any hit from another player (the mage); only lethal falls
+	# down a villager. A mage hit that empties hp kills outright, so the victim goes straight to spectator.
+	if is_downed and source_id != 0:
+		_broadcast(0.0, hp, source_id, cause, true)
+		return
 	var new_hp := maxf(0.0, hp - amount)
 	_broadcast(new_hp, amount, source_id, cause, new_hp <= 0.0)
 

@@ -119,6 +119,11 @@ func _ready() -> void:
 	p.health.apply_damage(20.0, 77, &"knife")
 	_check(not p.is_alive, "one knife hit kills a downed player")
 	p.health.revive()
+	# Even a tiny mage hit finishes a downed player at high downed hp (no lingering in down mode).
+	p.health.down(50.0)
+	p.health.apply_damage(1.0, 77, &"knife")
+	_check(not p.is_alive and mgr.is_spectating, "any mage hit kills a downed player -> spectator")
+	p.health.revive()
 	v.queue_free()
 	# Late-join spectator role.
 	GameEvents.role_assigned.emit(1, Enums.Role.SPECTATOR)

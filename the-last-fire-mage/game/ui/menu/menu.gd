@@ -219,22 +219,22 @@ func _build_ui() -> void:
 	add_child(_menu_backdrop)
 	_root = CenterContainer.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.theme = _menu_theme()
 	add_child(_root)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(550, 0)
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("351c2af2"), Color("d19a50"), 2))
+	panel.custom_minimum_size = Vector2(600, 0)
+	panel.add_theme_stylebox_override("panel", UiStyle.panel())
 	_root.add_child(panel)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 22)
+		margin.add_theme_constant_override("margin_" + side, 10)
 	panel.add_child(margin)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 12)
 	margin.add_child(v)
-	_page_title = _label("HOST GAME")
-	_page_title.add_theme_color_override("font_color", Color("ffd080"))
-	_page_title.add_theme_font_size_override("font_size", 27)
+	_page_title = UiStyle.heading("HOST GAME", 40)
 	v.add_child(_page_title)
+	v.add_child(UiStyle.ornament("", 16))
 	_name_edit = LineEdit.new()
 	_name_edit.placeholder_text = "Player name"
 	_name_edit.max_length = 20
@@ -274,31 +274,42 @@ func _build_ui() -> void:
 	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, NetworkManager.MAX_PLAYERS - 1)
 	host.add_child(_row("Bots", _bot_count))
 	_steam_label = _label("")
+	_steam_label.add_theme_color_override("font_color", Color("d9b98a"))
+	_steam_label.add_theme_font_size_override("font_size", 15)
 	host.add_child(_steam_label)
 	_host_steam_btn = _button("Host Steam lobby", _on_host_steam)
-	_host_lan_btn = _button("Host LAN", _on_host_lan)
+	_host_lan_btn = _button("Host LAN", _on_host_lan)  # CONTRACT: bot_menu_test finds this by text
+	UiStyle.style_primary(_host_steam_btn, 20)
+	UiStyle.style_primary(_host_lan_btn, 20)
+	_host_steam_btn.custom_minimum_size.y = 50
+	_host_lan_btn.custom_minimum_size.y = 50
 	host.add_child(_hbox([_host_steam_btn, _host_lan_btn]))
 	_port_edit = LineEdit.new()
 	_port_edit.text = str(NetworkManager.DEFAULT_PORT)
 	var port_row := _row("LAN port", _port_edit)
 	v.add_child(port_row)
 	v.move_child(port_row, 2)
-	_invite_btn = _button("Invite Steam friends", SteamManager.invite_friends)
+	_invite_btn = _button("INVITE STEAM FRIENDS", SteamManager.invite_friends)
 	host.add_child(_invite_btn)
 	var join: VBoxContainer = _pages["join"]
-	_refresh_btn = _button("Refresh Steam lobbies", SteamManager.request_lobby_list)
-	_join_lobby_btn = _button("Join selected lobby", _on_join_lobby)
+	_refresh_btn = _button("REFRESH LOBBIES", SteamManager.request_lobby_list)
+	_join_lobby_btn = _button("JOIN SELECTED", _on_join_lobby)
 	join.add_child(_hbox([_refresh_btn, _join_lobby_btn]))
 	_lobby_list = ItemList.new()
-	_lobby_list.custom_minimum_size = Vector2(0, 120)
+	_lobby_list.custom_minimum_size = Vector2(0, 140)
+	var list_box := UiStyle.card(false)
+	_lobby_list.add_theme_stylebox_override("panel", list_box)
+	_lobby_list.add_theme_font_override("font", UiStyle.body_font())
+	_lobby_list.add_theme_color_override("font_color", Color("f2dcae"))
 	_lobby_list.item_activated.connect(func(_i): _on_join_lobby())
 	join.add_child(_lobby_list)
 	_ip_edit = LineEdit.new()
 	_ip_edit.text = "127.0.0.1"
 	_ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_join_ip_btn = _button("Join IP", _on_join_ip)
+	_join_ip_btn = _button("JOIN IP", _on_join_ip)
+	UiStyle.style_primary(_join_ip_btn, 18)
 	join.add_child(_hbox([_ip_edit, _join_ip_btn]))
-	var join_port := _label("Enter a host address and the LAN port above.")
+	var join_port := UiStyle.footer("Enter a host address and the LAN port above.", 15)
 	join.add_child(join_port)
 	var settings: VBoxContainer = _pages["settings"]
 	_mic_option = OptionButton.new()
@@ -321,17 +332,18 @@ func _build_ui() -> void:
 	settings.add_child(_volume_row("Game", &"game", "Music, effects and ambience"))
 	settings.add_child(_volume_row("Players", &"player", "Other players' voices"))
 	settings.add_child(_volume_row("My mic", &"mic", "How loud others hear you"))
-	var back := _button("Back", func():
+	var back := _button("BACK", func():
 		_show(false)
 		if not NetworkManager.is_in_session():
 			_landing.visible = true)
 	back.name = "BackButton"
 	v.add_child(back)
-	_leave_btn = _button("Leave game", _on_leave)
+	_leave_btn = _button("LEAVE GAME", _on_leave)
 	v.add_child(_leave_btn)
-	_status = _label("Ready")
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_status = UiStyle.footer("Ready", 15)
 	v.add_child(_status)
+	for field: Control in [_name_edit, _port_edit, _ip_edit, _mage_count, _bot_count, _skin_option, _mic_option]:
+		UiStyle.style_field(field)
 	_select_page("host")
 
 
@@ -350,13 +362,21 @@ func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.add_theme_stylebox_override("normal", _panel_style(Color("68372f"), Color("c69250"), 2))
-	b.add_theme_stylebox_override("hover", _panel_style(Color("b7541c"), Color("ffca64"), 3))
-	b.add_theme_stylebox_override("pressed", _panel_style(Color("8a3d19"), Color("ffe4a0"), 2))
-	b.add_theme_color_override("font_color", Color("ffe5b1"))
-	b.add_theme_color_override("font_hover_color", Color("fff4d5"))
+	b.custom_minimum_size.y = 40
+	UiStyle.style_dark(b, 17)
 	b.pressed.connect(cb)
 	return b
+
+
+## Default font/colours for every label and control in the menu (serif, warm cream).
+func _menu_theme() -> Theme:
+	var t := Theme.new()
+	t.default_font = UiStyle.body_font()
+	t.default_font_size = 18
+	t.set_color(&"font_color", &"Label", Color("f2dcae"))
+	t.set_color(&"font_color", &"CheckButton", Color("f2dcae"))
+	t.set_color(&"font_hover_color", &"CheckButton", Color.WHITE)
+	return t
 
 
 func _label(text: String) -> Label:
@@ -397,30 +417,19 @@ func _volume_row(caption: String, kind: StringName, tip: String) -> HBoxContaine
 
 func _row(caption: String, control: Control) -> HBoxContainer:
 	var l := _label(caption)
-	l.custom_minimum_size = Vector2(80, 0)
+	l.custom_minimum_size = Vector2(110, 0)
+	l.text = caption.to_upper()
+	l.add_theme_font_override("font", UiStyle.title_font())
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color("f2dcae"))
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return _hbox([l, control])
-
-
-func _panel_style(bg: Color, border: Color, width: int) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg
-	style.border_color = border
-	style.set_border_width_all(width)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 5
-	style.content_margin_bottom = 5
-	if width == 3:
-		style.shadow_color = Color("ff821b99")
-		style.shadow_size = 3
-	return style
 
 
 func _build_landing() -> void:
 	_landing = Control.new()
 	_landing.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_landing.theme = _menu_theme()
 	add_child(_landing)
 	var picture := TextureRect.new()
 	picture.texture = load("res://game/ui/art/village-background.png")
@@ -429,33 +438,45 @@ func _build_landing() -> void:
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_landing.add_child(picture)
+	# Tall plum banner on the left, like concept-art/ui/starting-menu-concept-v3.
 	var panel := PanelContainer.new()
-	panel.anchor_left = 0.035
-	panel.anchor_right = 0.35
-	panel.anchor_top = 0.08
-	panel.anchor_bottom = 0.92
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("301725ed"), Color("d79b50"), 2))
+	panel.anchor_left = 0.04
+	panel.anchor_right = 0.33
+	panel.anchor_top = 0.04
+	panel.anchor_bottom = 0.94
+	var style := UiStyle.panel()
+	style.bg_color = Color("2b1222ee")
+	style.set_corner_radius_all(6)
+	panel.add_theme_stylebox_override("panel", style)
 	_landing.add_child(panel)
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 28)
-	panel.add_child(margin)
 	var content := VBoxContainer.new()
 	content.alignment = BoxContainer.ALIGNMENT_CENTER
-	content.add_theme_constant_override("separation", 16)
-	margin.add_child(content)
-	var title := Label.new()
-	title.text = "THE LAST\nFIRE MAGE"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 40)
-	title.add_theme_color_override("font_color", Color("ffd080"))
-	content.add_child(title)
-	var ornament := _label("✦    ━━━━━    ✦")
-	ornament.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ornament.add_theme_color_override("font_color", Color("d99a4e"))
-	content.add_child(ornament)
-	for spec in [["HOST GAME", func(): _open_page("host")], ["JOIN GAME", func(): _open_page("join")], ["SETTINGS", func(): _open_page("settings")], ["QUIT", func(): get_tree().quit()]]:
-		var button := _button(spec[0], spec[1])
-		button.custom_minimum_size = Vector2(0, 54)
-		button.add_theme_font_size_override("font_size", 24)
+	content.add_theme_constant_override("separation", 12)
+	panel.add_child(content)
+	var sun := UiStyle.heading("❦   ✹   ❦", 34)
+	sun.add_theme_color_override("font_color", Color("f6b24a"))
+	content.add_child(sun)
+	var title_small := UiStyle.heading("THE LAST", 44)
+	var title_big := UiStyle.heading("FIRE MAGE", 62)
+	title_small.add_theme_constant_override("line_spacing", -8)
+	content.add_child(title_small)
+	content.add_child(title_big)
+	content.add_child(UiStyle.ornament("☾", 18))
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 6)
+	content.add_child(spacer)
+	var specs := [["HOST GAME", func(): _open_page("host")], ["JOIN GAME", func(): _open_page("join")],
+		["SETTINGS", func(): _open_page("settings")], ["QUIT", func(): get_tree().quit()]]
+	for i in specs.size():
+		var button := _button(specs[i][0], specs[i][1])
+		button.custom_minimum_size = Vector2(0, 58)
+		if i == 0:
+			UiStyle.style_primary(button, 30)
+		else:
+			UiStyle.style_secondary(button, 28)
 		content.add_child(button)
+	var spacer2 := Control.new()
+	spacer2.custom_minimum_size = Vector2(0, 6)
+	content.add_child(spacer2)
+	content.add_child(UiStyle.ornament("", 14))
+	content.add_child(UiStyle.footer("Private games with friends  ◆  Proximity voice", 16))
