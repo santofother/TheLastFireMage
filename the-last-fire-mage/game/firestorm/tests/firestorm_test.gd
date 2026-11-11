@@ -21,6 +21,8 @@ var _late := false
 var _hosting := false
 var _previous_radius := INF
 var _previous_center := Vector3.ZERO
+var _ring_center := Vector3.INF
+var _ring_radius := INF
 
 
 func _ready() -> void:
@@ -87,15 +89,19 @@ func _on_stage(number: int, target: Vector3, radius: float, required: float, tim
 	_check(_storm.is_inside(_storm.zone_center + Vector3.UP * 100.0), "safe zone is horizontal")
 	_check((_storm.zone_radius + 0.001 >= radius) and (time_to_next > 0.0) == (number < 3),
 		"stage reports target radius and next-stage time")
-	_check(is_equal_approx(PI * radius * radius / _storm.tuning.map_area, [0.8, 0.6, 0.25][number - 1]),
-		"stage target matches the requested fraction of map area")
+	_check(absf(PI * radius * radius / _storm.tuning.map_area - [0.8, 0.489898, 0.3][number - 1]) < 0.001,
+		"ring %d covers its fraction of map area (geometric 80%% -> 30%%)" % number)
+	_check(_storm.ring_count() == 3, "ring count reaches every peer")
+	if _ring_radius != INF and not _late:
+		var offset := Vector2(target.x - _ring_center.x, target.z - _ring_center.z).length()
+		_check(offset + radius <= _ring_radius + 0.001, "ring %d lies inside the previous ring" % number)
+	_ring_center = target
+	_ring_radius = radius
 	if number == 3:
 		_check(target.is_equal_approx(_storm.final_zone_center) and radius == _storm.final_zone_radius,
 			"final target is revealed when its shrink starts")
 	else:
-		var map: Node3D = GameEvents.system(&"main").get_map()
-		_check(_storm.final_zone_radius == 0.0 and target.is_equal_approx(map.global_position),
-			"early stages stay centered on the map without revealing the final target")
+		_check(_storm.final_zone_radius == 0.0, "early rings do not reveal the final target")
 	if _hosting and number == 2:
 		# Let the mage recover from a brief deficit, then fail the final threshold.
 		get_tree().create_timer(0.45).timeout.connect(func() -> void: _power.add_power(3.0, &"test"))

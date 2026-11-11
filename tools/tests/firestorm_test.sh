@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 
 TEST_SCENE=res://game/firestorm/tests/firestorm_test.tscn
 MAP=--map=res://game/map/test_arena.tscn
-TUNE=--tune=match.role_reveal_time=0.2,match.head_start_time=0.3,match.hunt_time=8.8,match.results_time=0.3,firestorm.start_time=0.8,firestorm.warning_time=1.1,firestorm.start_radius=12,firestorm.map_area=314.159265,firestorm.second_stage_delay=2,firestorm.final_hold_time=1.1,firestorm.mage_grace_time=1.35
+TUNE=--tune=match.role_reveal_time=0.2,match.head_start_time=0.3,match.hunt_time=8.8,match.results_time=0.3,firestorm.start_time=0.8,firestorm.warning_time=1.1,firestorm.start_radius=12,firestorm.map_area=314.159265,firestorm.ring_count=3,firestorm.final_hold_time=1.1,firestorm.mage_grace_time=1.9,firestorm.mage_damage_per_second=1000
 
 launch_peer host --host --name=Host "$MAP" "$TUNE"
 wait_log host '\[Net\] Hosting'

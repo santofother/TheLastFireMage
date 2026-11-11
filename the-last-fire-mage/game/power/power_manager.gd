@@ -81,9 +81,12 @@ func _on_chicken(killer: int, _position: Vector3) -> void:
 	if killer in _mages and _phase == Enums.Phase.HUNT:
 		add_power(tuning.per_chicken, &"chicken")
 
-func _on_death(victim: int, killer: int, _cause: StringName) -> void:
+func _on_death(victim: int, killer: int, cause: StringName) -> void:
 	# WHY: Match handles the last villager's death first and enters RESULTS during the same signal.
-	if killer in _mages and victim != killer and _phase in [Enums.Phase.HUNT, Enums.Phase.RESULTS]:
+	var mage_kill: bool = killer in _mages and victim != killer
+	# Villagers lost to the environment (storm, fall, bleeding out unrevived) feed the mage too.
+	var environment: bool = killer == 0 and cause in [&"firestorm", &"fall", &"bled_out"]
+	if (mage_kill or environment) and _phase in [Enums.Phase.HUNT, Enums.Phase.RESULTS]:
 		var match_system := GameEvents.system(&"match")
 		if match_system and match_system.get_role(victim) == Enums.Role.VILLAGER:
 			add_power(tuning.per_villager, &"villager")

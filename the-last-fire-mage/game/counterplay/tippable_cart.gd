@@ -27,7 +27,7 @@ func _on_interacted(player: Node) -> void: # NET: server only
 	var manager := GameEvents.system(&"counterplay") as CounterplayManager
 	if manager:
 		var reach := manager.tuning.cart_reach
-		for m in Players.alive_with_role(Enums.Role.MAGE):
+		for m in CounterplayManager.stun_targets(player.peer_id):
 			var to_m: Vector3 = m.global_position - global_position
 			to_m.y = 0.0
 			if to_m.length() <= reach and to_m.normalized().dot(away) > 0.5:

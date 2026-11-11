@@ -31,6 +31,10 @@ var _multiplier := 1.0
 var _required := 0.0
 var _warning_left := 0.0
 var _warning_stage := 0
+var _next_left := 0.0 ## seconds until the next shrink begins (0 = none scheduled)
+var _flash_clock := 0.0 ## storm status is shown for STORM_FLASH_ON s every STORM_FLASH_EVERY s, from this clock
+const STORM_FLASH_EVERY := 30.0 ## TUNE: s between storm status flashes
+const STORM_FLASH_ON := 3.0 ## TUNE: s each flash stays on screen
 var _result := ""
 var _local: Node
 var _poll := 0.0
@@ -77,7 +81,7 @@ func _build() -> void:
 	_label("Role", Rect2(.035, .05, .27, .09), 26)
 	_label("Reveal", Rect2(.2, .32, .6, .16), 38, HORIZONTAL_ALIGNMENT_CENTER)
 	_label("Blind", Rect2(.2, .5, .6, .16), 24, HORIZONTAL_ALIGNMENT_CENTER)
-	_label("Warning", Rect2(.25, .15, .5, .1), 24, HORIZONTAL_ALIGNMENT_CENTER)
+	_label("Warning", Rect2(.3, .12, .4, .06), 18, HORIZONTAL_ALIGNMENT_CENTER)
 	_label("Feed", Rect2(.71, .05, .26, .23), 18, HORIZONTAL_ALIGNMENT_RIGHT)
 	_label("Speaking", Rect2(.035, .25, .25, .24), 18)
 	_label("Health", Rect2(.035, .63, .25, .05), 20)
@@ -242,6 +246,8 @@ func _label(key: String, rect: Rect2, size: int, align: HorizontalAlignment = HO
 func _process(delta: float) -> void:
 	_remaining = maxf(0, _remaining - delta)
 	_warning_left = maxf(0, _warning_left - delta)
+	_next_left = maxf(0, _next_left - delta)
+	_flash_clock += delta
 	for entry in _feed:
 		entry.left -= delta
 	while not _feed.is_empty() and _feed[0].left <= 0:
@@ -291,6 +297,7 @@ func _on_phase(phase: int, duration: float) -> void:
 		_multiplier = 1
 		_required = 0
 		_warning_left = 0
+		_next_left = 0
 		_warning_stage = 0
 		_result = ""
 		_labels.Prompt.text = ""
@@ -315,12 +322,15 @@ func _on_power(id: int, power: float, tier: int, multiplier: float) -> void:
 		_refresh()
 
 func _on_warning(stage: int, seconds: float) -> void:
+	_flash_clock = 0.0
 	_warning_stage = stage
 	_warning_left = seconds
 	_refresh()
 
-func _on_storm(stage: int, _center: Vector3, _radius: float, required: float, _seconds: float) -> void:
+func _on_storm(stage: int, _center: Vector3, _radius: float, required: float, seconds: float) -> void:
 	_required = required
+	_next_left = seconds
+	_flash_clock = 0.0
 	_warning_stage = stage
 	_warning_left = 0
 	_refresh()
@@ -390,7 +400,9 @@ func _refresh() -> void:
 	_labels.Cooldowns.visible = mage
 	_labels.Carry.visible = _role == Enums.Role.VILLAGER
 	_labels.Carry.text = "CARRYING · %s" % String(_carry).capitalize() if _carry != &"" else "HANDS EMPTY"
-	_labels.Power.text = "POWER %.1f · TIER %d · ×%.2f   /   STORM NEEDS %.1f" % [_power, _tier + 1, _multiplier, _required]
+	_labels.Power.text = "POWER %.1f · TIER %d · ×%.2f" % [_power, _tier + 1, _multiplier]
+	if _power < _required:
+		_labels.Power.text += "   /   STORM NEEDS %.1f" % _required
 	_layout_meter()
 	var cooldowns := PackedStringArray()
 	var abilities: Node = _local.call("get_ability", &"MageAbilities") if is_instance_valid(_local) and _local.has_method("get_ability") else null
@@ -400,7 +412,7 @@ func _refresh() -> void:
 		var left := float(abilities.call("cooldown_left", ability)) if abilities else 0.0
 		cooldowns.append("[%s] %s · %s" % [_key_names(binds[ability]), String(ability).replace("_", " ").capitalize(), "READY" if left <= 0 else "%.1fs" % left])
 	_labels.Cooldowns.text = "   ".join(cooldowns)
-	_labels.Warning.text = "FIRESTORM %d IN %d s" % [_warning_stage, ceili(_warning_left)] if _warning_left > 0 else ("FIRESTORM · STAGE %d" % _warning_stage if _required > 0 else "")
+	_labels.Warning.text = _storm_text()
 	var feed := PackedStringArray()
 	for entry in _feed:
 		feed.append(entry.text)
@@ -453,3 +465,30 @@ func _layout_meter() -> void:
 	_threshold.visible = _required > 0
 	_threshold.position = Vector2(_required / _meter.max_value * _meter.size.x, -4)
 	_threshold.size = Vector2(3, _meter.size.y + 8)
+
+
+## Storm status line. Danger (taking damage now) always shows, larger; otherwise the ring status only flashes
+## for STORM_FLASH_ON s every STORM_FLASH_EVERY s (and right when a ring or warning starts). Power is only
+## mentioned to a mage who is below the requirement; villagers never see it.
+func _storm_text() -> String:
+	var storm := GameEvents.system(&"firestorm") as FirestormManager
+	var active := storm != null and storm.stage > 0 and _phase == Enums.Phase.HUNT
+	_labels.Warning.add_theme_font_size_override("font_size", 18)
+	if active and is_instance_valid(_local) and bool(_local.get("is_alive")):
+		var danger := ""
+		if _role == Enums.Role.MAGE and _power < _required:
+			danger = "⚠ POWER TOO LOW — LOSING %d HP/s · NEED %.1f" % [int(storm.tuning.mage_damage_per_second), _required]
+		elif _role != Enums.Role.MAGE and not storm.is_inside((_local as Node3D).global_position):
+			danger = "🔥 IN THE FIRESTORM — LOSING %d HP/s · RUN INSIDE THE ZONE" % int(storm.tuning.damage_per_second)
+		if not danger.is_empty():
+			_labels.Warning.add_theme_font_size_override("font_size", 22)
+			return danger
+	if fmod(_flash_clock, STORM_FLASH_EVERY) >= STORM_FLASH_ON:
+		return ""
+	var rings := storm.ring_count() if storm else 0
+	var ring := (" · RING %d/%d" % [_warning_stage, rings]) if rings > 0 and _warning_stage > 0 else ""
+	if _warning_left > 0:
+		return "FIRESTORM SHRINKS IN %d s%s" % [ceili(_warning_left), ring]
+	if _next_left > 0 and _warning_stage > 0:
+		return "FIRESTORM%s · NEXT SHRINK IN %d s" % [ring, ceili(_next_left)]
+	return "FIRESTORM · FINAL ZONE" if _warning_stage > 0 else ""

@@ -10,7 +10,7 @@ var phase: int = Enums.Phase.LOBBY
 ## Server's seconds remaining, replicated at 10 Hz for the HUD.
 var time_left := 0.0
 ## TUNE: most mages the host can choose. A round always keeps at least one villager.
-const MAX_MAGES := 4
+const MAX_MAGES := 9 # CONTRACT: any ratio, but one villager always remains (see _draw_mages)
 
 ## Selected mage in the lobby (0 = random). During a round: the first mage (see mage_ids() for all).
 var mage_id := 0
@@ -67,7 +67,7 @@ func _ready() -> void:
 	NetworkManager.session_ended.connect(_on_session_ended)
 	NetworkManager.hosting_started.connect(_on_session_started)
 	NetworkManager.connected.connect(_on_session_started)
-	_start.pressed.connect(func() -> void: start_round(mage_id))
+	_start.pressed.connect(_on_start_pressed)
 	$UI/Lobby/Content/Explore.pressed.connect(_on_explore_town)
 	_pick.item_selected.connect(_on_mage_picked)
 	_count.max_value = MAX_MAGES
@@ -78,9 +78,9 @@ func _ready() -> void:
 	bots_label.text = "BOTS"
 	_bot_count = SpinBox.new()
 	_bot_count.min_value = 0
-	_bot_count.max_value = 5
+	_bot_count.max_value = NetworkManager.MAX_PLAYERS - 1
 	_bot_count.step = 1
-	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, 5)
+	_bot_count.value = clampi(int(NetworkManager.args.get("bots", 0)), 0, NetworkManager.MAX_PLAYERS - 1)
 	_bot_count.value_changed.connect(func(value: float):
 		if Net.is_server(self):
 			var bot_manager := GameEvents.system(&"bots")
@@ -149,6 +149,23 @@ func _process(delta: float) -> void:
 				_autostart_used = true
 				start_round(int(NetworkManager.args.get("mage-id", mage_id)))
 	_update_ui()
+
+
+## Host pressed START ROUND. Party mode is the default: everyone is mage once (the host's pick goes first).
+## Falls back to a single round when there is no scoring system (e.g. minimal test scenes).
+func _on_start_pressed() -> void:
+	var scoring := GameEvents.system(&"scoring")
+	if scoring == null or not Net.is_server(self):
+		start_round(mage_id)
+		return
+	var order: Array = []
+	for p in Players.all():
+		if p.peer_id != mage_id:
+			order.append(p.peer_id)
+	order.shuffle()
+	if mage_id != 0:
+		order.push_front(mage_id)
+	scoring.start_party(order)
 
 
 ## NET: server only. Starts from LOBBY with at least min_players. 0 uses the lobby pick or random.

@@ -179,6 +179,8 @@ func _start_next_round() -> void:
 	round_index += 1
 	print("[Score] Party round ", round_index, "/", mage_order.size(), " mage ", mage)
 	match_system.start_round(mage)
+	if match_system.phase == Enums.Phase.LOBBY: # WHY: a silent refusal here used to leave the party stuck in the lobby.
+		print("[Score] Party round ", round_index, " refused to start (players=", Players.all().size(), ")")
 
 
 func _on_registered(id: int, player_name: String) -> void:

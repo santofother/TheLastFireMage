@@ -4,7 +4,10 @@ extends Node3D
 ## Registered as GameEvents.system(&"spectator").
 ## NET: local only (each peer handles its own view). Reacts to GameEvents.player_died / player_revived /
 ## role_assigned for the local player. The corpse look is done by Player itself.
-## Public API: `is_spectating`, `enter_spectator()`, `exit_spectator()`, `camera`, `focus` (ghost position on the glass).
+## Public API: `is_spectating`, `enter_spectator()`, `exit_spectator()`, `camera`, `focus` (ghost position on the glass),
+## `remote_ghost_count()` (other spectators' ghosts currently shown here).
+## NET: spectating peers also broadcast their ghost position (`_rpc_ghost`, unreliable, ~10 Hz) so dead players
+## see each other on the glass. Only peers that are spectating draw those ghosts; living players never do.
 ## Signals: `spectating_changed(on)`.
 
 ## Fires when the local view enters or leaves the spectator camera.
@@ -48,6 +51,15 @@ var _pitch := -0.45
 var _prev_listener: Node3D
 var _own_peer := 0
 var _hint: Label
+var _remote := {} # peer_id -> {node: Node3D, anim: AnimationPlayer, clip, pos: Vector3, yaw: float, prev: Vector3, seen: float}
+var _send_left := 0.0
+var _ui_layer: CanvasLayer
+var _ping_clock := 0.0
+var _ping_left := 0.0
+var _ping_marks := {} # peer_id -> Label (local only)
+
+const _SEND_INTERVAL := 0.1
+const _REMOTE_TIMEOUT := 1.0
 
 
 func _enter_tree() -> void:
@@ -78,6 +90,8 @@ func enter_spectator() -> void:
 	_ghost.visible = true
 	_glass.visible = true
 	_hint.visible = true
+	_ping_clock = 3.0 # first ping shortly after dying, then every tuning.ping_interval
+	_ping_left = 0.0
 	_update_view()
 	camera.make_current()
 	VoiceManager.listener = camera # WHY: dead players keep proximity voice, heard from where they watch
@@ -102,6 +116,8 @@ func exit_spectator() -> void:
 	_ghost.visible = false
 	_glass.visible = false
 	_hint.visible = false
+	_clear_ping()
+	_clear_remote()
 	set_process(false)
 	print("[Spectator] exit peer=%d" % _own_peer)
 	spectating_changed.emit(false)
@@ -138,6 +154,7 @@ func _ensure_nodes() -> void:
 	_glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_glass)
 	var layer := CanvasLayer.new()
+	_ui_layer = layer
 	add_child(layer)
 	_hint = Label.new()
 	_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -170,8 +187,12 @@ func _update_items() -> void:
 func _build_ghost_model(me: Player) -> void:
 	for c in _ghost.get_children():
 		c.queue_free()
-	_ghost_anim = null
 	_ghost_clip = &""
+	_ghost_anim = _fill_ghost(_ghost, me)
+
+
+## Puts `player`'s villager model (or a translucent capsule) under `root`. Returns its AnimationPlayer or null.
+func _fill_ghost(root: Node3D, me: Player) -> AnimationPlayer:
 	var src := me.get_node_or_null("VillagerVisual/Model") as Node3D if me != null else null
 	if src != null and src.scene_file_path != "":
 		var model := (load(src.scene_file_path) as PackedScene).instantiate() as Node3D
@@ -179,9 +200,8 @@ func _build_ghost_model(me: Player) -> void:
 		# FIX(villager picker, Claude): the file path is always the red GLB, so reapply the player's chosen body.
 		if me.villager_skin != 0:
 			VillagerMeshSwap.apply(model.find_child("Skeleton3D", true, false) as Skeleton3D, VillagerSkins.scene(me.villager_skin))
-		_ghost.add_child(model)
-		_ghost_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
-		return
+		root.add_child(model)
+		return model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	var mesh := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
 	capsule.radius = 0.35
@@ -192,7 +212,8 @@ func _build_ghost_model(me: Player) -> void:
 	gm.albedo_color = Color(0.7, 0.85, 1.0, 0.45)
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh.material_override = gm
-	_ghost.add_child(mesh)
+	root.add_child(mesh)
+	return null
 
 
 func _animate_ghost(delta: float) -> void:
@@ -231,6 +252,121 @@ func _process(delta: float) -> void:
 	_update_items()
 	_animate_ghost(delta)
 	_last_focus = focus
+	_send_left -= delta
+	if _send_left <= 0.0 and multiplayer.has_multiplayer_peer() \
+			and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+		_send_left = _SEND_INTERVAL
+		_rpc_ghost.rpc(focus, _yaw)
+	_update_remote(delta)
+	_update_ping(delta)
+
+
+## Every tuning.ping_interval seconds all living players are marked on the dead player's screen for
+## tuning.ping_duration seconds (arrows clamp to the screen edge), so ghosts can find targets to throw at.
+## NET: local only; positions come from the normal synced player nodes.
+func _update_ping(delta: float) -> void:
+	_ping_clock -= delta
+	if _ping_clock <= 0.0:
+		_ping_clock = tuning.ping_interval
+		_ping_left = tuning.ping_duration
+		print("[Spectator] ping")
+	if _ping_left <= 0.0:
+		_clear_ping()
+		return
+	_ping_left -= delta
+	var size := get_viewport().get_visible_rect().size
+	var seen := {}
+	for p in Players.all():
+		if p.peer_id == _own_peer or not p.is_alive or p.role == Enums.Role.SPECTATOR:
+			continue
+		seen[p.peer_id] = true
+		var label: Label = _ping_marks.get(p.peer_id)
+		if label == null:
+			label = Label.new()
+			label.add_theme_font_size_override(&"font_size", 18)
+			label.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3))
+			label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+			label.add_theme_constant_override(&"outline_size", 6)
+			_ui_layer.add_child(label)
+			_ping_marks[p.peer_id] = label
+		var world: Vector3 = p.global_position + Vector3(0, 2.3, 0)
+		var screen := camera.unproject_position(world)
+		var behind := camera.is_position_behind(world)
+		if behind:
+			screen = size - screen
+		screen = screen.clamp(Vector2(40, 60), size - Vector2(140, 60))
+		var dist := roundi(camera.global_position.distance_to(p.global_position))
+		label.text = "◆ %s %dm" % [p.display_name, dist]
+		label.position = screen
+		label.modulate.a = clampf(_ping_left, 0.0, 1.0)
+	for id in _ping_marks.keys():
+		if not seen.has(id):
+			_ping_marks[id].queue_free()
+			_ping_marks.erase(id)
+
+
+func _clear_ping() -> void:
+	for id in _ping_marks:
+		_ping_marks[id].queue_free()
+	_ping_marks.clear()
+
+
+## Number of other spectators' ghosts drawn on this peer (test hook).
+func remote_ghost_count() -> int:
+	return _remote.size()
+
+
+# NET: any spectating peer -> everyone. Receivers draw it only while they spectate themselves.
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func _rpc_ghost(pos: Vector3, yaw: float) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if not is_spectating or id == _own_peer:
+		return
+	var sender := Players.get_player(id) as Player
+	if sender != null and sender.is_alive and sender.role != Enums.Role.SPECTATOR:
+		return # WHY: a late packet from a peer that was just revived
+	var entry: Dictionary = _remote.get(id, {})
+	if entry.is_empty():
+		var node := Node3D.new()
+		node.top_level = true
+		add_child(node)
+		entry = {"node": node, "anim": _fill_ghost(node, sender), "clip": &"", "pos": pos, "prev": pos, "yaw": yaw}
+		node.global_position = pos
+		_remote[id] = entry
+		print("[Spectator] sees ghost %d" % id)
+	entry.pos = pos
+	entry.yaw = yaw
+	entry.seen = Time.get_ticks_msec() / 1000.0
+
+
+func _update_remote(delta: float) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	for id in _remote.keys():
+		var entry: Dictionary = _remote[id]
+		var node: Node3D = entry.node
+		if now - float(entry.seen) > _REMOTE_TIMEOUT or not is_instance_valid(node):
+			if is_instance_valid(node):
+				node.queue_free()
+			_remote.erase(id)
+			continue
+		var target: Vector3 = entry.pos
+		node.global_position = node.global_position.lerp(target, clampf(delta * 12.0, 0.0, 1.0))
+		node.global_rotation = Vector3(0, lerp_angle(node.global_rotation.y, float(entry.yaw), clampf(delta * 12.0, 0.0, 1.0)), 0)
+		var anim: AnimationPlayer = entry.anim
+		if anim != null:
+			var speed := Vector2(node.global_position.x - entry.prev.x, node.global_position.z - entry.prev.z).length() / maxf(delta, 0.0001)
+			var clip: StringName = &"sprint" if speed > 12.0 else (&"run" if speed > 0.5 else &"idle")
+			if clip != entry.clip and anim.has_animation(clip):
+				entry.clip = clip
+				anim.play(clip, 0.12)
+		entry.prev = node.global_position
+
+
+func _clear_remote() -> void:
+	for id in _remote:
+		if is_instance_valid(_remote[id].node):
+			_remote[id].node.queue_free()
+	_remote.clear()
 
 
 func _update_view() -> void:

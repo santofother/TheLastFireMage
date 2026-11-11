@@ -9,9 +9,9 @@ extends RefCounted
 
 ## id, label, targets = [[TuningClassName, property], ...], area = factor is applied to a radius (value * f^2).
 const DEFS: Array[Dictionary] = [
-	{"id": "circle", "label": "Final circle size", "targets": [["FirestormTuning", "map_area"]], "area": true},
+	{"id": "circle", "label": "Final circle size", "targets": [["FirestormTuning", "final_ring_fraction"]], "area": true},
 	{"id": "length", "label": "Total match length", "targets": [["MatchTuning", "hunt_time"],
-		["FirestormTuning", "start_time"], ["FirestormTuning", "second_stage_delay"], ["FirestormTuning", "final_hold_time"]]},
+		["FirestormTuning", "start_time"], ["FirestormTuning", "final_hold_time"]]},
 	{"id": "headstart", "label": "Hiding head start", "targets": [["MatchTuning", "head_start_time"]]},
 	{"id": "health", "label": "Player health", "targets": [["PlayerTuning", "max_hp"]]},
 	{"id": "fall", "label": "Fall damage", "targets": [["PlayerTuning", "fall_damage_scale"]]},

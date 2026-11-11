@@ -21,7 +21,7 @@ signal broke
 const GRAVITY := 9.8
 const KILL_Y := -20.0
 ## Items above this height are on the dead players' layer and only ghosts can see them.
-const DEAD_LAYER_MIN_Y := 25.0
+const DEAD_LAYER_MIN_Y := 21.0 # CONTRACT: below SpectatorTuning.camera_height (24), above the tallest roof (~19)
 
 ## Item type, set at spawn on every peer.
 var kind: StringName = &"bucket"
@@ -90,14 +90,15 @@ func _fly(delta: float) -> void: # NET: server only
 	velocity.y -= GRAVITY * delta
 	var from := global_position
 	var to := from + velocity * delta
-	var mage := _mage_hit(from, to)
-	if mage != null:
+	var target := _target_hit(from, to)
+	if target != null:
 		global_position = to
-		hit_mage.emit(mage)
+		if target.role == Enums.Role.MAGE:
+			hit_mage.emit(target)
 		var manager := GameEvents.system(&"counterplay") as CounterplayManager
 		if manager:
-			manager.apply_item_hit(self, mage)
-		_break("hit mage")
+			manager.apply_item_hit(self, target)
+		_break("hit %s" % ("mage" if target.role == Enums.Role.MAGE else "villager"))
 		return
 	if break_chance > 0.0 and _villager_hit(from, to):
 		print("[Counterplay] %s %s caught by a living villager" % [kind, name])
@@ -140,11 +141,12 @@ func _villager_hit(from: Vector3, to: Vector3) -> bool:
 	return false
 
 
-## First living mage whose body the segment passes through (cylinder around the player's axis).
-func _mage_hit(from: Vector3, to: Vector3) -> Node:
+## First stunnable player whose body the segment passes through (cylinder around the player's axis):
+## any living mage, or another living villager when a living villager threw it (never the thrower).
+func _target_hit(from: Vector3, to: Vector3) -> Node:
 	var manager := GameEvents.system(&"counterplay") as CounterplayManager
 	var radius := (manager.tuning.hit_radius if manager else 0.45) + 0.3
-	for m in Players.alive_with_role(Enums.Role.MAGE):
+	for m in CounterplayManager.stun_targets(thrower_id):
 		var base: Vector3 = m.global_position
 		var height: float = m.tuning.height if m.tuning else 1.8
 		for t in [0.0, 0.5, 1.0]:
