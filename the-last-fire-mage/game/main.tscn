@@ -1,7 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dolkrqu6m4ndi"]
 
-[ext_resource type="Script" path="res://game/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://game/ui/menu/menu.gd" id="2_menu"]
+[ext_resource type="Script" uid="uid://dqyfsg2ur7ayx" path="res://game/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://cc7ak36yl2sck" path="res://game/ui/menu/menu.gd" id="2_menu"]
 [ext_resource type="PackedScene" path="res://game/match/match_manager.tscn" id="3_match"]
 [ext_resource type="PackedScene" path="res://game/chicken/chicken_manager.tscn" id="4_chickens"]
 [ext_resource type="PackedScene" path="res://game/bots/bot_manager.tscn" id="5_bots"]
@@ -12,7 +12,7 @@
 [ext_resource type="PackedScene" path="res://game/counterplay/counterplay_manager.tscn" id="10_counterplay"]
 [ext_resource type="PackedScene" path="res://game/scoring/scoring_manager.tscn" id="11_scoring"]
 [ext_resource type="PackedScene" path="res://game/ui/hud/hud.tscn" id="12_hud"]
-[ext_resource type="Script" path="res://game/props/breakable_manager.gd" id="13_breakables"]
+[ext_resource type="Script" uid="uid://dl8syxem7svll" path="res://game/props/breakable_manager.gd" id="13_breakables"]
 [ext_resource type="PackedScene" path="res://game/audio/audio_director.tscn" id="14_audio"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
@@ -25,54 +25,54 @@ background_mode = 2
 sky = SubResource("sky")
 tonemap_mode = 2
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node3D" unique_id=750034229]
 script = ExtResource("1_main")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." groups=["world_environment"]]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=197558505 groups=["world_environment"]]
 environment = SubResource("env")
 
-[node name="Sun" type="DirectionalLight3D" parent="." groups=["sun"]]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=201406411 groups=["sun"]]
 transform = Transform3D(1, 0, 0, 0, 0.643, -0.766, 0, 0.766, 0.643, 0, 10, 0)
 shadow_enabled = true
 
-[node name="Map" type="Node3D" parent="."]
+[node name="Map" type="Node3D" parent="." unique_id=973645091]
 
-[node name="Players" type="Node3D" parent="."]
+[node name="Players" type="Node3D" parent="." unique_id=114659256]
 
-[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
+[node name="PlayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1089795678]
 spawn_path = NodePath("../Players")
 
-[node name="Systems" type="Node" parent="."]
+[node name="Systems" type="Node" parent="." unique_id=90454715]
 
-[node name="Match" parent="Systems" instance=ExtResource("3_match")]
+[node name="Match" parent="Systems" unique_id=1412597406 instance=ExtResource("3_match")]
 
-[node name="Chickens" parent="Systems" instance=ExtResource("4_chickens")]
+[node name="Chickens" parent="Systems" unique_id=1661932056 instance=ExtResource("4_chickens")]
 
-[node name="Interact" parent="Systems" instance=ExtResource("6_interact")]
+[node name="Interact" parent="Systems" unique_id=997931207 instance=ExtResource("6_interact")]
 
-[node name="Power" parent="Systems" instance=ExtResource("8_power")]
+[node name="Power" parent="Systems" unique_id=1706107352 instance=ExtResource("8_power")]
 
-[node name="Firestorm" parent="Systems" instance=ExtResource("9_firestorm")]
+[node name="Firestorm" parent="Systems" unique_id=2127448599 instance=ExtResource("9_firestorm")]
 
-[node name="Counterplay" parent="Systems" instance=ExtResource("10_counterplay")]
+[node name="Counterplay" parent="Systems" unique_id=110564414 instance=ExtResource("10_counterplay")]
 
-[node name="Scoring" parent="Systems" instance=ExtResource("11_scoring")]
+[node name="Scoring" parent="Systems" unique_id=1971909813 instance=ExtResource("11_scoring")]
 
-[node name="Breakables" type="Node" parent="Systems"]
+[node name="Breakables" type="Node" parent="Systems" unique_id=1958638034]
 script = ExtResource("13_breakables")
 
-[node name="Audio" parent="Systems" instance=ExtResource("14_audio")]
+[node name="Audio" parent="Systems" unique_id=1687660285 instance=ExtResource("14_audio")]
 
-[node name="Spectator" parent="Systems" instance=ExtResource("7_spectator")]
+[node name="Spectator" parent="Systems" unique_id=748070389 instance=ExtResource("7_spectator")]
 
-[node name="Bots" parent="Systems" instance=ExtResource("5_bots")]
+[node name="Bots" parent="Systems" unique_id=2061050760 instance=ExtResource("5_bots")]
 
-[node name="HUD" parent="." instance=ExtResource("12_hud")]
+[node name="HUD" parent="." unique_id=1448257468 instance=ExtResource("12_hud")]
 
-[node name="MenuCamera" type="Camera3D" parent="."]
+[node name="MenuCamera" type="Camera3D" parent="." unique_id=1506798963]
 transform = Transform3D(1, 0, 0, 0, 0.707, -0.707, 0, 0.707, 0.707, 0, 26, 26)
 current = true
 
-[node name="Menu" type="CanvasLayer" parent="."]
+[node name="Menu" type="CanvasLayer" parent="." unique_id=46019158]
 layer = 22
 script = ExtResource("2_menu")

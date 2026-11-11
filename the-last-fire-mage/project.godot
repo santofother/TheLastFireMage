@@ -28,6 +28,7 @@ SteamManager="*res://core/steam_manager.gd"
 VoiceManager="*res://core/voice_manager.gd"
 DebugOverlay="*res://core/debug_overlay.gd"
 GameEvents="*res://game/common/game_events.gd"
+PlaytestLog="*res://game/telemetry/playtest_log.gd"
 
 [display]
 
