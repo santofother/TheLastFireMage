@@ -7,6 +7,14 @@ extends Node
 ## app_userdata/The Last Fire Mage/playtests/. Read them with tools/playtest_report.py.
 ## NET: server only (gated on Net.is_online + multiplayer.is_server). Listens to GameEvents; contract-free.
 
+## Recording on/off. Default OFF; toggled by the menu's settings checkbox (saved in settings.cfg).
+## Turning it off closes the current file; turning it on starts a new one at the next event.
+var enabled := false:
+	set(v):
+		enabled = v
+		if not v:
+			_close()
+
 const SAMPLE_SECONDS := 5.0 ## TUNE: how often positions/alive state are sampled during a round.
 
 var _file: FileAccess
@@ -21,11 +29,7 @@ var _names: Dictionary = {}
 
 
 func _ready() -> void:
-	# WHY: headless runs are tests/bots; don't litter the user's real playtest folder unless a dir is given.
-	if NetworkManager.args.has("no-playtest-log") \
-			or (DisplayServer.get_name() == "headless" and not NetworkManager.args.has("playtest-dir")):
-		set_process(false)
-		return
+	enabled = NetworkManager.args.has("playtest-dir") # tests; players use the in-game setting
 	GameEvents.phase_changed.connect(_on_phase)
 	GameEvents.role_assigned.connect(func(id: int, role: int) -> void:
 		_roles[id] = role
@@ -145,7 +149,7 @@ func _name(id: int) -> String:
 
 
 func _emit(kind: String, data: Dictionary) -> void:
-	if not Net.is_online(self) or not multiplayer.is_server():
+	if not enabled or not Net.is_online(self) or not multiplayer.is_server():
 		return
 	if _file == null and not _open():
 		return

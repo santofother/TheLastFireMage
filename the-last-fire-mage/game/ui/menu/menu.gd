@@ -26,6 +26,7 @@ var _port_edit: LineEdit
 var _ip_edit: LineEdit
 var _mic_option: OptionButton
 var _ptt_check: CheckButton
+var _log_check: CheckButton # host-only playtest recording, default off
 var _mic_bar: ProgressBar
 # FIX(S18, Claude): user asked for separate game / player-voice / mic volume settings.
 var _volume_sliders: Dictionary = {} # &"game"|&"player"|&"mic" -> HSlider
@@ -182,6 +183,9 @@ func _load_settings() -> void:
 		AudioDirector.set_volume(kind, v)
 		_volume_sliders[kind].set_value_no_signal(v * 100.0)
 		_volume_sliders[kind].get_meta(&"pct").text = "%d%%" % roundi(v * 100.0)
+	if not NetworkManager.args.has("playtest-dir"):
+		PlaytestLog.enabled = cfg.get_value("debug", "playtest_log", false)
+	_log_check.set_pressed_no_signal(PlaytestLog.enabled)
 	var dev: String = cfg.get_value("voice", "input_device", "Default")
 	for i in _mic_option.item_count:
 		if _mic_option.get_item_text(i) == dev:
@@ -196,6 +200,7 @@ func _save_settings() -> void:
 	if not NetworkManager.args.has("villager"):
 		_saved_skin = VillagerSkins.local
 	cfg.set_value("player", "villager", _saved_skin)
+	cfg.set_value("debug", "playtest_log", PlaytestLog.enabled)
 	cfg.set_value("voice", "push_to_talk", VoiceManager.push_to_talk)
 	cfg.set_value("voice", "input_device", AudioServer.input_device)
 	for kind: StringName in _volume_sliders:
@@ -319,6 +324,13 @@ func _build_ui() -> void:
 	settings.add_child(_volume_row("Game", &"game", "Music, effects and ambience"))
 	settings.add_child(_volume_row("Players", &"player", "Other players' voices"))
 	settings.add_child(_volume_row("My mic", &"mic", "How loud others hear you"))
+	_log_check = CheckButton.new()
+	_log_check.text = "Record playtest log (host only, saved on this PC)"
+	_log_check.tooltip_text = "Writes match events to a file in the game's user folder when you host. Nothing is sent to other players."
+	_log_check.toggled.connect(func(on):
+		PlaytestLog.enabled = on
+		_save_settings())
+	settings.add_child(_log_check)
 	var back := _button("BACK", func():
 		_show(false)
 		if not NetworkManager.is_in_session():
