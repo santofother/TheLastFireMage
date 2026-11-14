@@ -28,3 +28,5 @@ Result: DONE (needs an online playtest to confirm the feel)
 - Remote bodies are drawn 100 ms in the past (also on the server). Bump validation uses `Player.net_position()`
   (newest snapshot); other server range checks are loose enough, but use net_position() if one feels off.
 - Voice upload roughly 1.5x while talking (FEC). If bandwidth hurts on the host, try `--voice-no-fec`.
+- Remote copies ignore in-flight snapshots far from a teleport target for 1 s (else they slid back to pre-teleport spots).
+- Pre-existing flake (also on main): match_test sometimes finds a villager ~0.5 m off its spawn (owner drift on landing).

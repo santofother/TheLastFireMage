@@ -142,6 +142,8 @@ var _pending_look := Vector2.ZERO
 var _default_layer := 0
 var _snaps: Array = [] # remote only: [sender_time, position, quaternion], oldest first
 var _clock_offset := INF # remote only: local clock - sender clock (+ fastest latency seen), min-filtered
+var _teleport_pos := Vector3.ZERO # remote only: ignore in-flight pre-teleport snapshots until data is near here
+var _teleport_until := 0.0
 
 const NET_INTERP_DELAY := 0.1 # TUNE seconds remote players are rendered in the past (2 sync intervals)
 const NET_MAX_EXTRAPOLATE := 0.15 # TUNE seconds to keep moving on a stalled connection before holding still
@@ -294,6 +296,9 @@ func _rpc_teleport(pos: Vector3) -> void:
 		platform_floor_layers &= ~2
 		global_position = pos
 		_snaps.clear() # remote copies: don't slide back toward pre-teleport snapshots
+		if not is_multiplayer_authority():
+			_teleport_pos = position
+			_teleport_until = _net_now() + 1.0
 		_reset_movement()
 		_refill_stamina()
 
@@ -443,6 +448,10 @@ func _set_net_state(v: PackedFloat32Array) -> void:
 	# Min-filtered clock offset: tracks the fastest delivery; drifts up slowly if the route gets slower.
 	var off := _net_now() - t
 	_clock_offset = off if off < _clock_offset else _clock_offset + (off - _clock_offset) * 0.02
+	if _net_now() < _teleport_until:
+		if pos.distance_to(_teleport_pos) > 1.5:
+			return # sent before the owner applied the teleport
+		_teleport_until = 0.0
 	if not _snaps.is_empty():
 		var last: Array = _snaps[_snaps.size() - 1]
 		if t <= float(last[0]):
