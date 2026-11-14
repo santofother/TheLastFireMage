@@ -191,7 +191,7 @@ func _check_dread() -> void:
 	await _wait(1.5)
 	_check(d.active[&"heartbeat"] and d.spotted_count == spots, "mage released in view: dread on, no stinger")
 	director._on_phase_changed(Enums.Phase.LOBBY, 0.0)
-	# Lingering mage: layers settle 40 % quieter, and come back to full after a calm spell.
+	# Lingering mage: layers settle to dread_settle_level, and come back to full after a calm spell.
 	var t := DreadTracker.new(director.tuning)
 	for i in 60: # 15 s with the mage 10 m away in view
 		t.sense(true, 10.0, true, 0.25)

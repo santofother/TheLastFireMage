@@ -109,8 +109,10 @@ Godot binary: `$GODOT`, default `/Users/santofothergill/Downloads/Godot.app/Cont
   `rm -f windows.zip macos.zip && zip -r -X windows.zip windows && ditto -c -k --keepParent macos macos.zip`, then
   `gh release create vX.Y.Z windows.zip macos.zip --title "Version X.Y.Z" --notes "<what changed>"`.
   Pick the next version after `gh release list`. Only export from `main` unless the user asks otherwise.
+  **Before exporting, set `NetworkManager.GAME_VERSION` (`core/network_manager.gd`) to that version and commit**:
+  the export stamps the git commit next to it, and hosts refuse clients on a different build.
 - CLI args (after `--`): `--host`, `--join=IP`, `--port=N`, `--name=X`, `--no-steam`, `--autotest=SEC`,
-  `--quit-after=SEC`, `--test-target=x,z`, `--test-voice`, `--voice-loopback`
+  `--quit-after=SEC`, `--build-id=X` (fake build for the join check), `--test-target=x,z`, `--test-voice`, `--voice-loopback`
 
 ## Conventions
 - Networking: the server spawns players via `MultiplayerSpawner` (spawn_function, data = {id,name,pos}).

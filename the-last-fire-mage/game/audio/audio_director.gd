@@ -9,7 +9,7 @@ extends Node
 ## - movement noise: a FootstepEmitter on every player; chicken squawks when a mage gets close; hide-spot creaks.
 ## - mage cues: casts are detected from MageAbilities cooldowns (no edits to game/mage/), hits/kills from GameEvents.
 ## - dread (local alive villager, LINE OF SIGHT ONLY, never while the mage is frozen): DreadTracker layers +
-##   heartbeat, 40 % quieter once the mage lingers (DreadTracker.settle); mage gets a hunter bed,
+##   heartbeat, 80 % quieter once the mage lingers (DreadTracker.settle); mage gets a hunter bed,
 ##   the dead get a ghost bed.
 ## - music arc: cheerful folk stems -> dark stems + drones by `match_dread` (firestorm stage, mage tier, hunt time).
 ## - firestorm: a roar emitter slides along the ring at the point nearest the listener; warning bells, stage hits,
@@ -631,7 +631,7 @@ func _sense_dread(dt: float, listener: Node3D) -> void:
 
 func _update_dread_mix(delta: float) -> void:
 	dread.fade(delta)
-	# `settle` drops the layers to dread_settle_level (60 %) once the mage has hung around for a while.
+	# `settle` drops the layers to dread_settle_level (20 %) a couple of seconds into a sighting.
 	var k := dread.settle
 	if _dread_stream:
 		_dread_stream.set_sync_stream_volume(0, _lin_db(dread.levels[&"drone"] * k))

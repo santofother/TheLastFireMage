@@ -80,6 +80,20 @@ func _ready() -> void:
 	_check(mgr.camera.global_position.y > mgr.tuning.camera_height, "camera above the glass layer")
 	_check(is_equal_approx(mgr.focus.y, mgr.tuning.camera_height), "ghost on glass layer")
 	_check(VoiceManager.listener == mgr.camera, "voice listener follows spectator camera")
+	# Ghost ping: a living villager gets an on-screen marker (playtest 2026-11-14 said "ping not working").
+	var other := preload("res://game/player/player.tscn").instantiate() as Player
+	other.peer_id = 2
+	other.name = "2"
+	other.position = Vector3(12, 0, -4)
+	add_child(other)
+	other.set_role(Enums.Role.VILLAGER)
+	mgr._ping_clock = 0.0
+	mgr._update_ping(0.1)
+	var mark: Label = mgr._ping_marks.get(2)
+	_check(mark != null and mark.is_inside_tree() and mark.text.contains(other.display_name) and mark.modulate.a > 0.5,
+		"ghost ping marks the living villager")
+	_check(not mgr._ping_marks.has(1), "ghost ping skips yourself")
+	other.queue_free()
 	var before := mgr.focus
 	mgr.move_focus(Vector3(3, 0, 0))
 	_check(mgr.focus.x == before.x + 3.0, "free movement")

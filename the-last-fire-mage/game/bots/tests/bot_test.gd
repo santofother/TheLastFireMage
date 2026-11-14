@@ -58,11 +58,20 @@ func _run() -> void:
 				if _positions.has("local") and local.global_position.distance_to(_positions["local"]) > 0.1:
 					_moved["local"] = true
 				_positions["local"] = local.global_position
+		# Host side: the client's --bot walks, so its (interpolated net_state) copy here must move too.
+		if multiplayer.is_server():
+			for p in Players.all():
+				if not p.is_bot and not p.is_local():
+					if _positions.has("remote") and p.global_position.distance_to(_positions["remote"]) > 0.1:
+						_moved["remote"] = true
+					_positions["remote"] = p.global_position
 		await get_tree().create_timer(0.25).timeout
 	for i in int(NetworkManager.args.get("bot-test-count", 4)):
 		_check(_moved.has(Players.BOT_ID_BASE + i), "each server bot moves on both peers")
 	if NetworkManager.args.has("bot"):
 		_check(_moved.has("local"), "client bot actually moves")
+	if multiplayer.is_server():
+		_check(_moved.has("remote"), "host sees the client's player move")
 	print("[TEST] BOT PASSED" if not _failed else "[TEST] BOT FAILED")
 	# WHY: let the other peer finish its probe before normal teardown.
 	await get_tree().create_timer(2.0).timeout
