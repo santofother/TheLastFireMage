@@ -51,6 +51,14 @@ extends Tuning
 @export var dread_fade_in := 1.5 # TUNE seconds 0 -> 1
 @export var dread_fade_out := 3.0 # TUNE seconds 1 -> 0
 @export var dread_spotted_cooldown := 12.0 # TUNE seconds between "spotted" stingers
+## User 2026-11-13: the first approach is scary, a mage that hangs around got annoying. After `dread_settle_after`
+## seconds of continuous dread the layers fade to `dread_settle_level` (0.6 = 40 % quieter); full again after
+## `dread_settle_reset` seconds with no dread. The "spotted" stinger is never lowered.
+@export var dread_settle_after := 8.0 # TUNE seconds
+@export var dread_settle_level := 0.6 # TUNE linear volume of the lingering layers
+@export var dread_settle_fade := 3.0 # TUNE seconds to fade down / back up
+@export var dread_settle_reset := 10.0 # TUNE seconds without dread before the next approach is full volume
+@export var dread_release_grace := 3.0 # TUNE seconds after the mage is released with no "spotted" stinger
 @export var heartbeat_slow_pitch := 0.85 # TUNE at the edge of the heartbeat range
 @export var heartbeat_fast_pitch := 1.9 # TUNE with the mage on top of you
 

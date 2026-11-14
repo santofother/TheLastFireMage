@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ## Public API: `LAYERS`, `active` (layer -> bool), `levels` (layer -> 0..1, faded), `los` (debounced),
 ## `spotted_count`, `sense(has_mage, distance, raw_los, dt) -> bool` (true = play the "spotted" stinger),
-## `fade(dt)`, `reset()`, `active_names()`.
+## `fade(dt)`, `reset()`, `active_names()`, `settle` (0.6..1 volume for lingering dread), `mute_stinger(sec)`.
 
 const LAYERS: Array[StringName] = [&"drone", &"heartbeat", &"strings", &"chase"]
 
@@ -21,10 +21,14 @@ var los := false
 var distance := INF
 ## Times the "spotted" stinger fired (tests/debug).
 var spotted_count := 0
+## Volume multiplier for the layers: 1.0 on a fresh approach, tuning.dread_settle_level once the mage lingers.
+var settle := 1.0
 
 var _los_timer := 0.0
 var _chase_left := 0.0
 var _spotted_cooldown := 0.0
+var _engaged := 0.0 # seconds of continuous dread
+var _calm := 0.0 # seconds with no dread layer active
 
 
 func _init(t: AudioTuning) -> void:
@@ -40,6 +44,14 @@ func reset() -> void:
 	distance = INF
 	_los_timer = 0.0
 	_chase_left = 0.0
+	settle = 1.0
+	_engaged = 0.0
+	_calm = 0.0
+
+
+## No "spotted" stinger for the next `seconds` (e.g. right after the mage is released).
+func mute_stinger(seconds: float) -> void:
+	_spotted_cooldown = maxf(_spotted_cooldown, seconds)
 
 
 ## One sensing tick. `force_spot` = the mage did something loud nearby (ignite). Returns true when the
@@ -78,6 +90,18 @@ func fade(dt: float) -> void:
 		var target := 1.0 if active[l] else 0.0
 		var rate := 1.0 / (tuning.dread_fade_in if target > levels[l] else tuning.dread_fade_out)
 		levels[l] = move_toward(float(levels[l]), target, rate * dt)
+	var any := false
+	for l in LAYERS:
+		any = any or bool(active[l])
+	if any:
+		_engaged += dt
+		_calm = 0.0
+	else:
+		_calm += dt
+		if _calm >= tuning.dread_settle_reset:
+			_engaged = 0.0
+	var want := tuning.dread_settle_level if _engaged >= tuning.dread_settle_after else 1.0
+	settle = move_toward(settle, want, dt / maxf(tuning.dread_settle_fade, 0.01))
 
 
 ## Names of active layers, for log lines.

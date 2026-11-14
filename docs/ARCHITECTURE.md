@@ -207,10 +207,12 @@ changes game state. Menu (`game/ui/menu/`, head engineer) owns Esc and the mouse
 
 ## Voice
 `core/voice_manager.gd` + `core/voice/` (S12) stay game-agnostic. Capture is 16 kHz mono, sent as IMA ADPCM
-(~65 kbit/s; raw PCM fallback via `--voice-raw`), RPC `_voice_packet(data, codec, group)`, unreliable_ordered, channel 2.
-Receivers have a jitter buffer. Loudness tuning (MIC_GAIN 12, 8 m / 45 m falloff, `max_distance = 0`) is a contract.
+(~65 kbit/s; raw PCM fallback via `--voice-raw`), RPC `_voice_packet(seq, data, codec, red, group)`, UNRELIABLE
+(not ordered), channel 2. `red` = 8 kHz ADPCM copy of chunk seq-1 (FEC, ~100 kbit/s total; `--voice-no-fec` turns it off).
+Receivers reorder by `seq`, rebuild single losses from `red`, conceal the rest, and size an adaptive jitter buffer
+(60..250 ms) from measured arrival jitter. Loudness tuning (MIC_GAIN 12, 8 m / 45 m falloff, `max_distance = 0`) is a contract.
 Game hooks: `register_speaker(peer_id, player, node)`, `listener` (set by Player),
-`set_speaker_effect(peer_id, preset, strength)` (presets `mage deep distort cave none`; S13 PowerManager drives `mage`),
+`set_speaker_effect(peer_id, preset, strength)` (presets `mage deep distort cave none`; unused since the user removed the mage voice effect, 2026-11-13),
 `set_voice_group(peer_id, group)` for the LOCAL peer (`alive`/`dead`; S11 SpectatorManager calls it) with the
 data-driven `voice_rules` table (`set_voice_rule`). The game calls them; `core/` knows nothing about mages or death.
 

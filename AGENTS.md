@@ -119,7 +119,7 @@ Godot binary: `$GODOT`, default `/Users/santofothergill/Downloads/Godot.app/Cont
   timers, scores) are decided by the server only.**
 - `core/` hooks: signals `player_registered`, `peer_left`, `session_ended`; `VoiceManager.register_speaker()`
   and `VoiceManager.listener`.
-- Voice RPC: `VoiceManager._voice_packet`, unreliable_ordered, channel 2.
+- Voice RPC: `VoiceManager._voice_packet(seq, data, codec, red, group)`, unreliable (receiver reorders by seq), channel 2.
 - Mic capture uses the Godot 4.5+ direct API (`AudioServer.set_input_device_active` / `get_input_frames`).
   Don't go back to AudioStreamMicrophone + capture bus: routed into a muted bus, it captured nothing.
 - Log with prefixes `[Net]`, `[Steam]`, `[Game]`, `[TEST]` (new systems add their own, e.g. `[Match]`,

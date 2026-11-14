@@ -108,7 +108,7 @@ Pillars: chaotic, social (proximity voice), risky parkour, escalating mage, comp
 | Item stun | 1 s (guess) |
 
 ## Voice
-- Proximity chat for living and dead. Mage voice is distorted, more so as power rises.
+- Proximity chat for living and dead. Mage voice is NOT distorted (user decision 2026-11-13: it sounded glitchy online).
 
 | Number | Value |
 |---|---|

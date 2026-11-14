@@ -111,8 +111,8 @@ func _rpc_state(mage_ids: Array, power: float, tier: int) -> void:
 	if _mages.is_empty():
 		GameEvents.power_changed.emit(0, _power, _tier, multiplier())
 		return
-	# FIX(S12, Claude): mage voice distortion grows with power (0.35 at start -> 1.0 at the top threshold).
-	var top := maxf(0.001, tuning.tier_thresholds[tuning.tier_thresholds.size() - 1])
+	# WHY: the mage's voice used to get pitch-down + distortion + reverb (S12). Playtesters heard it as crackly,
+	# "weird bits" over the network, so the user asked for it to be removed: the mage now sounds like everyone else.
+	# (VoiceManager.set_speaker_effect stays available if a cleaner effect is wanted later.)
 	for mage in _mages:
 		GameEvents.power_changed.emit(mage, _power, _tier, multiplier())
-		VoiceManager.set_speaker_effect(mage, &"mage", lerpf(0.35, 1.0, clampf(_power / top, 0.0, 1.0)))

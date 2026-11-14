@@ -6,7 +6,11 @@ extends CharacterBody3D
 ##
 ## NET: spawned by Main's MultiplayerSpawner on the server (data {id, name, pos, bot}). Node name = peer id.
 ## Multiplayer authority = owning peer (client-authoritative movement); local bots (S07) use authority 1.
-## `Health` child is always server-authoritative. Position/rotation replicate via `Sync` (20 Hz).
+## `Health` child is always server-authoritative. Position/rotation replicate via `Sync` (20 Hz) as one timestamped
+## snapshot (`net_state`); remote peers buffer snapshots and render NET_INTERP_DELAY in the past, interpolating
+## between them, so other players move (and therefore animate) smoothly online.
+# WHY: raw position replication snapped remote players 20x a second; the visuals read speed from those jumps,
+# so walk/run animations stuttered and flipped to idle between packets, worse with internet jitter.
 ## Server-side effects on movement (stun, lock, teleport, knockback, speed) are public funcs the SERVER
 ## calls; they RPC to every peer and the owning peer applies them.
 ##
@@ -14,7 +18,8 @@ extends CharacterBody3D
 ## - vars: `peer_id`, `display_name`, `is_bot`, `role` (Enums.Role), `is_alive`, `velocity` (built-in),
 ##   `input` (PlayerInput), `input_driver`, `tuning` (PlayerTuning), `health`, `carry_socket`, `abilities`,
 ##   `camera_rig`, `camera`, `voice`, `stamina` (owner only)
-## - local (call on every peer): `set_role(role)`, `is_local()`, `can_control()`, `get_ability(name)`
+## - local (call on every peer): `set_role(role)`, `is_local()`, `can_control()`, `get_ability(name)`,
+##   `net_position()` (newest received position, no interpolation delay)
 ## - server only: `stun(s)`, `set_input_lock(reason, on)`, `teleport(pos)`, `apply_knockback(v)`,
 ##   `set_speed_modifier(source, mult)`
 ## - downed villagers: `bleed_out_left`, `being_revived` (all peers), `stun_time_left()`
@@ -96,6 +101,11 @@ var is_airborne := false
 ## Replicated: metres the feet are currently pulled up by a mid-air crouch (0 = not tucked).
 # NET: owner peer writes; every peer sizes its capsule and offsets its visuals from it.
 var air_tuck_lift := 0.0
+## Replicated movement snapshot [send_time, px, py, pz, qx, qy, qz, qw]. Owner writes it every physics tick.
+# NET: owner peer writes; remote peers buffer and interpolate (see _net_interpolate). CONTRACT: this replaces
+# the old raw `position`/`rotation` replication; don't add those back to Sync.
+var net_state := PackedFloat32Array():
+	set = _set_net_state
 ## Vertical offset for the character model: keeps the head still during a tuck and smooths step-ups.
 var visual_y_offset := 0.0
 ## Seconds until a downed villager bleeds out. Counts on every peer for the HUD; the server decides the death.
@@ -130,6 +140,12 @@ var _speed_mods: Dictionary = {} # StringName source -> float
 var _knockback := Vector3.ZERO
 var _pending_look := Vector2.ZERO
 var _default_layer := 0
+var _snaps: Array = [] # remote only: [sender_time, position, quaternion], oldest first
+var _clock_offset := INF # remote only: local clock - sender clock (+ fastest latency seen), min-filtered
+
+const NET_INTERP_DELAY := 0.1 # TUNE seconds remote players are rendered in the past (2 sync intervals)
+const NET_MAX_EXTRAPOLATE := 0.15 # TUNE seconds to keep moving on a stalled connection before holding still
+const NET_SNAP_DISTANCE := 6.0 # TUNE metres: a bigger jump between snapshots is a teleport, not motion
 
 
 func _enter_tree() -> void:
@@ -277,6 +293,7 @@ func _rpc_teleport(pos: Vector3) -> void:
 		# FIX(S04, Codex): players must not carry each other as platforms during round teleports.
 		platform_floor_layers &= ~2
 		global_position = pos
+		_snaps.clear() # remote copies: don't slide back toward pre-teleport snapshots
 		_reset_movement()
 		_refill_stamina()
 
@@ -399,6 +416,76 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not is_multiplayer_authority():
+		_net_interpolate() # before the child visuals sample our position this tick
+	_physics_step(delta)
+	if is_multiplayer_authority():
+		net_state = PackedFloat32Array([_net_now(), position.x, position.y, position.z,
+			quaternion.x, quaternion.y, quaternion.z, quaternion.w])
+
+
+static func _net_now() -> float:
+	return Time.get_ticks_usec() / 1000000.0
+
+
+# NET: remote peers. Called by Sync for every received snapshot.
+func _set_net_state(v: PackedFloat32Array) -> void:
+	net_state = v
+	if v.size() < 8 or is_multiplayer_authority():
+		return
+	var t := v[0]
+	var pos := Vector3(v[1], v[2], v[3])
+	var q := Quaternion(v[4], v[5], v[6], v[7]).normalized()
+	if not is_inside_tree():
+		position = pos # spawn state
+		quaternion = q
+		return
+	# Min-filtered clock offset: tracks the fastest delivery; drifts up slowly if the route gets slower.
+	var off := _net_now() - t
+	_clock_offset = off if off < _clock_offset else _clock_offset + (off - _clock_offset) * 0.02
+	if not _snaps.is_empty():
+		var last: Array = _snaps[_snaps.size() - 1]
+		if t <= float(last[0]):
+			return # duplicate or out of order
+		if pos.distance_to(last[1]) > NET_SNAP_DISTANCE:
+			_snaps.clear() # teleport: jump there instead of sliding across the map
+			position = pos
+			quaternion = q
+	_snaps.append([t, pos, q])
+	if _snaps.size() > 32:
+		_snaps.pop_front()
+
+
+## Newest known position: the owner's real one, or the latest received snapshot on remote peers (no
+## interpolation delay). Use it for tight server-side checks; visuals and most gameplay use global_position.
+func net_position() -> Vector3:
+	if is_multiplayer_authority() or _snaps.is_empty():
+		return global_position
+	return get_parent().global_transform * (_snaps[_snaps.size() - 1][1] as Vector3)
+
+
+## Render remote players NET_INTERP_DELAY behind the newest data, interpolating between snapshots.
+func _net_interpolate() -> void:
+	if _snaps.is_empty():
+		return
+	var rt := _net_now() - _clock_offset - NET_INTERP_DELAY
+	while _snaps.size() > 2 and float(_snaps[1][0]) <= rt:
+		_snaps.pop_front()
+	var a: Array = _snaps[0]
+	if _snaps.size() == 1 or rt <= float(a[0]):
+		position = a[1]
+		quaternion = a[2]
+		return
+	var b: Array = _snaps[1]
+	var span := maxf(float(b[0]) - float(a[0]), 0.001)
+	var w := (rt - float(a[0])) / span
+	if w > 1.0: # data is late: keep moving a little (extrapolate), then hold
+		w = 1.0 + minf(rt - float(b[0]), NET_MAX_EXTRAPOLATE) / span
+	position = (a[1] as Vector3).lerp(b[1], w)
+	quaternion = (a[2] as Quaternion).slerp(b[2], clampf(w, 0.0, 1.0))
+
+
+func _physics_step(delta: float) -> void:
 	_update_stance()
 	_update_pose(delta)
 	_step_offset = lerpf(_step_offset, 0.0, 1.0 - exp(-tuning.step_smoothing * delta))
@@ -862,7 +949,8 @@ func _rpc_bump(other_name: StringName) -> void:
 	var other := get_parent().get_node_or_null(NodePath(other_name)) as Player
 	if other == null or other == self or not other.is_alive:
 		return
-	var offset := other.global_position - global_position
+	# Newest received positions, not the 100 ms-delayed interpolated ones (contact is a tight check).
+	var offset := other.net_position() - net_position()
 	if absf(offset.y) > maxf(tuning.height, other.tuning.height):
 		return
 	offset.y = 0.0

@@ -180,6 +180,27 @@ func _check_dread() -> void:
 	await _wait(1.0)
 	_check(d.active_names() == "none", "the mage never hears villager dread")
 	director.role_override = Enums.Role.VILLAGER
+	# Mage frozen during the head start: no layers, no stinger. Released: layers, but still no stinger right away.
+	d.reset()
+	var spots := d.spotted_count
+	director._on_phase_changed(Enums.Phase.HEAD_START, 30.0)
+	await _wait(1.5)
+	_check(d.active_names() == "none" and d.spotted_count == spots, "head start: no dread, no scare stinger (%s)"
+		% d.active_names())
+	director._on_phase_changed(Enums.Phase.HUNT, 0.0)
+	await _wait(1.5)
+	_check(d.active[&"heartbeat"] and d.spotted_count == spots, "mage released in view: dread on, no stinger")
+	director._on_phase_changed(Enums.Phase.LOBBY, 0.0)
+	# Lingering mage: layers settle 40 % quieter, and come back to full after a calm spell.
+	var t := DreadTracker.new(director.tuning)
+	for i in 60: # 15 s with the mage 10 m away in view
+		t.sense(true, 10.0, true, 0.25)
+		t.fade(0.25)
+	_check(is_equal_approx(t.settle, director.tuning.dread_settle_level), "lingering mage: dread settles to %.2f" % t.settle)
+	for i in 80: # 20 s with no mage
+		t.sense(false, INF, false, 0.25)
+		t.fade(0.25)
+	_check(is_equal_approx(t.settle, 1.0), "after a calm spell the next approach is full volume (%.2f)" % t.settle)
 	director.mage_override = []
 	mage.queue_free()
 	wall.queue_free()

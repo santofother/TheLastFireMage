@@ -1,4 +1,4 @@
-## S12 voice v2 checks: ADPCM codec, bandwidth, group rules, effect buses, jitter buffer.
+## S12 voice v2 checks: ADPCM codec, bandwidth, group rules, effect buses; v3 jitter buffer (reorder, FEC, PLC).
 ## Owner: S12. NET: standalone local test (no network).
 extends Node
 
@@ -97,28 +97,59 @@ func _ready() -> void:
 	if AudioServer.get_bus_index(&"Voice_7") >= 0:
 		return _fail("effect bus not freed")
 	VoiceManager.clear_speaker_effects()
-	# --- jitter buffer: playback waits for the pre-buffer, then drains in order
+	# --- v3 transport: redundant copy round trip (half rate, same length, still recognisable)
+	var red_bytes: PackedByteArray = VoiceManager.encode_redundant(chunk)
+	var red_back: PackedFloat32Array = VoiceManager.decode_redundant(red_bytes)
+	if red_back.size() != VoiceManager.RAW_CHUNK or red_bytes.size() > 90:
+		return _fail("redundant copy size %d bytes / %d samples" % [red_bytes.size(), red_back.size()])
+	# --- jitter buffer: reorder by sequence, rebuild losses from the redundant copy, conceal the rest.
+	# Packets 0..9; 3 and 7 are lost but their copies ride in 4 and 8; 6 is lost with its copy (7) -> concealed.
 	var jp := AudioStreamPlayer.new()
 	add_child(jp)
 	var sp: Dictionary = VoiceManager._new_speaker(jp, null)
-	var tiny := PackedVector2Array()
-	tiny.resize(320)
-	tiny.fill(Vector2(0.1, 0.1))
-	VoiceManager._enqueue(sp, tiny, 16000)
-	await get_tree().process_frame
-	VoiceManager._pump_one(sp)
-	if not sp["buffering"] or sp["queued"] != 320:
-		return _fail("jitter buffer should hold the first chunk until pre-buffer is filled")
-	for i in 3:
-		VoiceManager._enqueue(sp, tiny, 16000)
-	VoiceManager._pump_one(sp)
-	var pb := jp.get_stream_playback() as AudioStreamGeneratorPlayback
-	if sp["buffering"] or sp["queued"] != 0 or pb == null:
-		return _fail("jitter buffer should have started playback (buffering=%s queued=%d)" % [sp["buffering"], sp["queued"]])
-	for i in 40: # a long burst is bounded to JITTER_MAX_QUEUE
-		VoiceManager._enqueue(sp, tiny, 16000)
-	if sp["queued"] > int(16000 * VoiceManager.JITTER_MAX_QUEUE) + 320:
-		return _fail("queue not bounded (%d)" % sp["queued"])
+	var chunks := []
+	for s in 10:
+		var c := PackedFloat32Array()
+		c.resize(VoiceManager.RAW_CHUNK)
+		c.fill(0.1 + 0.01 * s)
+		chunks.append(c)
+	var rec0: int = VoiceManager.packets_recovered
+	var con0: int = VoiceManager.frames_concealed
+	var played0: int = VoiceManager.frames_played
+	for s in [0, 2, 1, 4, 5, 9, 8]: # out of order on purpose
+		var red: PackedByteArray = VoiceManager.encode_redundant(chunks[s - 1]) if s > 0 else PackedByteArray()
+		VoiceManager._receive(sp, s, chunks[s], red)
+	var keys: Array = (sp["pending"] as Dictionary).keys()
+	keys.sort()
+	if keys != [0, 1, 2, 3, 4, 5, 7, 8, 9]:
+		return _fail("pending after reorder/FEC should be 0-5,7-9 (got %s)" % [keys])
+	if not sp["buffering"]:
+		return _fail("jitter buffer should still be pre-buffering before the first pump")
+	var waited := 0.0
+	while VoiceManager.frames_played - played0 < 10 * VoiceManager.RAW_CHUNK and waited < 2.0:
+		VoiceManager._pump_one(sp)
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+	var played: int = VoiceManager.frames_played - played0
+	print("[TEST] VOICE JITTER played=%d recovered=%d concealed=%d" % [played,
+		VoiceManager.packets_recovered - rec0, VoiceManager.frames_concealed - con0])
+	if played < 10 * VoiceManager.RAW_CHUNK:
+		return _fail("jitter buffer should play all 10 chunks (played %d frames)" % played)
+	if VoiceManager.packets_recovered - rec0 != 2:
+		return _fail("two lost packets should be rebuilt from redundancy")
+	if VoiceManager.frames_concealed - con0 != VoiceManager.RAW_CHUNK:
+		return _fail("exactly one chunk should be concealed")
+	# A packet whose slot already played is dropped, not played late.
+	var late0: int = VoiceManager.packets_late
+	VoiceManager._receive(sp, 6, chunks[6], PackedByteArray())
+	if VoiceManager.packets_late != late0 + 1:
+		return _fail("late packet should be counted and dropped")
+	# A long burst stays bounded (latency cap).
+	for s in range(100, 160):
+		VoiceManager._receive(sp, s, chunks[0], PackedByteArray())
+	var cap := int((float(sp["target"]) + VoiceManager.JITTER_MAX_QUEUE) / VoiceManager.CHUNK_SEC)
+	if (sp["pending"] as Dictionary).size() > cap:
+		return _fail("queue not bounded (%d)" % (sp["pending"] as Dictionary).size())
 	jp.stop()
 	VoiceManager.listener = null
 	print("[TEST] VOICE CODEC PASSED")

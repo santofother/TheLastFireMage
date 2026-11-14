@@ -8,7 +8,8 @@ extends Node
 ## - room echo: 8 rays from the listener (~6 Hz) drive the `World` bus reverb; nearest 6 sources get occlusion.
 ## - movement noise: a FootstepEmitter on every player; chicken squawks when a mage gets close; hide-spot creaks.
 ## - mage cues: casts are detected from MageAbilities cooldowns (no edits to game/mage/), hits/kills from GameEvents.
-## - dread (local alive villager, LINE OF SIGHT ONLY): DreadTracker layers + heartbeat; mage gets a hunter bed,
+## - dread (local alive villager, LINE OF SIGHT ONLY, never while the mage is frozen): DreadTracker layers +
+##   heartbeat, 40 % quieter once the mage lingers (DreadTracker.settle); mage gets a hunter bed,
 ##   the dead get a ghost bed.
 ## - music arc: cheerful folk stems -> dark stems + drones by `match_dread` (firestorm stage, mage tier, hunt time).
 ## - firestorm: a roar emitter slides along the ring at the point nearest the listener; warning bells, stage hits,
@@ -595,7 +596,9 @@ func _sense_dread(dt: float, listener: Node3D) -> void:
 	var has := false
 	var best := INF
 	var los := false
-	if role == Enums.Role.VILLAGER and alive and src:
+	# WHY (user, 2026-11-13): while the mage is frozen for the head start, villagers get no dread or scare stinger.
+	var mage_locked := _phase == Enums.Phase.ROLE_REVEAL or _phase == Enums.Phase.HEAD_START
+	if role == Enums.Role.VILLAGER and alive and src and not mage_locked:
 		var ear := _ear(listener if listener_override else src)
 		if not listener_override and _local and _local.get(&"camera"):
 			ear = (_local.get(&"camera") as Node3D).global_position
@@ -628,12 +631,14 @@ func _sense_dread(dt: float, listener: Node3D) -> void:
 
 func _update_dread_mix(delta: float) -> void:
 	dread.fade(delta)
+	# `settle` drops the layers to dread_settle_level (60 %) once the mage has hung around for a while.
+	var k := dread.settle
 	if _dread_stream:
-		_dread_stream.set_sync_stream_volume(0, _lin_db(dread.levels[&"drone"]))
-		_dread_stream.set_sync_stream_volume(1, _lin_db(dread.levels[&"strings"]))
-		_dread_stream.set_sync_stream_volume(2, _lin_db(dread.levels[&"chase"]))
+		_dread_stream.set_sync_stream_volume(0, _lin_db(dread.levels[&"drone"] * k))
+		_dread_stream.set_sync_stream_volume(1, _lin_db(dread.levels[&"strings"] * k))
+		_dread_stream.set_sync_stream_volume(2, _lin_db(dread.levels[&"chase"] * k))
 		_dread_player.volume_db = 0.0
-	_heartbeat.volume_db = _lin_db(dread.levels[&"heartbeat"])
+	_heartbeat.volume_db = _lin_db(dread.levels[&"heartbeat"] * k)
 	if dread.distance < INF:
 		_heartbeat.pitch_scale = lerpf(_heartbeat.pitch_scale, dread.heartbeat_pitch(), 1.0 - exp(-2.0 * delta))
 	_hunter.volume_db = move_toward(_hunter.volume_db, _lin_db(_hunter_level), 30.0 * delta)
@@ -650,6 +655,8 @@ func _on_phase_changed(phase: int, _duration: float) -> void:
 		_intro_time = 0.0
 	if phase == Enums.Phase.HUNT:
 		_hunt_time = 0.0
+		# Standing in view of the mage when it is released is not a "spotted" moment: no stinger right away.
+		dread.mute_stinger(tuning.dread_release_grace)
 	if phase == Enums.Phase.LOBBY or phase == Enums.Phase.ROLE_REVEAL:
 		_stage = 0
 		_tiers.clear()
