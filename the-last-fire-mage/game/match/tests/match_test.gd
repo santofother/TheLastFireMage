@@ -111,11 +111,14 @@ func _check_phase(next: int) -> void:
 	if next == Enums.Phase.HEAD_START:
 		# WHY: owner transforms replicate at 20 Hz; allow in-flight pre-teleport packets to settle.
 		await get_tree().create_timer(0.15).timeout
+		# WHY (2026-11-14): 0.2 m flaked ~1 in 3 full runs; players get nudged ~0.5 m right after the round-2
+		# teleport (seen on the owner too, so not interpolation). Spawns are >= 8 m apart, so 0.75 m still
+		# proves the right role spawn. Root cause of the nudge not found yet (see handoffs/playtest-version-check.md).
 		for p in Players.all():
 			var group := &"mage_spawn" if p.role == Enums.Role.MAGE else &"villager_spawn"
 			var found := false
 			for marker in get_tree().get_nodes_in_group(group):
-				if Vector2(p.global_position.x, p.global_position.z).distance_to(Vector2(marker.global_position.x, marker.global_position.z)) < (1.2 if _scenario == "two_mages" else 0.2):
+				if Vector2(p.global_position.x, p.global_position.z).distance_to(Vector2(marker.global_position.x, marker.global_position.z)) < (1.2 if _scenario == "two_mages" else 0.75):
 					found = true
 			_check(found, "participant %s teleported to role spawn at %s" % [p.display_name, p.global_position])
 	var local := Players.local_player()

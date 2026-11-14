@@ -19,7 +19,7 @@ enum Mode { OFFLINE, ENET, STEAM }
 const DEFAULT_PORT := 24680
 const MAX_PLAYERS := 10
 ## Human-readable game version. Bump it with every GitHub release (see AGENTS.md Commands).
-const GAME_VERSION := "0.1.25"
+const GAME_VERSION := "0.1.26"
 const REGISTER_TIMEOUT := 15.0 # seconds a client waits for the host to accept it before giving up
 
 ## "<GAME_VERSION>+<git short commit>" (export plugin stamps the commit; editor runs ask git). Host and every
