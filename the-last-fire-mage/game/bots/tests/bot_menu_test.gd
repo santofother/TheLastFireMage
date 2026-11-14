@@ -10,6 +10,13 @@ func _ready() -> void:
 func _run() -> void:
 	var main := GameEvents.system(&"main")
 	var menu: Node = main.get_node("Menu")
+	# Version line on the main menu banner (and the page panel): "v<GAME_VERSION> · build <commit>".
+	var versions := main.find_children("VersionLabel", "Label", true, false)
+	if versions.size() != 2 or not (versions[0] as Label).text.begins_with("v" + NetworkManager.GAME_VERSION) \
+			or not versions.any(func(l: Label) -> bool: return l.is_visible_in_tree()):
+		_fail("version label missing: %s" % [versions.map(func(l): return l.text)])
+		return
+	print("[TEST] menu version: ", (versions[0] as Label).text)
 	for page in ["host", "join", "settings"]:
 		menu._open_page(page)
 		if not menu._root.visible or menu._landing.visible or not menu._pages[page].visible:

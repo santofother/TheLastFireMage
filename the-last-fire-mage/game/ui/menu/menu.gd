@@ -351,6 +351,7 @@ func _build_ui() -> void:
 	v.add_child(_leave_btn)
 	_status = UiStyle.footer("Ready", 15)
 	v.add_child(_status)
+	v.add_child(_version_label())
 	for field: Control in [_name_edit, _port_edit, _ip_edit, _mage_count, _bot_count, _mic_option]:
 		UiStyle.style_field(field)
 	_select_page("host")
@@ -386,6 +387,24 @@ func _menu_theme() -> Theme:
 	t.set_color(&"font_color", &"CheckButton", Color("f2dcae"))
 	t.set_color(&"font_hover_color", &"CheckButton", Color.WHITE)
 	return t
+
+
+## "v0.1.25 · build e5feb8d" (+ " · editor" when run from Godot). Same id the host checks on join.
+static func version_text() -> String:
+	var parts := NetworkManager.build_id.split("+", true, 1)
+	var out := "v" + parts[0]
+	if parts.size() > 1:
+		out += "  ·  build " + parts[1]
+	if OS.has_feature("editor"):
+		out += "  ·  editor"
+	return out
+
+
+func _version_label() -> Label:
+	var l := UiStyle.footer(version_text(), 13)
+	l.name = "VersionLabel"
+	l.modulate.a = 0.7
+	return l
 
 
 func _label(text: String) -> Label:
@@ -562,3 +581,4 @@ func _build_landing() -> void:
 	content.add_child(spacer2)
 	content.add_child(UiStyle.ornament("", 14))
 	content.add_child(UiStyle.footer("Private games with friends  ◆  Proximity voice", 16))
+	content.add_child(_version_label())
