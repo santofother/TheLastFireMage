@@ -11,11 +11,12 @@ extends RefCounted
 # CONTRACT: ids go over the network, so only append new skins. Every scene must use the red villager's skeleton.
 
 ## Display names, indexed by skin id.
-const NAMES: Array[String] = ["Red", "Blue", "Old Man"]
+const NAMES: Array[String] = ["Red", "Blue", "Old Man", "Auntie"]
 const _SCENES: Array[PackedScene] = [
 	preload("res://game/player/villager/red-villager-animations.glb"),
 	preload("res://game/player/villager/blue/blue-villager-mesh.glb"),
 	preload("res://game/player/villager/elderly/elderly-villager.glb"),
+	preload("res://game/player/villager/auntie/auntie-purple.glb"),
 ]
 
 ## Skin id chosen in this machine's menu.
