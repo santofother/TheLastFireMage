@@ -115,6 +115,13 @@ func _ready() -> void:
 		var w := sheet.get_width() * 0.5
 		atlas.region = Rect2(w * index + w * 0.12, 0, w * 0.76, sheet.get_height() * 0.76)
 		_portraits.append(atlas)
+	# FIX(S19, claude): skins after Red/Blue each have their own 887x887 portrait, cropped like the sheet halves.
+	for path: String in ["res://game/ui/art/portrait_old_man.png"]:
+		var single: Texture2D = load(path)
+		var extra := AtlasTexture.new()
+		extra.atlas = single
+		extra.region = Rect2(single.get_width() * 0.12, 0, single.get_width() * 0.76, single.get_height() * 0.76)
+		_portraits.append(extra)
 	_build_lobby_cards()
 	_layout_lobby()
 	_settings_panel = preload("res://game/match/game_settings_panel.gd").new()

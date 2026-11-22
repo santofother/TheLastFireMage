@@ -11,10 +11,11 @@ extends RefCounted
 # CONTRACT: ids go over the network, so only append new skins. Every scene must use the red villager's skeleton.
 
 ## Display names, indexed by skin id.
-const NAMES: Array[String] = ["Red", "Blue"]
+const NAMES: Array[String] = ["Red", "Blue", "Old Man"]
 const _SCENES: Array[PackedScene] = [
 	preload("res://game/player/villager/red-villager-animations.glb"),
 	preload("res://game/player/villager/blue/blue-villager-mesh.glb"),
+	preload("res://game/player/villager/elderly/elderly-villager.glb"),
 ]
 
 ## Skin id chosen in this machine's menu.
@@ -31,9 +32,9 @@ static func clamp_id(id: int) -> int:
 	return clampi(id, 0, NAMES.size() - 1)
 
 
-## Skin id for a name such as "blue", or 0 if the name is unknown.
+## Skin id for a name such as "blue" or "old man" (also "old_man"), or 0 if the name is unknown.
 static func id_from_name(text: String) -> int:
 	for id: int in NAMES.size():
-		if NAMES[id].to_lower() == text.to_lower():
+		if NAMES[id].to_lower() == text.to_lower().replace("_", " "):
 			return id
 	return 0

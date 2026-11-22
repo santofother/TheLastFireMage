@@ -4,17 +4,20 @@ extends Node3D
 ## NET: offline.
 
 const RED_PATH := "res://game/player/villager/red-villager-animations.glb"
-const BLUE_MESH_PATH := "res://game/player/villager/blue/blue-villager-mesh.glb"
-const BLUE_SCENE_PATH := "res://game/player/villager/blue_villager.tscn"
+
 const CLIPS: Array[StringName] = [&"idle", &"walk", &"run", &"sprint", &"jump_start", &"jump_air", &"jump_land",
 	&"climb_mantle", &"interact", &"pickup", &"carry_idle", &"carry_walk", &"put_down", &"hit_stun", &"knockback",
 	&"death"]
 const LOOPING: Array[StringName] = [&"idle", &"walk", &"run", &"sprint", &"jump_air", &"carry_idle", &"carry_walk"]
-const BLUE_MESHES: Array[String] = ["BV_Accessories", "BV_Body", "BV_Face_Hair", "BV_Outfit"]
 const BONE_COUNT := 35
 const EPSILON := 0.0005
 
 var _fails := 0
+# FIX(S19, claude): body paths are vars so old_man_villager_test.gd can reuse every check for its own body.
+var BLUE_MESH_PATH := "res://game/player/villager/blue/blue-villager-mesh.glb"
+var BLUE_SCENE_PATH := "res://game/player/villager/blue_villager.tscn"
+var BLUE_MESHES: Array[String] = ["BV_Accessories", "BV_Body", "BV_Face_Hair", "BV_Outfit"]
+var LABEL := "BLUE VILLAGER"
 
 
 func _ready() -> void:
@@ -33,9 +36,9 @@ func _ready() -> void:
 		_check_shared_clips(anim, red_anim)
 		await _check_playback(anim, skeleton)
 	if _fails == 0:
-		print("[TEST] BLUE VILLAGER TEST PASSED")
+		print("[TEST] %s TEST PASSED" % LABEL)
 	else:
-		print("[TEST] FAIL blue villager: %d checks failed" % _fails)
+		print("[TEST] FAIL %s: %d checks failed" % [LABEL, _fails])
 	get_tree().quit(1 if _fails > 0 else 0)
 
 
