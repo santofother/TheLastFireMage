@@ -32,6 +32,7 @@ session: reason) · DONE (on main, date) · BLOCKED (reason)
 | S18 | Sound design (rooms, mage hunt, dread, storm direction) | 4 | DONE (2026-11-09) | game-audio-revamp |
 | S19 | Old man villager (third selectable skin) | 4 | DONE (2026-11-22) | s19-old-man |
 | S19b | Auntie villager (fourth selectable skin) | 4 | DONE (2026-11-22) | s19-auntie |
+| S19c | Chicken carrier villager (fifth selectable skin) | 4 | DONE (2026-11-22) | s19-chicken-carrier |
 | P1 | Playtest 1 (user + friends) | — | TODO | after wave 3 |
 | S17 | Playtest triage + next plan | — | TODO | after P1 |
 

@@ -116,7 +116,7 @@ func _ready() -> void:
 		atlas.region = Rect2(w * index + w * 0.12, 0, w * 0.76, sheet.get_height() * 0.76)
 		_portraits.append(atlas)
 	# FIX(S19, claude): skins after Red/Blue each have their own 887x887 portrait, cropped like the sheet halves.
-	for path: String in ["res://game/ui/art/portrait_old_man.png", "res://game/ui/art/portrait_auntie.png"]:
+	for path: String in ["res://game/ui/art/portrait_old_man.png", "res://game/ui/art/portrait_auntie.png", "res://game/ui/art/portrait_chicken_carrier.png"]:
 		var single: Texture2D = load(path)
 		var extra := AtlasTexture.new()
 		extra.atlas = single
